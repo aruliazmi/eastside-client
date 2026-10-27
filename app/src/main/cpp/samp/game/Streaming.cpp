@@ -22,26 +22,23 @@
 extern UI *pUI;
 
 bool CStreaming::TryLoadModel(int modelId) {
-    FLog("TryLoadModel %d", modelId);
+    if (modelId < 0 || modelId >= RESOURCE_ID_TOTAL) return false;
     if(!CStreaming::GetInfo(modelId).IsLoaded()) {
-        FLog("TryLoadModel 1");
         CStreaming::RequestModel(modelId, STREAMING_GAME_REQUIRED | STREAMING_KEEP_IN_MEMORY);
-        FLog("TryLoadModel 11");
         CStreaming::LoadAllRequestedModels(false);
-        FLog("TryLoadModel 2");
         uint32 count = 0;
         while (!CStreaming::GetInfo(modelId).IsLoaded()) {
             count++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-            if (count > 30) {
-                pUI->chat()->addDebugMessage("{ff0000} Error loading model %d", modelId);
+            if (count > 25) {
+                if (pUI && pUI->chat()) {
+                    pUI->chat()->addDebugMessage("{ff0000} Error loading model %d", modelId);
+                }
                 return false;
             }
         }
-        FLog("TryLoadModel 3");
     }
-    FLog("TryLoadModel 4");
     return true;
 }
 
@@ -255,11 +252,6 @@ int CStreaming::AddImageToList(char const* pFileName, bool bNotPlayerImg) {
     ms_files[fileIndex].m_StreamHandle = CdStreamOpen(pFileName);
     ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
     return fileIndex;
-}
-
-void CStreaming::LoadCdDirectory(const char* archiveName, int archiveId) {
-    if (!archiveName || archiveId < 0) return;
-    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0046C0AC + 1 : 0x005578FC), archiveName, archiveId);
 }
 
 void CStreaming::InitImageList() {

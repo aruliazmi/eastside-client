@@ -39,7 +39,8 @@ bool IsSafeArcName(const std::string& name) {
 
 bool PackImgV2(const std::vector<ImgEntry>& entries,
                const std::string& outPath,
-               std::string& outError) {
+               std::string& outError,
+               LayoutMap* outLayout) {
     if (entries.empty()) {
         outError = "no entries to pack";
         return false;
@@ -208,6 +209,13 @@ bool PackImgV2(const std::vector<ImgEntry>& entries,
         remove(tmpPath.c_str());
         outError = "rename failed";
         return false;
+    }
+
+    if (outLayout) {
+        outLayout->clear();
+        for (const auto& l : layout) {
+            (*outLayout)[l.arcName] = {l.sectorOffset, l.sectorCount};
+        }
     }
     return true;
 }

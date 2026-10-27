@@ -417,8 +417,9 @@ bool DLManager::RegisterCustomModels() {
         entries.push_back({mf.txdPath, mf.txdArcName});
     }
 
+    DLImgPack::LayoutMap layoutMap;
     std::string packError;
-    if (!DLImgPack::PackImgV2(entries, imgFullPath, packError)) {
+    if (!DLImgPack::PackImgV2(entries, imgFullPath, packError, &layoutMap)) {
         char msg[256];
         snprintf(msg, sizeof(msg), "Failed to pack custom IMG: %s",
                  packError.c_str());
@@ -448,10 +449,8 @@ bool DLManager::RegisterCustomModels() {
         return false;
     }
 
-    // Load CdDirectory into the streaming system so models inside the IMG can be found
-    CStreaming::LoadCdDirectory(imgRelPath, imgIndex);
-
-    // Register each model slot.
+    // Register each model slot and populate CStreamingInfo directly from IMG layout.
+    // Never call LoadCdDirectory on custom IMG (pExtraDirectory is null on Android and crashes).
     int registered = 0;
     int skippedFull = 0;
     {
@@ -477,6 +476,25 @@ bool DLManager::RegisterCustomModels() {
             snprintf(txdBase, sizeof(txdBase), "0x%08X", mf.txdCrc);
             pInfo->SetModelName(dffBase);
             pInfo->SetTexDictionary(txdBase, "custom_dl");
+
+            // Direct streaming setup: tell CStreaming exactly where the DFF is in custom_dl.img
+            auto dffIt = layoutMap.find(mf.dffArcName);
+            if (dffIt != layoutMap.end()) {
+                CStreamingInfo& dffInfo = CStreaming::GetInfo(mf.virtualId);
+                dffInfo.m_nImgId = static_cast<uint8>(imgIndex);
+                dffInfo.SetCdPosnAndSize(dffIt->second.offset, dffIt->second.count);
+            }
+
+            // Direct streaming setup: tell CStreaming exactly where the TXD is in custom_dl.img
+            auto txdIt = layoutMap.find(mf.txdArcName);
+            if (txdIt != layoutMap.end()) {
+                int32 txdModelId = TXDToModelId(pInfo->m_nTxdIndex);
+                if (txdModelId >= RESOURCE_ID_TXD && txdModelId < RESOURCE_ID_COL) {
+                    CStreamingInfo& txdInfo = CStreaming::GetInfo(txdModelId);
+                    txdInfo.m_nImgId = static_cast<uint8>(imgIndex);
+                    txdInfo.SetCdPosnAndSize(txdIt->second.offset, txdIt->second.count);
+                }
+            }
 
             m_registeredModels.insert(mf.virtualId);
             ++registered;

@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 namespace DLImgPack {
 
@@ -22,6 +23,13 @@ struct ImgEntry {
     std::string srcPath;   // absolute path to the file to pack
     std::string arcName;   // name inside IMG (max 23 chars + NUL)
 };
+
+struct SectorSpan {
+    uint32_t offset;
+    uint32_t count;
+};
+
+using LayoutMap = std::unordered_map<std::string, SectorSpan>;
 
 static const size_t IMG_SECTOR_SIZE = 2048;
 static const size_t IMG_MAX_NAME    = 24;   // incl. NUL
@@ -34,6 +42,7 @@ static const uint64_t IMG_MAX_TOTAL = 512ULL * 1024ULL * 1024ULL; // 512 MB cap
 // and rejects path traversal in arc names.
 bool PackImgV2(const std::vector<ImgEntry>& entries,
                const std::string& outPath,
-               std::string& outError);
+               std::string& outError,
+               LayoutMap* outLayout = nullptr);
 
 } // namespace DLImgPack

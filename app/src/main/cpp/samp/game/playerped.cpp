@@ -511,14 +511,7 @@ void CPlayerPed::RestartIfWastedAt(CVector *vecRestart, float fRotation)
 
 bool IsPedModel(unsigned int iModelID)
 {
-    if(iModelID < 0 || iModelID > 20000) return false;
-    auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
-
-    uintptr_t ModelInfo = reinterpret_cast<uintptr_t>(dwModelArray[iModelID]);
-    if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x82F310))
-        return true;
-
-    return false;
+    return IsValidPedModel(iModelID);
 }
 
 void CPlayerPed::SetModelIndex(uint uiModel)
