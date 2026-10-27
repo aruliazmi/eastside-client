@@ -20,12 +20,11 @@ public class GameDataVerifier {
             "gta3", "gta_int", "menu", "mobile", "player", "samp", "txd"
     };
 
-    /** (database, variant) pairs the data package legitimately does not ship. */
-    private static final String[][] MISSING_VARIANT = {
-            {"player", "etc"},
-            {"mobile", "pvr"},
-            {"samp", "pvr"},
-    };
+    /**
+     * Databases that only ever ship PVR (ped skins). The engine reads these as
+     * PVR on every GPU, so DXT/ETC files are not expected for them.
+     */
+    private static final String[] PVR_ONLY_DB = {"player", "playerhi"};
 
     /** Non-texture files required for the engine to boot. */
     public static final String[] ESSENTIAL_FILES = {
@@ -69,8 +68,9 @@ public class GameDataVerifier {
             else totalSize += f.length();
         }
 
-        String variant = GpuTextureFormat.tagOf(GpuTextureFormat.get(context));
+        String gpuVariant = GpuTextureFormat.tagOf(GpuTextureFormat.get(context));
         for (String db : TEXDB) {
+            String variant = isPvrOnly(db) ? "pvr" : gpuVariant;
             String base = "texdb/" + db + "/" + db + "." + variant;
             File dat = new File(baseDir, base + ".dat");
             File toc = new File(baseDir, base + ".toc");
@@ -91,18 +91,16 @@ public class GameDataVerifier {
                 if (!tmb.exists()) missing.add(base + ".tmb");
                 continue;
             }
-            // Nothing there at all: only a problem if this variant is expected.
-            if (!isVariantMissing(db, variant)) missing.add(base + ".dat");
+            // Nothing there at all: that database did not ship this variant.
+            missing.add(base + ".dat");
         }
 
         boolean isValid = missing.isEmpty() && problems.isEmpty();
         return new VerificationResult(isValid, missing, totalSize, problems);
     }
 
-    private static boolean isVariantMissing(String db, String variant) {
-        for (String[] pair : MISSING_VARIANT) {
-            if (pair[0].equals(db) && pair[1].equals(variant)) return true;
-        }
+    private static boolean isPvrOnly(String db) {
+        for (String d : PVR_ONLY_DB) if (d.equals(db)) return true;
         return false;
     }
 }

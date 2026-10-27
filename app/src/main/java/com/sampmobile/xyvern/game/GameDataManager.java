@@ -57,13 +57,13 @@ public final class GameDataManager {
             "https://raw.githubusercontent.com/aruliazmi/eastside-client/config/app.json";
     private static final String FALLBACK_DATA_URL =
             "https://github.com/aruliazmi/eastside-client/releases/download/data-v1/files.zip";
-    private static final String FALLBACK_DATA_VERSION = "1";
+    private static final String FALLBACK_DATA_VERSION = "2";
 
     /** Dipakai saat config jauh tidak terjangkau: launcher tetap bisa dibuka. */
     private static final String BUNDLED_CONFIG = "{"
-            + "\"data_url\":\"https://github.com/aruliazmi/eastside-client/releases/download/data-v1/files.zip\","
-            + "\"data_version\":\"1\","
-            + "\"data_size\":666478908,"
+            + "\"data_url\":\"https://github.com/aruliazmi/eastside-client/releases/download/data-v2/files.zip\","
+            + "\"data_version\":\"2\","
+            + "\"data_size\":664401280,"
             + "\"data_sentinel\":\"SAMP/SAMP.ide\""
             + "}";
 
@@ -451,43 +451,42 @@ public final class GameDataManager {
      * Returns null to extract, or a reason string to skip.
      */
     private static volatile int sTextureFormat = 0;
+
+    /**
+     * Databases that only ever ship the PVR variant. GTA:SA keeps the ped skin
+     * textures here and the engine always reads them as PVR regardless of GPU,
+     * so substituting the DXT/ETC variant would point it at a database that was
+     * never built for that layout.
+     */
+    private static final java.util.Set<String> PVR_ONLY_DB =
+            new java.util.HashSet<>(java.util.Arrays.asList("player", "playerhi"));
+
     private static String textureVariantSkip(String entryName) {
         int marker = entryName.indexOf("texdb/");
         if (marker < 0) return null;
         String rest = entryName.substring(marker + "texdb/".length());
         int slash = rest.indexOf('/');
         if (slash < 0) return null;                 // e.g. texdb/player.img — keep
+        String db = rest.substring(0, slash);
         String file = rest.substring(slash + 1);
         if (file.indexOf('.') < 0) return null;     // directory entry
 
         String lower = file.toLowerCase();
-        String[] variants = {".dxt.", ".etc.", ".pvr."};
         String matched = null;
-        for (String v : variants) {
+        for (String v : new String[]{".dxt.", ".etc.", ".pvr."}) {
             if (lower.contains(v)) { matched = v; break; }
         }
-        if (matched == null) return null;           // .unc., .txt, etc — keep
+        if (matched == null) return null;           // .unc., .txt, numeric — keep
 
-        // Only keep the variant this GPU asked for.
-        String mine = "." + com.sampmobile.xyvern.game.GpuTextureFormat.tagOf(sTextureFormat) + ".";
-        if (!matched.equals(mine)) return "other-variant";
-
-        // Drop a lone .toc/.tmb whose .dat is missing in this package.
-        if (lower.endsWith(".toc") || lower.endsWith(".tmb")) {
-            if (MISSING_DAT.contains(rest.toLowerCase())) return "missing-dat";
+        // PVR-only databases keep their PVR triplet verbatim.
+        if (PVR_ONLY_DB.contains(db)) {
+            return ".pvr.".equals(matched) ? null : "pvr-only-db";
         }
-        return null;
-    }
 
-    /**
-     * (database + variant) pairs that carry a .toc/.tmb but no .dat in the
-     * published package. Registering these makes the engine seek into nothing.
-     */
-    private static final java.util.Set<String> MISSING_DAT = new java.util.HashSet<>(
-            java.util.Arrays.asList(
-                    "samp/samp.pvr.toc",
-                    "samp/samp.pvr.tmb"
-            ));
+        // Every other database keeps exactly the variant this GPU asked for.
+        String mine = "." + GpuTextureFormat.tagOf(sTextureFormat) + ".";
+        return matched.equals(mine) ? null : "other-variant";
+    }
 
     /** Returns e.g. "files/" when every entry lives under one top-level folder, else "". */
     private static String detectStripPrefix(java.util.List<String> names) {
