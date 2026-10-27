@@ -155,24 +155,24 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
             }
 
             boolean amlEnabled = getSharedPreferences("com.sampmobile.xyvern", MODE_PRIVATE)
-                    .getBoolean("aml_enabled", true);
+                    .getBoolean("aml_enabled", false);
             if (amlEnabled) {
                 try {
                     System.loadLibrary("AML");
                     Log.i(TAG, "AndroidModLoader loaded");
-                } catch (UnsatisfiedLinkError e) {
-                    Log.i(TAG, "libAML.so optional module not present");
+                } catch (Throwable e) {
+                    Log.i(TAG, "libAML.so optional module not present: " + e.getMessage());
                 }
             }
 
             boolean cleoEnabled = getSharedPreferences("com.sampmobile.xyvern", MODE_PRIVATE)
-                    .getBoolean("cleo_enabled", true);
+                    .getBoolean("cleo_enabled", false);
             if (cleoEnabled) {
                 try {
                     System.loadLibrary("cleo");
                     Log.i(TAG, "CLEO Android loaded");
-                } catch (UnsatisfiedLinkError e) {
-                    Log.i(TAG, "libcleo.so optional module not present");
+                } catch (Throwable e) {
+                    Log.i(TAG, "libcleo.so optional module not present: " + e.getMessage());
                 }
             }
         } catch (Exception error) {
