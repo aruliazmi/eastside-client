@@ -37,7 +37,9 @@ import java.util.concurrent.Executors;
 public class HomeFragment extends Fragment {
 
     // Direct download URL untuk data pack resmi GTA SA / SAMP
-    private static final String DATA_ZIP_URL = "https://github.com/rezzylrn/samp-mobile-optimized/releases/download/data-v1/files.zip";
+    // Di-host di repo sendiri, bukan release repo pihak ketiga.
+    private static final String DATA_ZIP_URL =
+            "https://github.com/aruliazmi/eastside-client/releases/download/data-v1/files.zip";
     private static final String SERVER_IP = "163.52.135.25";
     private static final int SERVER_PORT = 7777;
 

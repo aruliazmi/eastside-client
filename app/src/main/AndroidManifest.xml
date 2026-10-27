@@ -66,13 +66,6 @@
 
 
 
-        <activity
-            android:name=".launcher.UpdateActivity"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-        </activity>
-
-        <service android:name=".launcher.UpdateService" android:enabled="true" android:exported="false"/>
 
         <service
             android:name="com.sampmobile.xyvern.launcher.util.FirebaseMessageReceiver"

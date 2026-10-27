@@ -49,9 +49,23 @@ import java.util.zip.ZipFile;
  * the launcher never asks to download again.
  */
 public final class GameDataManager {
-    private static final String APP_CONFIG = "https://raw.githubusercontent.com/Kallzzxa/hehehaha/refs/heads/main/app.json";
-    private static final String FALLBACK_DATA_PAGE = "https://www.mediafire.com/file/rhkel93l3frrgtn/files.zip/file";
+    // Config di-host di repo sendiri (branch `config`), bukan repo pihak ketiga.
+    // Sebelumnya menunjuk raw.githubusercontent.com/Kallzzxa/hehehaha: kalau repo
+    // itu hilang atau diubah, seluruh user terkunci di layar maintenance karena
+    // gate ini jalan sebelum launcher tampil.
+    private static final String APP_CONFIG =
+            "https://raw.githubusercontent.com/aruliazmi/eastside-client/config/app.json";
+    private static final String FALLBACK_DATA_URL =
+            "https://github.com/aruliazmi/eastside-client/releases/download/data-v1/files.zip";
     private static final String FALLBACK_DATA_VERSION = "1";
+
+    /** Dipakai saat config jauh tidak terjangkau: launcher tetap bisa dibuka. */
+    private static final String BUNDLED_CONFIG = "{"
+            + "\"data_url\":\"https://github.com/aruliazmi/eastside-client/releases/download/data-v1/files.zip\","
+            + "\"data_version\":\"1\","
+            + "\"data_size\":666478908,"
+            + "\"data_sentinel\":\"SAMP/SAMP.ide\""
+            + "}";
 
     private static final String PREFS = "samp_game_data";
     private static final String KEY_DATA_VERSION = "data_version";
@@ -87,8 +101,8 @@ public final class GameDataManager {
                     return;
                 }
                 DataInfo info = new DataInfo();
-                info.url = config.optString("data_url", FALLBACK_DATA_PAGE);
-                if (info.url.isEmpty()) info.url = FALLBACK_DATA_PAGE;
+                info.url = config.optString("data_url", FALLBACK_DATA_URL);
+                if (info.url.isEmpty()) info.url = FALLBACK_DATA_URL;
                 info.version = config.optString("data_version", FALLBACK_DATA_VERSION);
                 if (info.version.isEmpty()) info.version = FALLBACK_DATA_VERSION;
                 info.size = config.optLong("data_size", 0);
@@ -103,8 +117,27 @@ public final class GameDataManager {
                 final DataInfo fi = info;
                 MAIN.post(() -> showDownloadOffer(activity, fi, callback));
             } catch (Exception e) {
-                android.util.Log.e("GameDataManager", "Config check failed", e);
-                MAIN.post(() -> showNetworkError(activity, e.getMessage(), callback));
+                // Offline atau repo config tidak terjangkau: jangan kunci pemain.
+                // Pakai fallback yang dibundel supaya launcher tetap bisa dibuka.
+                android.util.Log.w("GameDataManager", "Config unreachable, using bundled fallback", e);
+                try {
+                    JSONObject local = new JSONObject(BUNDLED_CONFIG);
+                    DataInfo info = new DataInfo();
+                    info.url = local.optString("data_url", FALLBACK_DATA_URL);
+                    info.version = local.optString("data_version", FALLBACK_DATA_VERSION);
+                    info.size = local.optLong("data_size", 0);
+                    info.sentinel = local.optString("data_sentinel", "SAMP/SAMP.ide");
+
+                    String installed = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
+                            .getString(KEY_DATA_VERSION, "");
+                    if (info.version.equals(installed) && isInstalled(activity, info)) {
+                        MAIN.post(() -> { dismissLoading(); if (!activity.isFinishing()) callback.onReady(); });
+                        return;
+                    }
+                    MAIN.post(() -> showDownloadOffer(activity, info, callback));
+                } catch (Exception inner) {
+                    MAIN.post(() -> showNetworkError(activity, e.getMessage(), callback));
+                }
             }
         });
     }
