@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Eastside Client — type scale.
+
+  Dua keluarga saja:
+    display  = Montserrat (sudah ada di repo). Dipakai BESAR dan bobot tinggi,
+               hanya untuk judul layar. Tidak untuk body.
+    data     = IBM Plex Mono. Dipakai untuk semua yang teknis: IP, angka,
+               label, metadata, kapital bertracking.
+
+  Aturan: kalau sebuah teks berisi angka atau identifier, dia mono.
+  Kalau dia kalimat, dia sans. Tidak ada pengecualian.
+-->
+<resources>
+
+    <!-- Judul layar: besar, rapat, tebal -->
+    <style name="EsDisplay">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:textSize">27sp</item>
+        <item name="android:textColor">@color/es_ink</item>
+        <item name="android:letterSpacing">-0.025</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:lineSpacingMultiplier">0.95</item>
+    </style>
+
+    <!-- Sub-judul kalimat -->
+    <style name="EsBody">
+        <item name="android:fontFamily">@font/montserrat_regular</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/es_ink_dim</item>
+        <item name="android:lineSpacingMultiplier">1.45</item>
+    </style>
+
+    <!-- Label kapital bertracking: mono, kecil, jauh -->
+    <style name="EsLabel">
+        <item name="android:fontFamily">@font/plex_mono_semibold</item>
+        <item name="android:textSize">9.5sp</item>
+        <item name="android:textColor">@color/es_ink_faint</item>
+        <item name="android:letterSpacing">0.18</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- Angka/data besar: mono, tabular, rapat -->
+    <style name="EsFigure">
+        <item name="android:fontFamily">@font/plex_mono_semibold</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:textColor">@color/es_ink</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <!-- Nama entitas (server, file, orang) -->
+    <style name="EsName">
+        <item name="android:fontFamily">@font/montserrat_bold</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/es_ink</item>
+        <item name="android:letterSpacing">-0.005</item>
+    </style>
+
+    <!-- Garis pemisah tipis -->
+    <style name="EsRule">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">@dimen/es_rule_hairline</item>
+        <item name="android:background">@color/es_rule</item>
+    </style>
+
+</resources>
