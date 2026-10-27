@@ -27,7 +27,6 @@ import com.sampmobile.xyvern.game.GameDataManager;
 import com.sampmobile.xyvern.launcher.config.Config;
 import com.sampmobile.xyvern.launcher.fragments.FilesFragment;
 import com.sampmobile.xyvern.launcher.fragments.HomeFragment;
-import com.sampmobile.xyvern.launcher.fragments.PlayFragment;
 import com.sampmobile.xyvern.launcher.fragments.SettingsFragment;
 import com.sampmobile.xyvern.launcher.util.ConfigValidator;
 import com.sampmobile.xyvern.launcher.util.SharedPreferenceCore;
