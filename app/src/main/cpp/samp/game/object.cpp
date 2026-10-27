@@ -5,6 +5,7 @@
 #include "RW/RenderWare.h"
 #include "Streaming.h"
 #include "game/Models/ModelInfo.h"
+#include "../net/dl/dlmanager.h"
 
 #include <cmath>
 
@@ -14,8 +15,14 @@ extern MaterialTextGenerator* pMaterialTextGenerator;
 
 CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance, uint8_t bAttached)
 {
-    if(!CModelInfo::GetModelInfo(iModel))
-        iModel = 18631; // ????????
+    if(!CModelInfo::GetModelInfo(iModel)) {
+        int16_t virtId = DLManager::Instance().GetVirtualModelId(iModel);
+        if (virtId > 0 && CModelInfo::GetModelInfo(virtId)) {
+            iModel = virtId;
+        } else {
+            iModel = 1225; // Safe base GTA SA object (barrel)
+        }
+    }
 
 	m_AttachedVehicleID = INVALID_VEHICLE_ID;
 	m_AttachedObjectID = INVALID_OBJECT_ID;

@@ -448,6 +448,9 @@ bool DLManager::RegisterCustomModels() {
         return false;
     }
 
+    // Load CdDirectory into the streaming system so models inside the IMG can be found
+    CStreaming::LoadCdDirectory(imgRelPath, imgIndex);
+
     // Register each model slot.
     int registered = 0;
     int skippedFull = 0;
