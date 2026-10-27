@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  Layar unduh / perbarui data game.
+
+  Bukan splash berlogo besar. Ini layar kerja: satu status, satu progres,
+  satu keterangan teknis. Semua angka mono supaya tidak "menari" saat
+  nilainya berubah tiap frame.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".launcher.MainActivity"
-    android:background="@drawable/logo2">
+    android:background="@color/es_asphalt"
+    tools:context=".launcher.MainActivity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/gpu"
@@ -15,99 +23,114 @@
         android:visibility="invisible"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/installation_text"
-        android:layout_width="wrap_content"
+    <!-- Blok konten, ditumpuk dari atas. Bukan center-bias: layar kerja
+         dibaca dari atas ke bawah. -->
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="Updating game data..."
-        android:textColor="@color/white"
-        android:textSize="@dimen/_11sdp"
+        android:layout_marginHorizontal="@dimen/es_gutter"
+        android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.35" />
+        app:layout_constraintVertical_bias="0.42">
 
-    <View
-        android:layout_width="@dimen/_200sdp"
-        android:layout_height="@dimen/_3sdp"
-        android:background="#0284C7"
-        app:layout_constraintBottom_toTopOf="@+id/fileProgressPercent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/installation_text"
-        app:layout_constraintVertical_bias="0.173" />
+        <TextView
+            style="@style/EsLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Menyiapkan data" />
 
-    <ProgressBar
-        android:id="@+id/download_progress"
-        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-        android:layout_width="@dimen/_220sdp"
-        android:layout_height="@dimen/_11sdp"
-        android:progressDrawable="@drawable/download_progress"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.65" /> <TextView
-        android:id="@+id/fileName"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="cust.img"
-        android:textColor="@android:color/darker_gray"
-        android:textSize="@dimen/_10sdp"
-        app:layout_constraintBottom_toTopOf="@+id/download_progress"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.178"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.97" />
+        <!-- Status utama: satu baris, mono, gading. -->
+        <TextView
+            android:id="@+id/installation_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="7dp"
+            android:fontFamily="@font/montserrat_bold"
+            android:includeFontPadding="false"
+            android:letterSpacing="-0.015"
+            android:text="Updating game data..."
+            android:textColor="@color/es_ink"
+            android:textSize="20sp" />
 
-    <TextView
-        android:id="@+id/fileProgressPercent"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="100%"
-        android:textColor="#FFFFFF"
-        android:textSize="@dimen/_15sdp"
-        app:layout_constraintBottom_toTopOf="@+id/download_progress"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/installation_text"
-        app:layout_constraintVertical_bias="0.93" />
+        <View
+            android:layout_width="34dp"
+            android:layout_height="2dp"
+            android:layout_marginTop="14dp"
+            android:background="@color/es_brass" />
 
-    <TextView
-        android:id="@+id/fileCount"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="5/10"
-        android:textColor="@android:color/darker_gray"
-        android:textSize="@dimen/_10sdp"
-        app:layout_constraintBottom_toTopOf="@+id/download_progress"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.814"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.98" />
+        <!-- Progres: garis tipis, bukan bar gemuk. -->
+        <ProgressBar
+            android:id="@+id/download_progress"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginTop="22dp"
+            android:progressDrawable="@drawable/download_progress" />
 
+        <!-- Persentase: angka besar, mono, tabular. -->
+        <TextView
+            android:id="@+id/fileProgressPercent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/plex_mono_semibold"
+            android:includeFontPadding="false"
+            android:letterSpacing="-0.02"
+            android:text="100%"
+            android:textColor="@color/es_brass"
+            android:textSize="26sp" />
+
+        <!-- Berkas aktif dan hitungan: metadata, mono kecil, redup. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/fileName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="middle"
+                android:fontFamily="@font/plex_mono_medium"
+                android:includeFontPadding="false"
+                android:singleLine="true"
+                android:text="cust.img"
+                android:textColor="@color/es_ink_faint"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/fileCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:fontFamily="@font/plex_mono_medium"
+                android:includeFontPadding="false"
+                android:text="5/10"
+                android:textColor="@color/es_ink_faint"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Footer: identitas klien, menggantikan kredit fork upstream. -->
     <TextView
         android:id="@+id/textView14"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/montserrat_regular"
-        android:text="bản quyền GTA VIETNAM ONE"
-        android:textColor="#AEAEAE"
-        android:textSize="@dimen/_15sdp"
+        android:layout_marginBottom="22dp"
+        android:fontFamily="@font/plex_mono_medium"
+        android:letterSpacing="0.1"
+        android:text="EASTSIDE CLIENT  ·  163.52.135.25:7777"
+        android:textColor="@color/es_ink_ghost"
+        android:textSize="9sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
