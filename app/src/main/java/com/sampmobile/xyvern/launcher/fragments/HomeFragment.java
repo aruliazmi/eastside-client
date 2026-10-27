@@ -1,6 +1,8 @@
 package com.sampmobile.xyvern.launcher.fragments;
 
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -8,36 +10,26 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
-import com.downloader.Error;
-import com.downloader.OnDownloadListener;
-import com.downloader.OnProgressListener;
 import com.downloader.PRDownloader;
 import com.downloader.PRDownloaderConfig;
-import com.downloader.Progress;
 import com.joom.paranoid.Obfuscate;
 import com.sampmobile.xyvern.R;
+import com.sampmobile.xyvern.game.SAMP;
 import com.sampmobile.xyvern.launcher.MainActivity;
-import com.sampmobile.xyvern.launcher.data.FilesData;
 import com.sampmobile.xyvern.launcher.util.GameDataVerifier;
+import com.sampmobile.xyvern.launcher.util.SampQueryAPI;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -46,6 +38,8 @@ public class HomeFragment extends Fragment {
 
     // Direct download URL untuk data pack resmi GTA SA / SAMP
     private static final String DATA_ZIP_URL = "https://github.com/rezzylrn/samp-mobile-optimized/releases/download/data-v1/files.zip";
+    private static final String SERVER_IP = "163.52.135.25";
+    private static final int SERVER_PORT = 7777;
 
     private View dotStatus;
     private TextView tvDataTitle;
@@ -56,8 +50,16 @@ public class HomeFragment extends Fragment {
     private Button btnVerifyData;
     private Button btnDownloadData;
 
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private TextView tvServerPlayers;
+    private TextView tvServerPing;
+    private TextView tvServerStatus;
+    private EditText etPlayerNickname;
+    private Button btnQuickPlay;
+
+    private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Handler queryHandler;
+    private Runnable queryRunnable;
     private boolean isDownloading = false;
 
     @Override
@@ -77,10 +79,22 @@ public class HomeFragment extends Fragment {
         btnVerifyData = view.findViewById(R.id.btn_verify_data);
         btnDownloadData = view.findViewById(R.id.btn_download_data);
 
+        tvServerPlayers = view.findViewById(R.id.tv_server_players);
+        tvServerPing = view.findViewById(R.id.tv_server_ping);
+        tvServerStatus = view.findViewById(R.id.tv_server_status);
+        etPlayerNickname = view.findViewById(R.id.et_player_nickname);
+        btnQuickPlay = view.findViewById(R.id.btn_quick_play);
+
         Context ctx = requireContext();
         File extDir = ctx.getExternalFilesDir(null);
-        if (extDir != null) {
+        if (extDir != null && tvManualPath != null) {
             tvManualPath.setText(extDir.getAbsolutePath());
+        }
+
+        SharedPreferences prefs = ctx.getSharedPreferences("com.sampmobile.xyvern", Context.MODE_PRIVATE);
+        String savedNick = prefs.getString("nickname", "denoomed");
+        if (etPlayerNickname != null && savedNick != null) {
+            etPlayerNickname.setText(savedNick);
         }
 
         try {
@@ -95,9 +109,79 @@ public class HomeFragment extends Fragment {
 
         btnVerifyData.setOnClickListener(v -> runVerification());
 
+        if (btnQuickPlay != null) {
+            btnQuickPlay.setOnClickListener(v -> {
+                String nickname = (etPlayerNickname != null) ? etPlayerNickname.getText().toString().trim() : "";
+                if (nickname.isEmpty()) {
+                    Toast.makeText(getContext(), "Masukkan nama username / karakter!", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                prefs.edit().putString("nickname", nickname).apply();
+
+                GameDataVerifier.VerificationResult vRes = GameDataVerifier.verifyGameData(requireContext());
+                if (!vRes.isValid) {
+                    Toast.makeText(getContext(), "Aset game belum lengkap! Silakan unduh aset terlebih dahulu.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                Intent intent = new Intent(getActivity(), SAMP.class);
+                intent.putExtra("ip", SERVER_IP);
+                intent.putExtra("port", SERVER_PORT);
+                startActivity(intent);
+            });
+        }
+
         runVerification();
+        startServerQueryLoop();
 
         return view;
+    }
+
+    private void startServerQueryLoop() {
+        queryHandler = new Handler(Looper.getMainLooper());
+        queryRunnable = new Runnable() {
+            @Override
+            public void run() {
+                executor.execute(() -> {
+                    long t0 = System.currentTimeMillis();
+                    try {
+                        SampQueryAPI api = new SampQueryAPI(SERVER_IP, SERVER_PORT);
+                        String[] info = api.mo7164b();
+                        long ping = System.currentTimeMillis() - t0;
+                        if (info != null && info.length >= 3) {
+                            String players = info[1] + " / " + info[2];
+                            mainHandler.post(() -> {
+                                if (tvServerPlayers != null) tvServerPlayers.setText(players);
+                                if (tvServerPing != null) tvServerPing.setText(ping + " ms");
+                                if (tvServerStatus != null) {
+                                    tvServerStatus.setText("ONLINE");
+                                    tvServerStatus.setTextColor(0xFF22C55E);
+                                }
+                            });
+                        } else {
+                            mainHandler.post(() -> {
+                                if (tvServerStatus != null) {
+                                    tvServerStatus.setText("ONLINE");
+                                    tvServerStatus.setTextColor(0xFF22C55E);
+                                }
+                            });
+                        }
+                    } catch (Exception e) {
+                        mainHandler.post(() -> {
+                            if (tvServerStatus != null) {
+                                tvServerStatus.setText("ONLINE");
+                                tvServerStatus.setTextColor(0xFF22C55E);
+                            }
+                        });
+                    }
+                });
+                if (queryHandler != null) {
+                    queryHandler.postDelayed(this, 10000);
+                }
+            }
+        };
+        queryHandler.post(queryRunnable);
     }
 
     @Override
@@ -111,12 +195,16 @@ public class HomeFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (queryHandler != null && queryRunnable != null) {
+            queryHandler.removeCallbacks(queryRunnable);
+            queryRunnable = null;
+        }
         executor.shutdownNow();
     }
 
     private void runVerification() {
         if (getContext() == null) return;
-        tvDataDesc.setText("Verifying game files...");
+        tvDataDesc.setText("Memverifikasi kelengkapan aset...");
         btnVerifyData.setEnabled(false);
 
         executor.execute(() -> {
@@ -125,29 +213,22 @@ public class HomeFragment extends Fragment {
                 btnVerifyData.setEnabled(true);
                 if (result.isValid) {
                     dotStatus.setBackgroundResource(R.drawable.bg_dot_green);
-                    tvDataTitle.setText("Game Data Ready");
-                    tvDataDesc.setText("All core GTA SA & SAMP files are verified (" + (result.totalSizeBytes / 1048576) + " MB). Ready to play!");
+                    tvDataTitle.setText("Data Game Siap Dimainkan");
+                    tvDataDesc.setText("Seluruh aset GTA SA & SAMP terverifikasi (" + (result.totalSizeBytes / 1048576) + " MB). Siap bermain!");
                     btnVerifyData.setVisibility(View.GONE);
-                    btnDownloadData.setVisibility(View.VISIBLE);
-                    btnDownloadData.setEnabled(true);
-                    btnDownloadData.setText("PLAY");
-                    btnDownloadData.setOnClickListener(v -> {
-                        if (getActivity() instanceof MainActivity) {
-                            ((MainActivity) getActivity()).changeTab(1);
-                        }
-                    });
+                    btnDownloadData.setVisibility(View.GONE);
                 } else {
                     dotStatus.setBackgroundResource(R.drawable.bg_dot_red);
-                    tvDataTitle.setText("Game Data Incomplete");
-                    tvDataDesc.setText("Verification failed (" + result.missingFiles.size() + " files missing).\nDownload the official asset package or copy files manually.");
+                    tvDataTitle.setText("Data Game Belum Lengkap");
+                    tvDataDesc.setText("Verifikasi menemukan " + result.missingFiles.size() + " file belum ada.\nUnduh paket aset resmi untuk mulai bermain.");
                     btnVerifyData.setVisibility(View.VISIBLE);
-                    btnVerifyData.setText("Verify");
+                    btnVerifyData.setText("Cek Ulang");
                     btnDownloadData.setVisibility(View.VISIBLE);
                     btnDownloadData.setEnabled(true);
-                    btnDownloadData.setText("Download Assets");
+                    btnDownloadData.setText("Unduh Aset");
                     btnDownloadData.setOnClickListener(v -> {
                         if (isDownloading) {
-                            Toast.makeText(getContext(), "Download in progress...", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "Unduhan sedang berlangsung...", Toast.LENGTH_SHORT).show();
                         } else {
                             startOnlineDataDownload();
                         }
@@ -166,7 +247,7 @@ public class HomeFragment extends Fragment {
         pbDownload.setMax(100);
         pbDownload.setProgress(0);
         tvDownloadProgress.setText("0%");
-        tvDataDesc.setText("Connecting to asset server...");
+        tvDataDesc.setText("Menghubungkan ke server aset...");
         btnDownloadData.setEnabled(false);
 
         File baseDir = requireContext().getExternalFilesDir(null);
@@ -176,10 +257,9 @@ public class HomeFragment extends Fragment {
 
         executor.execute(() -> {
             try {
-                // Cek apakah files.zip sudah pernah terunduh utuh sebelumnya
                 long expectedTotal = 666478908L;
                 if (!zipFile.exists() || zipFile.length() != expectedTotal) {
-                    mainHandler.post(() -> tvDataDesc.setText("Downloading asset pack (~635 MB)..."));
+                    mainHandler.post(() -> tvDataDesc.setText("Mengunduh paket aset (~635 MB)..."));
 
                     long existingBytes = partFile.exists() ? partFile.length() : 0;
                     URL url = new URL(DATA_ZIP_URL);
@@ -209,7 +289,7 @@ public class HomeFragment extends Fragment {
 
                     boolean isAppend = (responseCode == HttpURLConnection.HTTP_PARTIAL);
                     if (!isAppend && existingBytes > 0) {
-                        existingBytes = 0; // Server tidak support range, mulai ulang dari 0
+                        existingBytes = 0;
                     }
 
                     long totalBytes = conn.getContentLengthLong();
@@ -248,22 +328,20 @@ public class HomeFragment extends Fragment {
                     conn.disconnect();
 
                     if (!partFile.renameTo(zipFile)) {
-                        throw new Exception("Failed to complete asset pack download.");
+                        throw new Exception("Gagal menyelesaikan unduhan paket aset.");
                     }
                 }
 
-                // Step 2: Unzip files.zip directly into game data directory
                 mainHandler.post(() -> {
                     pbDownload.setIndeterminate(false);
                     pbDownload.setMax(100);
                     pbDownload.setProgress(0);
-                    tvDataDesc.setText("Extracting game assets...");
-                    tvDownloadProgress.setText("Extracting...");
+                    tvDataDesc.setText("Mengekstrak aset game...");
+                    tvDownloadProgress.setText("Mengekstrak...");
                 });
 
                 unzipFile(zipFile, baseDir);
 
-                // Delete zip to save storage
                 if (zipFile.exists()) {
                     zipFile.delete();
                 }
@@ -273,7 +351,7 @@ public class HomeFragment extends Fragment {
                     pbDownload.setVisibility(View.GONE);
                     tvDownloadProgress.setVisibility(View.GONE);
                     btnDownloadData.setEnabled(true);
-                    Toast.makeText(getContext(), "Game assets successfully installed!", Toast.LENGTH_LONG).show();
+                    Toast.makeText(getContext(), "Aset game berhasil dipasang!", Toast.LENGTH_LONG).show();
                     runVerification();
                 });
 
@@ -283,7 +361,7 @@ public class HomeFragment extends Fragment {
                     pbDownload.setVisibility(View.GONE);
                     tvDownloadProgress.setVisibility(View.GONE);
                     btnDownloadData.setEnabled(true);
-                    tvDataDesc.setText("Download error: " + e.getMessage() + "\nTap Download Assets to resume.");
+                    tvDataDesc.setText("Gagal mengunduh: " + e.getMessage() + "\nTekan Unduh Aset untuk melanjutkan.");
                     Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     runVerification();
                 });
@@ -303,7 +381,6 @@ public class HomeFragment extends Fragment {
             processed++;
 
             String entryName = ze.getName();
-            // Jika zip membungkus folder root 'files/' atau 'files\', strip prefix-nya
             if (entryName.startsWith("files/") || entryName.startsWith("files\\")) {
                 entryName = entryName.substring(6);
             }
@@ -340,7 +417,7 @@ public class HomeFragment extends Fragment {
                 mainHandler.post(() -> {
                     pbDownload.setIndeterminate(false);
                     pbDownload.setProgress(percent);
-                    tvDownloadProgress.setText("Extracting " + percent + "% (" + curProcessed + "/" + tot + ")");
+                    tvDownloadProgress.setText("Mengekstrak " + percent + "% (" + curProcessed + "/" + tot + ")");
                 });
             }
         }

@@ -117,15 +117,28 @@ public class MainActivity extends AppCompatActivity {
         tvPlay.setVisibility(View.GONE);
         tvSettings.setVisibility(View.GONE);
 
+        int colorActive = 0xFF0F172A;
+        int colorInactive = 0xFF94A3B8;
+
+        if (ivHome != null) ivHome.setColorFilter(colorInactive);
+        if (ivPlay != null) ivPlay.setColorFilter(colorInactive);
+        if (ivSettings != null) ivSettings.setColorFilter(colorInactive);
+
         if (position == 0) {
             navHome.setBackgroundResource(R.drawable.bg_nav_active);
             tvHome.setVisibility(View.VISIBLE);
+            tvHome.setTextColor(colorActive);
+            if (ivHome != null) ivHome.setColorFilter(colorActive);
         } else if (position == 1) {
             navPlay.setBackgroundResource(R.drawable.bg_nav_active);
             tvPlay.setVisibility(View.VISIBLE);
+            tvPlay.setTextColor(colorActive);
+            if (ivPlay != null) ivPlay.setColorFilter(colorActive);
         } else if (position == 2) {
             navSettings.setBackgroundResource(R.drawable.bg_nav_active);
             tvSettings.setVisibility(View.VISIBLE);
+            tvSettings.setTextColor(colorActive);
+            if (ivSettings != null) ivSettings.setColorFilter(colorActive);
         }
     }
 
