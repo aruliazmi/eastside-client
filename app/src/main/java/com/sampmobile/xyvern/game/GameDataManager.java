@@ -363,6 +363,9 @@ public final class GameDataManager {
     }
 
     private static void extractWithProgress(Activity a, File zipFile, ProgressUi ui) throws Exception {
+        sTextureFormat = GpuTextureFormat.detect(a);
+        android.util.Log.i("GameDataManager", "extracting texture variant: "
+                + GpuTextureFormat.tagOf(sTextureFormat));
         File root = a.getExternalFilesDir(null);
         if (root == null) throw new Exception("Penyimpanan tidak tersedia.");
         final String rootCanon = root.getCanonicalPath() + File.separator;
@@ -395,6 +398,12 @@ public final class GameDataManager {
                 String canon = target.getCanonicalPath();
                 if (!canon.startsWith(rootCanon) && !canon.equals(root.getCanonicalPath()))
                     throw new Exception("Entri zip tidak valid: " + name);
+                // Texture variant gate: only materialise the variant this GPU needs.
+                String skipReason = textureVariantSkip(name);
+                if (skipReason != null) {
+                    done++;
+                    continue;
+                }
                 if (e.isDirectory()) {
                     target.mkdirs();
                 } else {
@@ -424,6 +433,61 @@ public final class GameDataManager {
         }
         MAIN.post(() -> { if (ui.dialog.isShowing()) { ui.bar.setProgress(1000); ui.detail.setText("Ekstrak selesai"); ui.speed.setText(""); } });
     }
+
+    /**
+     * Texture databases ship as .dxt/.etc/.pvr triplets and the engine picks one
+     * from the GL extension list. Two problems made Mali-class devices crash:
+     *
+     *   1. not every database has every variant (player has no ETC, samp.pvr is
+     *      missing its .dat), and
+     *   2. extracting all three leaves the engine free to choose a variant whose
+     *      .dat is absent, so the parser reads past the end of the buffer and
+     *      dies in RwPluginRegistry::ReadDataChunks.
+     *
+     * So: keep our variant, drop the other two, and drop any variant whose .dat
+     * is missing entirely (a .toc pointing at a non-existent .dat is a
+     * guaranteed crash).
+     *
+     * Returns null to extract, or a reason string to skip.
+     */
+    private static volatile int sTextureFormat = 0;
+    private static String textureVariantSkip(String entryName) {
+        int marker = entryName.indexOf("texdb/");
+        if (marker < 0) return null;
+        String rest = entryName.substring(marker + "texdb/".length());
+        int slash = rest.indexOf('/');
+        if (slash < 0) return null;                 // e.g. texdb/player.img — keep
+        String file = rest.substring(slash + 1);
+        if (file.indexOf('.') < 0) return null;     // directory entry
+
+        String lower = file.toLowerCase();
+        String[] variants = {".dxt.", ".etc.", ".pvr."};
+        String matched = null;
+        for (String v : variants) {
+            if (lower.contains(v)) { matched = v; break; }
+        }
+        if (matched == null) return null;           // .unc., .txt, etc — keep
+
+        // Only keep the variant this GPU asked for.
+        String mine = "." + com.sampmobile.xyvern.game.GpuTextureFormat.tagOf(sTextureFormat) + ".";
+        if (!matched.equals(mine)) return "other-variant";
+
+        // Drop a lone .toc/.tmb whose .dat is missing in this package.
+        if (lower.endsWith(".toc") || lower.endsWith(".tmb")) {
+            if (MISSING_DAT.contains(rest.toLowerCase())) return "missing-dat";
+        }
+        return null;
+    }
+
+    /**
+     * (database + variant) pairs that carry a .toc/.tmb but no .dat in the
+     * published package. Registering these makes the engine seek into nothing.
+     */
+    private static final java.util.Set<String> MISSING_DAT = new java.util.HashSet<>(
+            java.util.Arrays.asList(
+                    "samp/samp.pvr.toc",
+                    "samp/samp.pvr.tmb"
+            ));
 
     /** Returns e.g. "files/" when every entry lives under one top-level folder, else "". */
     private static String detectStripPrefix(java.util.List<String> names) {

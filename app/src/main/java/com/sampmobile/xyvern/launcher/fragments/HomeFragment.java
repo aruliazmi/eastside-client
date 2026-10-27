@@ -222,8 +222,17 @@ public class HomeFragment extends Fragment {
                     btnDownloadData.setVisibility(View.GONE);
                 } else {
                     dotStatus.setBackgroundResource(R.drawable.bg_dot_red);
-                    tvDataTitle.setText("Data Game Belum Lengkap");
-                    tvDataDesc.setText("Verifikasi menemukan " + result.missingFiles.size() + " file belum ada.\nUnduh paket aset resmi untuk mulai bermain.");
+                    if (!result.problems.isEmpty()) {
+                        // Structural fault (e.g. .toc present, .dat missing): this is
+                        // the shape that crashed the engine, so name it plainly.
+                        tvDataTitle.setText("Data Tekstur Tidak Cocok");
+                        tvDataDesc.setText(result.problems.get(0)
+                                + "\n\nUnduh ulang aset; varian tekstur harus sesuai GPU perangkat ini.");
+                    } else {
+                        tvDataTitle.setText("Data Game Belum Lengkap");
+                        tvDataDesc.setText("Verifikasi menemukan " + result.missingFiles.size()
+                                + " file belum ada.\nUnduh paket aset resmi untuk mulai bermain.");
+                    }
                     btnVerifyData.setVisibility(View.VISIBLE);
                     btnVerifyData.setText("Cek Ulang");
                     btnDownloadData.setVisibility(View.VISIBLE);
