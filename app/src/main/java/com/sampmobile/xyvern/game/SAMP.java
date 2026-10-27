@@ -280,7 +280,12 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
             Context ctx = getApplicationContext();
             
             android.content.SharedPreferences sp = getSharedPreferences("com.sampmobile.xyvern", MODE_PRIVATE);
-            String nickname = sp.getString("nickname", "AndroidUser"); 
+            String nickname = sp.getString("nickname", "");
+            if (nickname == null) nickname = "";
+            nickname = nickname.trim();
+            // Never write a blank name into sa-mp.cfg: the engine needs a placeholder
+            // until the player picks one in the launcher.
+            if (nickname.isEmpty()) nickname = "Player";
             if (nickname.length() > 24) nickname = nickname.substring(0, 24);
             
             String[] versions = {"0.3.DL-R1", "0.3.7", "0.3.7-R5"};

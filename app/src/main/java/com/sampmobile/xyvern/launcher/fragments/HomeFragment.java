@@ -91,10 +91,11 @@ public class HomeFragment extends Fragment {
             tvManualPath.setText(extDir.getAbsolutePath());
         }
 
+        // Fresh install: no stored nickname yet -> leave the field empty.
         SharedPreferences prefs = ctx.getSharedPreferences("com.sampmobile.xyvern", Context.MODE_PRIVATE);
-        String savedNick = prefs.getString("nickname", "denoomed");
-        if (etPlayerNickname != null && savedNick != null) {
-            etPlayerNickname.setText(savedNick);
+        String savedNick = prefs.getString("nickname", null);
+        if (etPlayerNickname != null) {
+            etPlayerNickname.setText(savedNick != null ? savedNick : "");
         }
 
         try {

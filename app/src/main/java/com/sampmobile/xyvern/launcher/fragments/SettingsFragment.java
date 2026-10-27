@@ -71,7 +71,7 @@ public class SettingsFragment extends Fragment {
         mAMLSwitch = view.findViewById(R.id.aml_switch);
         mAMLSwitch.setChecked(requireContext()
             .getSharedPreferences("com.sampmobile.xyvern", android.content.Context.MODE_PRIVATE)
-            .getBoolean("aml_enabled", true));
+            .getBoolean("aml_enabled", false));
         mCefSwitch = view.findViewById(R.id.cef_switch);
         mMessagesSeekBar = view.findViewById(R.id.messages_seekbar);
         mMessagesText = view.findViewById(R.id.messages_count);
@@ -96,8 +96,15 @@ public class SettingsFragment extends Fragment {
             com.sampmobile.xyvern.launcher.util.ConfigValidator.validateConfigFiles(getActivity());
             mWini = new Wini(file);
 
-            String nn = mWini.get("client", "name");
-            if (nn == null) nn = "YourName";
+            // The launcher pref is the source of truth for the player-visible name.
+            // A fresh install has no pref yet, so the field stays empty instead of
+            // inheriting whatever placeholder the engine wrote into settings.ini.
+            android.content.SharedPreferences nickPrefs = requireContext()
+                    .getSharedPreferences("com.sampmobile.xyvern", android.content.Context.MODE_PRIVATE);
+            String nn = nickPrefs.contains("nickname")
+                    ? nickPrefs.getString("nickname", "")
+                    : "";
+            if (nn == null) nn = "";
             mNickName.setText(nn);
 
             mWini.store();
@@ -279,7 +286,7 @@ public class SettingsFragment extends Fragment {
         mFPSSwitch.setChecked(new SharedPreferenceCore().getBoolean(requireContext().getApplicationContext(), "FPS_DISPLAY"));
         mModifySwitch.setChecked(new SharedPreferenceCore().getBoolean(requireContext().getApplicationContext(), "MODIFIED_DATA"));
         mAMLSwitch.setChecked(requireContext().getSharedPreferences("com.sampmobile.xyvern", android.content.Context.MODE_PRIVATE)
-            .getBoolean("aml_enabled", true));
+            .getBoolean("aml_enabled", false));
         // CEF default ON; only OFF when the user explicitly disabled it before.
         android.content.SharedPreferences cefPrefs = requireContext().getApplicationContext()
                 .getSharedPreferences(com.sampmobile.xyvern.launcher.util.SharedPreferenceCore.APP_PREFERENCES, 0);
