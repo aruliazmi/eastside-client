@@ -274,6 +274,9 @@ public class CefJavaManager {
         settings.setAllowFileAccessFromFileURLs(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
 
         // Enable Cookies
         CookieManager.getInstance().setAcceptCookie(true);
@@ -424,8 +427,36 @@ public class CefJavaManager {
             }
         } catch (IOException e) {
             Log.w(TAG, "cef asset missing: " + assetPath);
-            return null;
         }
+
+        // 3) Fallback: Fetch directly from Eastside Stories HTTP server
+        try {
+            java.net.URL remoteUrl = new java.net.URL("http://163.52.135.25/" + path);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) remoteUrl.openConnection();
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(5000);
+            if (conn.getResponseCode() == 200) {
+                byte[] data = readAllBytes(conn.getInputStream());
+                conn.disconnect();
+                try {
+                    File uiDir = getUiDir();
+                    if (uiDir != null) {
+                        File cacheFile = new File(uiDir, path);
+                        File parent = cacheFile.getParentFile();
+                        if (parent != null) parent.mkdirs();
+                        java.io.FileOutputStream fos = new java.io.FileOutputStream(cacheFile);
+                        fos.write(data);
+                        fos.close();
+                    }
+                } catch (Exception ignored) {}
+                Log.d(TAG, "serving cef:// -> fetched from remote: " + path);
+                return new CefContent(data, mimeOf(path));
+            }
+            conn.disconnect();
+        } catch (Exception e) {
+            Log.w(TAG, "cef remote fallback error for " + path + ": " + e.getMessage());
+        }
+        return null;
     }
 
     private static String mimeOf(String path) {
@@ -489,23 +520,25 @@ public class CefJavaManager {
     }
 
     public void loadUrl(String url) {
+        if (url != null && url.startsWith("http://cef/")) {
+            url = url.replace("http://cef/", "http://163.52.135.25/");
+        } else if (url != null && url.startsWith("cef://")) {
+            url = url.replace("cef://", "http://163.52.135.25/");
+        }
+        final String finalUrl = url;
         mMainHandler.post(() -> {
             if (mWebView == null) return;
-            // Load cef:// pages by injecting content directly: WebView's
-            // shouldInterceptRequest is unreliable for the main frame with
-            // custom schemes on some devices/Android versions ("webpage not
-            // available"). Sub-resources still go through the interceptor.
             try {
-                CefContent c = resolveCefContent(Uri.parse(url));
+                CefContent c = resolveCefContent(Uri.parse(finalUrl));
                 if (c != null && c.mime.startsWith("text/html")) {
                     String html = new String(c.data, java.nio.charset.StandardCharsets.UTF_8);
-                    mWebView.loadDataWithBaseURL(url, html, "text/html", "UTF-8", null);
+                    mWebView.loadDataWithBaseURL(finalUrl, html, "text/html", "UTF-8", null);
                     return;
                 }
             } catch (Exception e) {
                 Log.w(TAG, "cef direct load failed, falling back to loadUrl: " + e.getMessage());
             }
-            mWebView.loadUrl(url);
+            mWebView.loadUrl(finalUrl);
         });
     }
 
