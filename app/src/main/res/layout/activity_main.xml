@@ -48,14 +48,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Home"
+                android:text="Beranda"
                 android:textColor="@color/white"
                 android:fontFamily="@font/montserrat_bold"
                 android:visibility="gone" />
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/nav_play"
+            android:id="@+id/nav_files"
             android:layout_width="0dp"
             android:layout_height="44dp"
             android:layout_weight="1"
@@ -63,17 +63,17 @@
             android:orientation="horizontal"
             android:paddingHorizontal="8dp">
             <ImageView
-                android:id="@+id/iv_play"
+                android:id="@+id/iv_files"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                app:srcCompat="@android:drawable/ic_media_play"
+                app:srcCompat="@drawable/ic_folder_nav"
                 app:tint="@color/white" />
             <TextView
-                android:id="@+id/tv_play"
+                android:id="@+id/tv_files"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Play"
+                android:text="Files"
                 android:textColor="@color/white"
                 android:fontFamily="@font/montserrat_bold"
                 android:visibility="gone" />
@@ -98,7 +98,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Settings"
+                android:text="Pengaturan"
                 android:textColor="@color/white"
                 android:fontFamily="@font/montserrat_bold"
                 android:visibility="gone" />

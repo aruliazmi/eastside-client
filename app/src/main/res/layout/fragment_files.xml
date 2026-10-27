@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#080C14"
+    android:orientation="vertical"
+    android:paddingHorizontal="16dp"
+    android:paddingTop="24dp">
+
+    <!-- Top Title Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/montserrat_bold"
+                android:text="FILE EXPLORER"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/montserrat_medium"
+                android:text="Direktori Data Game &amp; Modding"
+                android:textColor="#F59E0B"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_clean_cache"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:backgroundTint="#1F293D"
+            android:fontFamily="@font/montserrat_bold"
+            android:text="Bersihkan Cache"
+            android:textAllCaps="false"
+            android:textColor="#F59E0B"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Path Navigation Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_card_modern"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp">
+
+        <Button
+            android:id="@+id/btn_dir_up"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:fontFamily="@font/montserrat_bold"
+            android:padding="0dp"
+            android:text=".."
+            android:textColor="#F59E0B"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/tv_current_path"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:ellipsize="start"
+            android:fontFamily="@font/montserrat_medium"
+            android:singleLine="true"
+            android:text="/files"
+            android:textColor="#CBD5E1"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_refresh_files"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:fontFamily="@font/montserrat_bold"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="6dp"
+            android:text="Refresh"
+            android:textAllCaps="false"
+            android:textColor="#38BDF8"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Files RecyclerView -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_file_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="14dp"
+        android:layout_weight="1"
+        android:scrollbars="vertical" />
+
+    <!-- Empty indicator -->
+    <TextView
+        android:id="@+id/tv_empty_files"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:fontFamily="@font/montserrat_medium"
+        android:gravity="center"
+        android:text="Direktori ini kosong"
+        android:textColor="#64748B"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+</LinearLayout>

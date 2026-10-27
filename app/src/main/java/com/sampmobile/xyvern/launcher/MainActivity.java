@@ -25,6 +25,7 @@ import com.joom.paranoid.Obfuscate;
 import com.sampmobile.xyvern.R;
 import com.sampmobile.xyvern.game.GameDataManager;
 import com.sampmobile.xyvern.launcher.config.Config;
+import com.sampmobile.xyvern.launcher.fragments.FilesFragment;
 import com.sampmobile.xyvern.launcher.fragments.HomeFragment;
 import com.sampmobile.xyvern.launcher.fragments.PlayFragment;
 import com.sampmobile.xyvern.launcher.fragments.SettingsFragment;
@@ -44,9 +45,9 @@ public class MainActivity extends AppCompatActivity {
     };
 
     public ViewPagerWithoutSwipe pa;
-    private View navHome, navPlay, navSettings;
-    private ImageView ivHome, ivPlay, ivSettings;
-    private TextView tvHome, tvPlay, tvSettings;
+    private View navHome, navFiles, navSettings;
+    private ImageView ivHome, ivFiles, ivSettings;
+    private TextView tvHome, tvFiles, tvSettings;
     private boolean launcherInitialized = false;
 
     @Override
@@ -93,35 +94,35 @@ public class MainActivity extends AppCompatActivity {
 
     private void initNav() {
         navHome = findViewById(R.id.nav_home);
-        navPlay = findViewById(R.id.nav_play);
+        navFiles = findViewById(R.id.nav_files);
         navSettings = findViewById(R.id.nav_settings);
         ivHome = findViewById(R.id.iv_home);
-        ivPlay = findViewById(R.id.iv_play);
+        ivFiles = findViewById(R.id.iv_files);
         ivSettings = findViewById(R.id.iv_settings);
         tvHome = findViewById(R.id.tv_home);
-        tvPlay = findViewById(R.id.tv_play);
+        tvFiles = findViewById(R.id.tv_files);
         tvSettings = findViewById(R.id.tv_settings);
 
         navHome.setOnClickListener(v -> changeTab(0));
-        navPlay.setOnClickListener(v -> changeTab(1));
+        navFiles.setOnClickListener(v -> changeTab(1));
         navSettings.setOnClickListener(v -> changeTab(2));
     }
 
     private void updateNavUI(int position) {
-        if (navHome == null || navPlay == null || navSettings == null ||
-                tvHome == null || tvPlay == null || tvSettings == null) return;
+        if (navHome == null || navFiles == null || navSettings == null ||
+                tvHome == null || tvFiles == null || tvSettings == null) return;
         navHome.setBackground(null);
-        navPlay.setBackground(null);
+        navFiles.setBackground(null);
         navSettings.setBackground(null);
         tvHome.setVisibility(View.GONE);
-        tvPlay.setVisibility(View.GONE);
+        tvFiles.setVisibility(View.GONE);
         tvSettings.setVisibility(View.GONE);
 
         int colorActive = 0xFF0F172A;
         int colorInactive = 0xFF94A3B8;
 
         if (ivHome != null) ivHome.setColorFilter(colorInactive);
-        if (ivPlay != null) ivPlay.setColorFilter(colorInactive);
+        if (ivFiles != null) ivFiles.setColorFilter(colorInactive);
         if (ivSettings != null) ivSettings.setColorFilter(colorInactive);
 
         if (position == 0) {
@@ -130,10 +131,10 @@ public class MainActivity extends AppCompatActivity {
             tvHome.setTextColor(colorActive);
             if (ivHome != null) ivHome.setColorFilter(colorActive);
         } else if (position == 1) {
-            navPlay.setBackgroundResource(R.drawable.bg_nav_active);
-            tvPlay.setVisibility(View.VISIBLE);
-            tvPlay.setTextColor(colorActive);
-            if (ivPlay != null) ivPlay.setColorFilter(colorActive);
+            navFiles.setBackgroundResource(R.drawable.bg_nav_active);
+            tvFiles.setVisibility(View.VISIBLE);
+            tvFiles.setTextColor(colorActive);
+            if (ivFiles != null) ivFiles.setColorFilter(colorActive);
         } else if (position == 2) {
             navSettings.setBackgroundResource(R.drawable.bg_nav_active);
             tvSettings.setVisibility(View.VISIBLE);
@@ -166,7 +167,7 @@ public class MainActivity extends AppCompatActivity {
         @NonNull
         @Override
         public Fragment getItem(int position) {
-            if (position == 1) return new PlayFragment();
+            if (position == 1) return new FilesFragment();
             if (position == 2) return new SettingsFragment();
             return new HomeFragment();
         }
