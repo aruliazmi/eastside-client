@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:aapt="http://schemas.android.com/aapt">
+<!-- Tombol positif dialog: kuningan solid. Tanpa gradient biru-ungu. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape>
-            <corners
-                android:radius="12.0dip" />
-            <gradient
-                android:startColor="#008BF6"
-                android:endColor="#1900FD"
-                android:angle="315.0" />
+            <corners android:radius="12.0dip" />
+            <solid android:color="@color/es_brass" />
         </shape>
     </item>
 </layer-list>

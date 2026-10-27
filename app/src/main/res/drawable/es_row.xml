@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Baris data: tanpa card. Hanya garis atas tipis sebagai pemisah.
+     Ini yang membedakan "daftar" dari "tumpukan kotak". -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+</shape>
