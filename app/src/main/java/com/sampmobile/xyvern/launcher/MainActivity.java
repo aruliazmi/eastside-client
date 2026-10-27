@@ -69,7 +69,11 @@ public class MainActivity extends AppCompatActivity {
         ConfigValidator.validateConfigFiles(this);
 
         if (!isPermissionsGranted()) {
-            ActivityCompat.requestPermissions(this, permissions, 1);
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, 1);
+            } else {
+                ActivityCompat.requestPermissions(this, permissions, 1);
+            }
         }
 
         File file = new File(getExternalFilesDir(null) + "/download/update.apk");
@@ -182,6 +186,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public boolean isPermissionsGranted() {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        }
         for (String permission : permissions) {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) return false;
         }
