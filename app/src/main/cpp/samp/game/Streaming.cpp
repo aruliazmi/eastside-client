@@ -246,7 +246,8 @@ int CStreaming::AddImageToList(char const* pFileName, bool bNotPlayerImg) {
     }
 
     // free slot found, load the IMG file
-    strcpy(ms_files[fileIndex].m_szName, pFileName);
+    strncpy(ms_files[fileIndex].m_szName, pFileName, sizeof(ms_files[fileIndex].m_szName) - 1);
+    ms_files[fileIndex].m_szName[sizeof(ms_files[fileIndex].m_szName) - 1] = '\0';
     ms_files[fileIndex].m_StreamHandle = CdStreamOpen(pFileName);
     ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
     return fileIndex;

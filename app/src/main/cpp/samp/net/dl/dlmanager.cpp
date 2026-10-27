@@ -405,7 +405,10 @@ bool DLManager::RegisterCustomModels() {
         std::lock_guard<std::mutex> lock(m_cachePathMutex);
         cacheBase = m_cachePath;
     }
-    std::string imgPath = cacheBase + "custom_dl.img";
+    const char* imgRelPath = "SAMP/custom_dl.img";
+    std::string imgFullPath = (g_pszStorage ? std::string(g_pszStorage) : cacheBase);
+    if (!imgFullPath.empty() && imgFullPath.back() != '/') imgFullPath += "/";
+    imgFullPath += imgRelPath;
 
     std::vector<DLImgPack::ImgEntry> entries;
     entries.reserve(toRegister.size() * 2);
@@ -415,7 +418,7 @@ bool DLManager::RegisterCustomModels() {
     }
 
     std::string packError;
-    if (!DLImgPack::PackImgV2(entries, imgPath, packError)) {
+    if (!DLImgPack::PackImgV2(entries, imgFullPath, packError)) {
         char msg[256];
         snprintf(msg, sizeof(msg), "Failed to pack custom IMG: %s",
                  packError.c_str());
@@ -425,9 +428,9 @@ bool DLManager::RegisterCustomModels() {
         return false;
     }
 
-    // Register IMG with the streaming system.
-    // Note: path format follows the game's CdStreamOpen expectations.
-    int imgIndex = CStreaming::AddImageToList(imgPath.c_str(), false);
+    // Register IMG with the streaming system using relative path.
+    // Note: path format follows the game's CdStreamOpen expectations (relative to g_pszStorage, max 39 chars).
+    int imgIndex = CStreaming::AddImageToList(imgRelPath, false);
     if (imgIndex < 0) {
         PushChat("Failed to register custom IMG with streaming (no free IMG slot).");
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -438,7 +441,7 @@ bool DLManager::RegisterCustomModels() {
     // (Defense in depth: ensures ms_files[imgIndex] really holds our IMG,
     //  not a stale entry or an out-of-bounds index.)
     if (imgIndex < 0 || imgIndex >= (int)TOTAL_IMG_ARCHIVES ||
-        strcmp(CStreaming::ms_files[imgIndex].m_szName, imgPath.c_str()) != 0) {
+        strcmp(CStreaming::ms_files[imgIndex].m_szName, imgRelPath) != 0) {
         PushChat("Custom IMG registration verification failed.");
         std::lock_guard<std::mutex> lock(m_mutex);
         m_bModelsRegistered = true;
