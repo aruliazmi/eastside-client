@@ -549,6 +549,9 @@ public class CefJavaManager {
                 mWebView.setVisibility(View.VISIBLE);
                 mWebView.setFocusable(true);
                 mWebView.setFocusableInTouchMode(true);
+                if (mWebView instanceof CefHudWebView) {
+                    ((CefHudWebView) mWebView).setInteractionEnabled(true);
+                }
                 mWebView.animate().alpha(1f).setDuration(200).start();
                 mIsShown = true;
             }
@@ -558,10 +561,29 @@ public class CefJavaManager {
     public void hideBrowserView() {
         mMainHandler.post(() -> {
             if (mWebView != null) {
+                if (mWebView instanceof CefHudWebView) {
+                    ((CefHudWebView) mWebView).setInteractionEnabled(false);
+                }
+                mWebView.clearFocus();
                 mWebView.animate().alpha(0f).setDuration(150).withEndAction(() -> {
                     mWebView.setVisibility(View.GONE);
                     mIsShown = false;
                 }).start();
+            }
+        });
+    }
+
+    public void setBrowserFocus(boolean focused) {
+        mMainHandler.post(() -> {
+            if (mWebView == null) return;
+            if (focused) {
+                mWebView.requestFocus();
+                mWebView.requestFocusFromTouch();
+            } else {
+                mWebView.clearFocus();
+            }
+            if (mWebView instanceof CefHudWebView) {
+                ((CefHudWebView) mWebView).setInteractionEnabled(focused);
             }
         });
     }
@@ -610,16 +632,7 @@ public class CefJavaManager {
 
         @android.webkit.JavascriptInterface
         public void setBrowserFocus(boolean focused) {
-            mMainHandler.post(() -> {
-                if (mWebView == null) return;
-                if (focused) {
-                    mWebView.requestFocus();
-                    mWebView.requestFocusFromTouch();
-                } else {
-                    mWebView.clearFocus();
-                }
-                if (mWebView instanceof CefHudWebView) ((CefHudWebView) mWebView).setInteractionEnabled(focused);
-            });
+            CefJavaManager.this.setBrowserFocus(focused);
         }
 
         @android.webkit.JavascriptInterface

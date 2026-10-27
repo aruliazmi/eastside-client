@@ -144,6 +144,29 @@ namespace cef
         if (attached)
             javaVM->DetachCurrentThread();
     }
+    static void callJavaSetBrowserFocus(bool focused)
+    {
+        if (!g_pJavaManager) return;
+        bool attached = false;
+        JNIEnv* env = getJNIEnv(attached);
+        if (!env) return;
+
+        jclass cls = env->GetObjectClass(g_pJavaManager);
+        if (cls) {
+            jmethodID method = env->GetMethodID(cls, "setBrowserFocus", "(Z)V");
+            if (method) {
+                env->CallVoidMethod(g_pJavaManager, method, (jboolean)focused);
+            }
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
+            env->DeleteLocalRef(cls);
+        }
+
+        if (attached)
+            javaVM->DetachCurrentThread();
+    }
+
     static void callJavaServerEvent(const char* eventName, const char* eventDataJson)
     {
         if (!g_pJavaManager || !eventName)
@@ -179,6 +202,10 @@ namespace cef
                 jName,
                 jData
             );
+
+            if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
 
             env->DeleteLocalRef(jName);
             env->DeleteLocalRef(jData);
@@ -448,6 +475,7 @@ namespace cef
                     focused ? 1 : 0
                 );
 
+                callJavaSetBrowserFocus(focused);
                 break;
             }
 
