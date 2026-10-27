@@ -34,8 +34,12 @@ import java.net.URL;
 public final class UpdateChecker {
 
     public static final String REPO = "aruliazmi/eastside-client";
-    private static final String API_LATEST =
-            "https://api.github.com/repos/" + REPO + "/releases/latest";
+
+    // Daftar rilis, bukan /releases/latest. Repo ini juga memuat rilis aset
+    // (data-v1) yang bisa saja ditandai "latest" oleh GitHub; endpoint latest
+    // akan mengembalikan rilis itu dan pencarian APK jadi gagal.
+    private static final String API_RELEASES =
+            "https://api.github.com/repos/" + REPO + "/releases?per_page=30";
 
     /** Populated when a newer release exists. */
     public static final class UpdateInfo {
@@ -113,7 +117,7 @@ public final class UpdateChecker {
     public static void check(CheckCallback cb) {
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(API_LATEST).openConnection();
+            conn = (HttpURLConnection) new URL(API_RELEASES).openConnection();
             conn.setConnectTimeout(15000);
             conn.setReadTimeout(20000);
             conn.setRequestProperty("Accept", "application/vnd.github+json");
@@ -126,16 +130,23 @@ public final class UpdateChecker {
             }
 
             String body = readAll(conn.getInputStream());
-            JSONObject json = new JSONObject(body);
+            JSONArray releases = new JSONArray(body);
 
-            String tag = json.optString("tag_name", "");
-            String notes = json.optString("body", "");
-            String version = strip(tag);
+            // Pilih rilis ber-APK dengan versi tertinggi. Rilis aset seperti
+            // "data-v1" tidak punya APK dan dilewati.
+            String bestTag = null, bestNotes = null, bestUrl = null, bestVersion = null;
+            long bestSize = 0L;
 
-            String apkUrl = null;
-            long apkSize = 0L;
-            JSONArray assets = json.optJSONArray("assets");
-            if (assets != null) {
+            for (int r = 0; r < releases.length(); r++) {
+                JSONObject rel = releases.getJSONObject(r);
+                if (rel.optBoolean("draft", false) || rel.optBoolean("prerelease", false))
+                    continue;
+
+                JSONArray assets = rel.optJSONArray("assets");
+                if (assets == null) continue;
+
+                String apkUrl = null;
+                long apkSize = 0L;
                 for (int i = 0; i < assets.length(); i++) {
                     JSONObject a = assets.getJSONObject(i);
                     String name = a.optString("name", "");
@@ -145,16 +156,27 @@ public final class UpdateChecker {
                         break;
                     }
                 }
+                if (apkUrl == null) continue;
+
+                String tag = rel.optString("tag_name", "");
+                String ver = strip(tag);
+                if (bestVersion == null || compareVersions(ver, bestVersion) > 0) {
+                    bestVersion = ver;
+                    bestTag = tag;
+                    bestNotes = rel.optString("body", "");
+                    bestUrl = apkUrl;
+                    bestSize = apkSize;
+                }
             }
 
-            if (apkUrl == null) {
-                cb.onError("Rilis " + tag + " tidak punya file APK.");
+            if (bestUrl == null) {
+                cb.onError("Tidak ada rilis berisi APK.");
                 return;
             }
 
             String current = BuildConfig.VERSION_NAME;
-            if (compareVersions(version, current) > 0) {
-                cb.onResult(new UpdateInfo(tag, version, notes, apkUrl, apkSize), current);
+            if (compareVersions(bestVersion, current) > 0) {
+                cb.onResult(new UpdateInfo(bestTag, bestVersion, bestNotes, bestUrl, bestSize), current);
             } else {
                 cb.onResult(null, current);
             }
