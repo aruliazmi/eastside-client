@@ -2,6 +2,8 @@ package com.sampmobile.xyvern.launcher.fragments;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -13,6 +15,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -25,11 +28,14 @@ import com.joom.paranoid.Obfuscate;
 import com.sampmobile.xyvern.R;
 import com.sampmobile.xyvern.launcher.MainActivity;
 import com.sampmobile.xyvern.launcher.util.SharedPreferenceCore;
+import com.sampmobile.xyvern.launcher.util.UpdateChecker;
 
 import org.ini4j.Wini;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Obfuscate
 public class SettingsFragment extends Fragment {
@@ -46,6 +52,17 @@ public class SettingsFragment extends Fragment {
     TextView mMessagesText;
     SeekBar mFPSSeekBar;
     TextView mFPSText;
+
+    // Versi aplikasi + pembaruan dari GitHub Releases
+    private TextView tvClientVersion;
+    private TextView tvUpdateStatus;
+    private TextView tvUpdateProgress;
+    private android.widget.Button btnCheckUpdate;
+    private ProgressBar pbUpdate;
+    private View layoutUpdateProgress;
+    private final ExecutorService updater = Executors.newSingleThreadExecutor();
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private UpdateChecker.UpdateInfo mPendingUpdate;
 
 
     String[] titles = {"0.3.DL-R1", "0.3.7", "0.3.7-R5"};
@@ -77,6 +94,16 @@ public class SettingsFragment extends Fragment {
         mMessagesText = view.findViewById(R.id.messages_count);
         mFPSSeekBar = view.findViewById(R.id.fps_seekbar);
         mFPSText = view.findViewById(R.id.fps_count);
+
+        tvClientVersion   = view.findViewById(R.id.tv_client_version);
+        tvUpdateStatus    = view.findViewById(R.id.tv_update_status);
+        tvUpdateProgress  = view.findViewById(R.id.tv_update_progress);
+        btnCheckUpdate    = view.findViewById(R.id.btn_check_update);
+        pbUpdate          = view.findViewById(R.id.pb_update);
+        layoutUpdateProgress = view.findViewById(R.id.layout_update_progress);
+
+        tvClientVersion.setText(UpdateChecker.currentVersion());
+        btnCheckUpdate.setOnClickListener(v -> onCheckUpdateClicked());
 
 
         adapter = new ArrayAdapter<String>(getActivity(), R.layout.spinner_item, titles);
@@ -311,5 +338,141 @@ public class SettingsFragment extends Fragment {
             case 15: mMessagesSeekBar.setProgress(3); break;
         }
         mMessagesText.setText(String.valueOf(message));
+    }
+
+    // ==========================================================
+    // Pembaruan aplikasi (GitHub Releases)
+    // ==========================================================
+
+    private void onCheckUpdateClicked() {
+        // Kalau sudah ada hasil cek sebelumnya, tombol berubah jadi "Pasang".
+        if (mPendingUpdate != null) {
+            promptInstall(mPendingUpdate);
+            return;
+        }
+
+        btnCheckUpdate.setEnabled(false);
+        tvUpdateStatus.setText("Menghubungi GitHub...");
+        updater.execute(() -> UpdateChecker.check(new UpdateChecker.CheckCallback() {
+            @Override
+            public void onResult(UpdateChecker.UpdateInfo info, String currentVersion) {
+                ui.post(() -> {
+                    if (!isAdded()) return;
+                    btnCheckUpdate.setEnabled(true);
+
+                    if (info == null) {
+                        mPendingUpdate = null;
+                        tvUpdateStatus.setText("Sudah versi terbaru");
+                        tvUpdateStatus.setTextColor(requireContext().getColor(R.color.es_live));
+                        btnCheckUpdate.setText("CEK ULANG");
+                        Toast.makeText(getContext(),
+                                "Eastside Client " + currentVersion + " adalah versi terbaru.",
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        mPendingUpdate = info;
+                        tvUpdateStatus.setText("Tersedia v" + info.version + " — ketuk untuk memasang");
+                        tvUpdateStatus.setTextColor(requireContext().getColor(R.color.es_brass));
+                        btnCheckUpdate.setText("PASANG");
+                        showReleaseNotes(info);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                ui.post(() -> {
+                    if (!isAdded()) return;
+                    btnCheckUpdate.setEnabled(true);
+                    tvUpdateStatus.setText("Gagal memeriksa pembaruan");
+                    tvUpdateStatus.setTextColor(requireContext().getColor(R.color.es_warn));
+                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                });
+            }
+        }));
+    }
+
+    private void showReleaseNotes(UpdateChecker.UpdateInfo info) {
+        if (getContext() == null) return;
+        String notes = info.notes == null ? "" : info.notes.trim();
+        if (notes.length() > 1200) notes = notes.substring(0, 1200) + "...";
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Eastside Client " + info.tag)
+                .setMessage(notes.isEmpty() ? "Tidak ada catatan rilis." : notes)
+                .setPositiveButton("Unduh & Pasang", (d, w) -> promptInstall(info))
+                .setNegativeButton("Nanti", null)
+                .show();
+    }
+
+    private void promptInstall(UpdateChecker.UpdateInfo info) {
+        if (getContext() == null) return;
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Unduh pembaruan?")
+                .setMessage("Versi " + info.version + " akan diunduh"
+                        + (info.apkSize > 0 ? " (" + (info.apkSize / 1048576) + " MB)" : "")
+                        + ", lalu pemasang Android akan terbuka.")
+                .setPositiveButton("Unduh", (d, w) -> startUpdateDownload(info))
+                .setNegativeButton("Batal", null)
+                .show();
+    }
+
+    private void startUpdateDownload(UpdateChecker.UpdateInfo info) {
+        if (getContext() == null) return;
+
+        layoutUpdateProgress.setVisibility(View.VISIBLE);
+        pbUpdate.setProgress(0);
+        tvUpdateProgress.setText("Mengunduh 0%");
+        btnCheckUpdate.setEnabled(false);
+        tvUpdateStatus.setText("Mengunduh v" + info.version + "...");
+        tvUpdateStatus.setTextColor(requireContext().getColor(R.color.es_brass));
+
+        final android.content.Context appCtx = requireContext().getApplicationContext();
+        updater.execute(() -> UpdateChecker.download(appCtx, info, new UpdateChecker.DownloadCallback() {
+            @Override
+            public void onProgress(int percent, long done, long total) {
+                ui.post(() -> {
+                    if (!isAdded()) return;
+                    pbUpdate.setProgress(percent);
+                    tvUpdateProgress.setText("Mengunduh " + percent + "%  ·  "
+                            + (done / 1048576) + "/" + (total / 1048576) + " MB");
+                });
+            }
+
+            @Override
+            public void onComplete(File apk) {
+                ui.post(() -> {
+                    if (!isAdded()) return;
+                    layoutUpdateProgress.setVisibility(View.GONE);
+                    btnCheckUpdate.setEnabled(true);
+                    tvUpdateStatus.setText("Unduhan selesai — buka pemasang");
+                    tvUpdateStatus.setTextColor(requireContext().getColor(R.color.es_live));
+
+                    boolean opened = UpdateChecker.install(requireActivity(), apk);
+                    if (!opened) {
+                        Toast.makeText(getContext(),
+                                "Izinkan \"Instal aplikasi tidak dikenal\" untuk Eastside Client, lalu tekan PASANG lagi.",
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                ui.post(() -> {
+                    if (!isAdded()) return;
+                    layoutUpdateProgress.setVisibility(View.GONE);
+                    btnCheckUpdate.setEnabled(true);
+                    tvUpdateStatus.setText("Unduhan gagal");
+                    tvUpdateStatus.setTextColor(requireContext().getColor(R.color.es_warn));
+                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                });
+            }
+        }));
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        updater.shutdownNow();
     }
 }

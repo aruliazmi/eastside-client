@@ -370,7 +370,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:fontFamily="@font/plex_mono_medium"
-                    android:text="1.0.0"
+                    android:text="0.3.DL-R1"
                     android:textColor="@color/es_ink_dim"
                     android:textSize="12sp" />
 
@@ -383,6 +383,97 @@
             </LinearLayout>
 
             <View style="@style/EsRule" />
+
+            <!-- ===== PEMBARUAN ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="34dp"
+                android:layout_marginStart="2dp"
+                android:text="Versi aplikasi" />
+
+            <View style="@style/EsRule" android:layout_marginTop="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_client_version"
+                        style="@style/EsFigure"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1.6.4" />
+
+                    <TextView
+                        android:id="@+id/tv_update_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="@font/plex_mono_medium"
+                        android:text="Belum diperiksa"
+                        android:textColor="@color/es_ink_ghost"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_check_update"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:background="@drawable/es_btn_primary"
+                    android:fontFamily="@font/plex_mono_semibold"
+                    android:letterSpacing="0.08"
+                    android:minWidth="0dp"
+                    android:paddingHorizontal="18dp"
+                    android:text="CEK UPDATE"
+                    android:textAllCaps="true"
+                    android:textColor="@color/es_asphalt"
+                    android:textSize="10sp"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
+
+            <View style="@style/EsRule" />
+
+            <!-- Progres unduhan APK, hanya tampil saat mengunduh -->
+            <LinearLayout
+                android:id="@+id/layout_update_progress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_update_progress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/plex_mono_medium"
+                    android:text="Mengunduh 0%"
+                    android:textColor="@color/es_brass"
+                    android:textSize="10sp" />
+
+                <ProgressBar
+                    android:id="@+id/pb_update"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="8dp"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/download_progress"
+                    android:progressTint="@color/es_brass" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"
