@@ -139,6 +139,7 @@ android {
         jniLibs {
             useLegacyPackaging = true
             excludes += "META-INF/*"
+            pickFirsts += "**/*.so"
         }
         resources {
             excludes += "META-INF/*"
@@ -185,8 +186,9 @@ dependencies {
 }
 
 // Optional Laragon deployment on local Windows development machine only
-val laragonDir = file("C:\\laragon\\www")
-if (System.getenv("GITHUB_ACTIONS") == null && laragonDir.exists()) {
+val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+val laragonDir = if (isWindows) file("C:\\laragon\\www") else file("/tmp/laragon")
+if (isWindows && System.getenv("GITHUB_ACTIONS") == null && laragonDir.exists()) {
     afterEvaluate {
         android.applicationVariants.all {
             val variant = this
