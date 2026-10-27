@@ -117,25 +117,26 @@ public class MainActivity extends AppCompatActivity {
         tvFiles.setVisibility(View.GONE);
         tvSettings.setVisibility(View.GONE);
 
-        int colorActive = 0xFF0F172A;
-        int colorInactive = 0xFF94A3B8;
+        // Kuningan untuk aktif, redup untuk tidak. Tanpa pill berisi warna:
+        // hierarki ditentukan oleh label yang muncul, bukan oleh blok.
+        // Nilai diambil dari res/values/es_tokens.xml dan harus tetap sama:
+        // es_brass #D4A548, es_ink_ghost #877C6B (4.7:1 di atas es_asphalt).
+        final int colorActive = 0xFFD4A548;
+        final int colorInactive = 0xFF877C6B;
 
         if (ivHome != null) ivHome.setColorFilter(colorInactive);
         if (ivFiles != null) ivFiles.setColorFilter(colorInactive);
         if (ivSettings != null) ivSettings.setColorFilter(colorInactive);
 
         if (position == 0) {
-            navHome.setBackgroundResource(R.drawable.bg_nav_active);
             tvHome.setVisibility(View.VISIBLE);
             tvHome.setTextColor(colorActive);
             if (ivHome != null) ivHome.setColorFilter(colorActive);
         } else if (position == 1) {
-            navFiles.setBackgroundResource(R.drawable.bg_nav_active);
             tvFiles.setVisibility(View.VISIBLE);
             tvFiles.setTextColor(colorActive);
             if (ivFiles != null) ivFiles.setColorFilter(colorActive);
         } else if (position == 2) {
-            navSettings.setBackgroundResource(R.drawable.bg_nav_active);
             tvSettings.setVisibility(View.VISIBLE);
             tvSettings.setTextColor(colorActive);
             if (ivSettings != null) ivSettings.setColorFilter(colorActive);
