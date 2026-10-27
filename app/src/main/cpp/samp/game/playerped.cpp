@@ -524,8 +524,11 @@ void CPlayerPed::SetModelIndex(uint uiModel)
     {
         auto oldModelId = m_pPed->m_nModelIndex;
 
-        if (!CStreaming::TryLoadModel(uiModel))
-            return;
+        if (!CStreaming::TryLoadModel(uiModel)) {
+            uiModel = 0;
+            if (!CStreaming::TryLoadModel(0))
+                return;
+        }
 
         // CEntity::DeleteRwObject();
         m_pPed->m_nModelIndex = uiModel;

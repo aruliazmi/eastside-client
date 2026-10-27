@@ -4,7 +4,7 @@
 #include "../vendor/shadowhook/patch.h"
 
 void CStreamingInfo::InjectHooks() {
-
+    ms_pArrayBase = CStreaming::ms_aInfoForModel;
     CHook::Write(g_libGTASA + (VER_x32 ? 0x00678578 : 0x84EB18), &CStreamingInfo::ms_pArrayBase);
 }
 

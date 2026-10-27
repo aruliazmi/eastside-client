@@ -318,20 +318,7 @@ int16_t DLManager::GetVirtualModelId(int32_t networkId) {
     std::lock_guard<std::mutex> lock(m_mutex);
     auto it = m_networkToVirtual.find(networkId);
     if (it != m_networkToVirtual.end()) return it->second;
-
-    // Do not wrap and alias a live slot (audit A8). On exhaustion, log once and
-    // hand back -1 so the caller keeps the base id.
-    if (m_nextVirtualId > DL_VIRT_MAX) {
-        if (!m_bVirtualIdExhausted) {
-            m_bVirtualIdExhausted = true;
-            PushChat("Virtual model slot pool exhausted; extra models use their base id.");
-        }
-        return -1;
-    }
-    int16_t virtualId = m_nextVirtualId++;
-    m_networkToVirtual[networkId] = virtualId;
-    m_virtualToNetwork[virtualId] = networkId;
-    return virtualId;
+    return -1;
 }
 
 int32_t DLManager::GetNetworkModelId(int16_t virtualId) {
@@ -362,6 +349,7 @@ bool DLManager::RegisterCustomModels() {
     struct ModelFiles {
         int16_t virtualId;
         uint8_t type; // 1=Skin, 2=Object
+        int32_t baseId;
         uint32_t dffCrc;
         uint32_t txdCrc;
         std::string dffPath;
@@ -386,7 +374,7 @@ bool DLManager::RegisterCustomModels() {
             char dffName[32], txdName[32];
             snprintf(dffName, sizeof(dffName), "0x%08X.dff", m.dffChecksum);
             snprintf(txdName, sizeof(txdName), "0x%08X.txd", m.txdChecksum);
-            toRegister.push_back({m.virtualModelId, m.type, m.dffChecksum,
+            toRegister.push_back({m.virtualModelId, m.type, m.baseId, m.dffChecksum,
                                   m.txdChecksum, dffPath, txdPath,
                                   dffName, txdName});
         }
@@ -459,8 +447,55 @@ bool DLManager::RegisterCustomModels() {
             CBaseModelInfo* pInfo = nullptr;
             if (mf.type == 1) { // Skin -> ped model
                 pInfo = CModelInfo::AddPedModel(mf.virtualId);
+                if (pInfo) {
+                    int32_t basePed = (mf.baseId >= 0 && mf.baseId < 315 && CModelInfo::GetModelInfo(mf.baseId)) ? mf.baseId : 0;
+                    auto* pBase = CModelInfo::GetPedModelInfo(basePed);
+                    auto* pPed = static_cast<CPedModelInfo*>(pInfo);
+                    if (pBase) {
+                        pPed->m_pColModel = pBase->m_pColModel;
+                        pPed->m_fDrawDistance = (pBase->m_fDrawDistance > 0.0f) ? pBase->m_fDrawDistance : 300.0f;
+                        pPed->m_nFlags = pBase->m_nFlags;
+                        pPed->bDoWeOwnTheColModel = 0;
+                        pPed->m_nAnimType = pBase->m_nAnimType;
+                        pPed->m_nPedType = pBase->m_nPedType;
+                        pPed->m_nStatType = pBase->m_nStatType;
+                        pPed->m_nCarsCanDriveMask = pBase->m_nCarsCanDriveMask;
+                        pPed->m_nPedFlags = pBase->m_nPedFlags;
+                        pPed->m_pHitColModel = pBase->m_pHitColModel;
+                        pPed->m_nRadio1 = pBase->m_nRadio1;
+                        pPed->m_nRadio2 = pBase->m_nRadio2;
+                        pPed->m_nRace = pBase->m_nRace;
+                        pPed->m_AudioPedType = pBase->m_AudioPedType;
+                        pPed->m_FirstVoice = pBase->m_FirstVoice;
+                        pPed->m_LastVoice = pBase->m_LastVoice;
+                        pPed->m_NextVoice = pBase->m_NextVoice;
+                        pPed->m_dwAnimFileIndex = pBase->m_dwAnimFileIndex;
+                    }
+                }
             } else { // Object -> atomic model
                 pInfo = CModelInfo::AddAtomicModel(mf.virtualId);
+                if (pInfo) {
+                    int32_t baseObj = (mf.baseId >= 0 && mf.baseId < 20000 && CModelInfo::GetModelInfo(mf.baseId)) ? mf.baseId : 1225;
+                    auto* pBase = CModelInfo::GetModelInfo(baseObj);
+                    if (pBase) {
+                        pInfo->m_pColModel = pBase->m_pColModel;
+                        pInfo->m_fDrawDistance = (pBase->m_fDrawDistance > 0.0f) ? pBase->m_fDrawDistance : 300.0f;
+                        pInfo->m_nFlags = pBase->m_nFlags;
+                        pInfo->bDoWeOwnTheColModel = 0;
+                        pInfo->m_n2dEffectIndex = pBase->m_n2dEffectIndex;
+                        pInfo->m_n2dfxCount = pBase->m_n2dfxCount;
+                    }
+                    if (!pInfo->m_pColModel) {
+                        for (size_t i = 0; i < CModelInfo::ms_atomicModelInfoStore.GetCount(); i++) {
+                            auto& item = CModelInfo::ms_atomicModelInfoStore.GetItemAtIndex(i);
+                            if (item.m_pColModel) {
+                                pInfo->m_pColModel = item.m_pColModel;
+                                pInfo->m_fDrawDistance = 300.0f;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
             if (!pInfo) {
                 // Store is full (shouldn't happen with enlarged capacities,
@@ -576,7 +611,22 @@ void DLManager::OnModelRequest(RPCParameters* rpcParams) {
 
     if (info.type != 1 && info.type != 2) return; // 0 = undefined type: drop
 
-    info.virtualModelId = GetVirtualModelId(info.newId);
+    int16_t virtualId = -1;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = m_networkToVirtual.find(info.newId);
+        if (it != m_networkToVirtual.end()) {
+            virtualId = it->second;
+        } else if (m_nextVirtualId <= DL_VIRT_MAX) {
+            virtualId = m_nextVirtualId++;
+            m_networkToVirtual[info.newId] = virtualId;
+            m_virtualToNetwork[virtualId] = info.newId;
+            if (info.baseId != 0 && info.baseId != -1) {
+                m_networkToVirtual[info.baseId] = virtualId;
+            }
+        }
+    }
+    info.virtualModelId = virtualId;
     info.dffCached = IsModelCached(info.dffChecksum, info.dffSize, true);
     info.txdCached = IsModelCached(info.txdChecksum, info.txdSize, false);
 

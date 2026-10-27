@@ -15,9 +15,11 @@ extern MaterialTextGenerator* pMaterialTextGenerator;
 
 CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance, uint8_t bAttached)
 {
-    if(!CModelInfo::GetModelInfo(iModel)) {
+    CBaseModelInfo* mi = (iModel >= 0 && iModel < 20000) ? CModelInfo::GetModelInfo(iModel) : nullptr;
+    if (!mi || !mi->m_pColModel) {
         int16_t virtId = DLManager::Instance().GetVirtualModelId(iModel);
-        if (virtId > 0 && CModelInfo::GetModelInfo(virtId)) {
+        CBaseModelInfo* virtMi = (virtId > 0 && virtId < 20000) ? CModelInfo::GetModelInfo(virtId) : nullptr;
+        if (virtMi && virtMi->m_pColModel) {
             iModel = virtId;
         } else {
             iModel = 1225; // Safe base GTA SA object (barrel)
