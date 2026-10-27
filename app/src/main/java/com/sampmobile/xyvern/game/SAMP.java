@@ -367,5 +367,13 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     }
 
     @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        if (!hasFocus && mCefJavaManager != null && mCefJavaManager.isShow()) {
+            return;
+        }
+        super.onWindowFocusChanged(hasFocus);
+    }
+
+    @Override
     public void onHeightChanged(int orientation, int height) {}
 }

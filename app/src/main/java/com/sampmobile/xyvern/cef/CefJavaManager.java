@@ -62,12 +62,36 @@ public class CefJavaManager {
     /**
      * WebView overlay HUD: sentuhan TEMBUS ke game di bawahnya saat tidak ada
      * dialog HTML terbuka. JS mengaktifkan interaksi lewat cef.set_focus(true).
+     * Dilengkapi override anti-crash ActionMode & LongClick terbukti dari ReSA-MP.
      */
     private static final class CefHudWebView extends WebView {
         private volatile boolean mInteractionEnabled = false;
-        CefHudWebView(android.content.Context ctx) { super(ctx); }
-        void setInteractionEnabled(boolean enabled) { mInteractionEnabled = enabled; }
-        @Override public boolean onTouchEvent(MotionEvent event) {
+
+        CefHudWebView(android.content.Context ctx) {
+            super(ctx);
+        }
+
+        void setInteractionEnabled(boolean enabled) {
+            mInteractionEnabled = enabled;
+        }
+
+        @Override
+        public boolean performLongClick() {
+            return false;
+        }
+
+        @Override
+        public android.view.ActionMode startActionMode(android.view.ActionMode.Callback callback) {
+            return null;
+        }
+
+        @Override
+        public android.view.ActionMode startActionMode(android.view.ActionMode.Callback callback, int type) {
+            return null;
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
             if (!mInteractionEnabled) return false; // tembus ke game di bawahnya
             return super.onTouchEvent(event);
         }
@@ -256,13 +280,18 @@ public class CefJavaManager {
     private void initWebView() {
         if (mWebView != null) return;
 
-        // Pakai CefHudWebView: sentuhan tembus ke game kecuali dialog HTML sedang fokus.
+        // Pakai CefHudWebView dengan konfigurasi stabil ala ReSA-MP
         mWebView = new CefHudWebView(mActivity);
-        mWebView.setFocusable(true);
-        mWebView.setFocusableInTouchMode(true);
-        mWebView.setClickable(true);
-        mWebView.setLongClickable(true);
         mWebView.setBackgroundColor(Color.TRANSPARENT);
+        mWebView.setFocusable(false);
+        mWebView.setFocusableInTouchMode(false);
+        mWebView.setClickable(true);
+        mWebView.setLongClickable(false);
+        mWebView.setOnLongClickListener(v -> true);
+        mWebView.setHapticFeedbackEnabled(false);
+        mWebView.setSoundEffectsEnabled(false);
+        mWebView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        mWebView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
         mWebView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
         WebSettings settings = mWebView.getSettings();
@@ -277,6 +306,11 @@ public class CefJavaManager {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setUseWideViewPort(true);
         settings.setLoadWithOverviewMode(true);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+        settings.setGeolocationEnabled(false);
+        settings.setTextZoom(100);
 
         // Enable Cookies
         CookieManager.getInstance().setAcceptCookie(true);
@@ -307,6 +341,12 @@ public class CefJavaManager {
                 if (mClientManager != null) {
                     mClientManager.onBrowserInit(true, -1);
                 }
+            }
+
+            @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                Log.w(TAG, "WebView render process gone (crashed=" + (detail != null && detail.didCrash()) + "), preventing app death");
+                return true;
             }
 
             @Override
@@ -547,8 +587,6 @@ public class CefJavaManager {
             if (mWebView != null) {
                 mWebView.setAlpha(0f);
                 mWebView.setVisibility(View.VISIBLE);
-                mWebView.setFocusable(true);
-                mWebView.setFocusableInTouchMode(true);
                 if (mWebView instanceof CefHudWebView) {
                     ((CefHudWebView) mWebView).setInteractionEnabled(true);
                 }
@@ -577,10 +615,14 @@ public class CefJavaManager {
         mMainHandler.post(() -> {
             if (mWebView == null) return;
             if (focused) {
+                mWebView.setFocusable(true);
+                mWebView.setFocusableInTouchMode(true);
                 mWebView.requestFocus();
                 mWebView.requestFocusFromTouch();
             } else {
                 mWebView.clearFocus();
+                mWebView.setFocusableInTouchMode(false);
+                mWebView.setFocusable(false);
             }
             if (mWebView instanceof CefHudWebView) {
                 ((CefHudWebView) mWebView).setInteractionEnabled(focused);
