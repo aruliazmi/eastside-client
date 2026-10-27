@@ -25,8 +25,8 @@ android {
         applicationId = "com.sampmobile.xyvern"
         minSdk = 26
         targetSdk = 34
-        versionCode = 163
-        versionName = "1.6.2"
+        versionCode = 164
+        versionName = "1.6.3"
 
         multiDexEnabled = true
 
@@ -137,7 +137,7 @@ android {
 
     packaging {
         jniLibs {
-            useLegacyPackaging = true
+            useLegacyPackaging = false
             excludes += "META-INF/*"
             pickFirsts += "**/*.so"
         }
