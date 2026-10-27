@@ -1,356 +1,177 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout 
+<!--
+  Pengaturan — bukan tumpukan card abu-abu. Baris dipisah garis tipis,
+  label mono kecil sebagai judul bagian, kontrol di kanan.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#090D16"
-    android:padding="16dp">
-
-    <TextView
-        android:id="@+id/textView9"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="Settings"
-        android:textColor="@color/white"
-        android:textSize="28sp"
-        android:layout_marginTop="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <View
-        android:id="@+id/view3"
-        android:layout_width="120dp"
-        android:layout_height="3dp"
-        android:layout_marginTop="8dp"
-        android:background="#F59E0B"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView9" />
-
-    <EditText
-        android:id="@+id/settings_nickname"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginHorizontal="24dp"
-        android:layout_marginTop="32dp"
-        android:background="@drawable/bg_nav_active"
-        android:backgroundTint="#1AFFFFFF"
-        android:hint="NickName"
-        android:lines="1"
-        android:paddingHorizontal="16dp"
-        android:inputType="textPersonName"
-        android:fontFamily="@font/montserrat_bold"
-        android:textColor="@color/white"
-        android:textColorHint="#8A8F98"
-        android:gravity="center"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/view3" />
+    android:background="@color/es_asphalt">
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="24dp"
+        android:fillViewport="true"
         android:scrollbars="none"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/settings_nickname">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="16dp"
+            android:paddingHorizontal="@dimen/es_gutter"
+            android:paddingTop="30dp"
             android:paddingBottom="40dp">
 
-            <!-- Item Container Template -->
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
+            <!-- ===== JUDUL ===== -->
+            <TextView
+                style="@style/EsDisplay"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
+                android:text="Pengaturan" />
+
+            <View
+                android:id="@+id/view3"
+                android:layout_width="28dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="14dp"
+                android:background="@color/es_brass" />
+
+            <!-- ===== NICKNAME ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:layout_marginStart="2dp"
+                android:text="Nama karakter" />
+
+            <EditText
+                android:id="@+id/settings_nickname"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/es_input"
+                android:fontFamily="@font/plex_mono_semibold"
+                android:hint="Nama_Karakter"
+                android:imeOptions="actionDone"
+                android:inputType="textPersonName"
+                android:lines="1"
+                android:paddingHorizontal="14dp"
+                android:textColor="@color/es_ink"
+                android:textColorHint="@color/es_ink_ghost"
+                android:textSize="15sp" />
+
+            <!-- ===== TAMPILAN ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="34dp"
+                android:layout_marginStart="2dp"
+                android:text="Tampilan" />
+
+            <View style="@style/EsRule" android:layout_marginTop="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
                     android:text="CEF WebView"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/cef_switch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#FF0037"
-                    app:trackTint="#33FF0037" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <View style="@style/EsRule" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
                 <TextView
-                    android:id="@+id/textView7"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="Android Keyboard"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Keyboard Android"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/keyboard_switch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#0284C7"
-                    app:trackTint="#330284C7" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
-                <TextView
-                    android:id="@+id/aml_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="Android Mod Loader"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/aml_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#0284C7"
-                    app:trackTint="#330284C7" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+            <View style="@style/EsRule" />
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
-                <TextView
-                    android:id="@+id/cleo_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="CLEO Android"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/cleo_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#0284C7"
-                    app:trackTint="#330284C7" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
                 <TextView
-                    android:id="@+id/textView28"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="Voice chat"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/voice_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#0284C7"
-                    app:trackTint="#330284C7" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Tampilkan FPS"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
-                <TextView
-                    android:id="@+id/textView29"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="Display FPS"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/fps_switch"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#0284C7"
-                    app:trackTint="#330284C7" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
-                <TextView
-                    android:id="@+id/textView46"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="Modified data"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/modify_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:thumbTint="#0284C7"
-                    app:trackTint="#330284C7" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+            <View style="@style/EsRule" />
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
+                android:layout_height="60dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
                 <TextView
-                    android:id="@+id/textView8"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="Chat messages"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Batas FPS"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
 
                 <FrameLayout
-                    android:layout_width="140dp"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
-                    <androidx.appcompat.widget.AppCompatSeekBar
-                        android:id="@+id/messages_seekbar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:max="3"
-                        android:progress="1"
-                        android:progressDrawable="@drawable/seekbar_drawable"
-                        android:splitTrack="false"
-                        android:thumb="@drawable/seekbar_thumb"
-                        android:thumbTint="@android:color/transparent" />
-                    <TextView
-                        android:id="@+id/messages_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:text="1"
-                        android:textColor="@color/white"
-                        android:fontFamily="@font/montserrat_bold"
-                        android:textSize="12sp" />
-                </FrameLayout>
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    android:layout_width="132dp"
+                    android:layout_height="wrap_content">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
-                <TextView
-                    android:id="@+id/textView35"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/montserrat_bold"
-                    android:text="FPS Limit"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-
-                <FrameLayout
-                    android:layout_width="140dp"
-                    android:layout_height="wrap_content"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
                     <androidx.appcompat.widget.AppCompatSeekBar
                         android:id="@+id/fps_seekbar"
                         android:layout_width="match_parent"
@@ -359,58 +180,219 @@
                         android:progress="1"
                         android:progressDrawable="@drawable/seekbar_drawable"
                         android:splitTrack="false"
-                        android:thumb="@drawable/seekbar_thumb"
-                        android:thumbTint="@android:color/transparent" />
+                        android:thumb="@drawable/seekbar_thumb" />
+
                     <TextView
                         android:id="@+id/fps_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
+                        android:fontFamily="@font/plex_mono_semibold"
                         android:text="30"
-                        android:textColor="@color/white"
-                        android:fontFamily="@font/montserrat_bold"
-                        android:textSize="12sp" />
+                        android:textColor="@color/es_ink"
+                        android:textSize="11sp" />
                 </FrameLayout>
-            </androidx.constraintlayout.widget.ConstraintLayout>
+            </LinearLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <View style="@style/EsRule" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingVertical="14dp"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/bg_nav_active"
-                android:backgroundTint="#0DFFFFFF"
-                android:paddingHorizontal="16dp">
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Version"
-                    android:textColor="@color/white"
-                    android:textSize="14sp"
-                    android:fontFamily="@font/montserrat_bold"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"/>
-                <Spinner
-                    android:id="@+id/spinner"
-                    android:layout_width="140dp"
-                    android:layout_height="40dp"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                android:layout_height="60dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Baris chat"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
+                <FrameLayout
+                    android:layout_width="132dp"
+                    android:layout_height="wrap_content">
+
+                    <androidx.appcompat.widget.AppCompatSeekBar
+                        android:id="@+id/messages_seekbar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:max="3"
+                        android:progress="1"
+                        android:progressDrawable="@drawable/seekbar_drawable"
+                        android:splitTrack="false"
+                        android:thumb="@drawable/seekbar_thumb" />
+
+                    <TextView
+                        android:id="@+id/messages_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:fontFamily="@font/plex_mono_semibold"
+                        android:text="1"
+                        android:textColor="@color/es_ink"
+                        android:textSize="11sp" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <!-- ===== MOD & AUDIO ===== -->
             <TextView
-                android:id="@+id/textView14"
+                style="@style/EsLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:layout_gravity="center_horizontal"
-                android:text="M-SAMP Edition"
-                android:textColor="#8A8F98"
-                android:textSize="14sp"
-                android:fontFamily="@font/montserrat_regular" />
+                android:layout_marginTop="34dp"
+                android:layout_marginStart="2dp"
+                android:text="Mod &amp; audio" />
+
+            <View style="@style/EsRule" android:layout_marginTop="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/aml_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Android Mod Loader"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/aml_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
+
+            <View style="@style/EsRule" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/cleo_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="CLEO Android"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/cleo_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
+
+            <View style="@style/EsRule" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Voice chat"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/voice_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
+
+            <View style="@style/EsRule" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/montserrat_medium"
+                    android:text="Data termodifikasi"
+                    android:textColor="@color/es_ink"
+                    android:textSize="14sp" />
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/modify_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/es_switch_thumb"
+                    app:trackTint="@color/es_switch_track" />
+            </LinearLayout>
+
+            <!-- ===== VERSI ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="34dp"
+                android:layout_marginStart="2dp"
+                android:text="Versi game" />
+
+            <View style="@style/EsRule" android:layout_marginTop="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/plex_mono_medium"
+                    android:text="1.0.0"
+                    android:textColor="@color/es_ink_dim"
+                    android:textSize="12sp" />
+
+                <Spinner
+                    android:id="@+id/spinner"
+                    android:layout_width="132dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/es_input"
+                    android:paddingHorizontal="10dp" />
+            </LinearLayout>
+
+            <View style="@style/EsRule" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                android:fontFamily="@font/plex_mono_medium"
+                android:letterSpacing="0.1"
+                android:text="EASTSIDE CLIENT  ·  163.52.135.25:7777"
+                android:textColor="@color/es_ink_ghost"
+                android:textSize="9sp" />
 
         </LinearLayout>
     </ScrollView>

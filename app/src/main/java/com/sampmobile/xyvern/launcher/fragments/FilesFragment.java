@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -41,9 +40,11 @@ public class FilesFragment extends Fragment {
     private TextView tvCurrentPath;
     private TextView tvEmptyFiles;
     private RecyclerView rvFileList;
-    private Button btnDirUp;
-    private Button btnRefresh;
-    private Button btnCleanCache;
+    // Aksi baris berupa TextView, bukan Button — supaya tidak ada
+    // tombol berkotak di dalam daftar.
+    private TextView btnDirUp;
+    private TextView btnRefresh;
+    private TextView btnCleanCache;
 
     private FileAdapter adapter;
     private final List<File> fileItems = new ArrayList<>();
@@ -239,13 +240,13 @@ public class FilesFragment extends Fragment {
 
             if (file.isDirectory()) {
                 holder.ivIcon.setImageResource(R.drawable.ic_folder_nav);
-                holder.ivIcon.setColorFilter(0xFFF59E0B);
+                holder.ivIcon.setColorFilter(0xFFD4A548);
                 File[] children = file.listFiles();
                 int count = (children != null) ? children.length : 0;
                 holder.tvDetails.setText(count + " item");
             } else {
                 holder.ivIcon.setImageResource(R.drawable.ic_file_doc);
-                holder.ivIcon.setColorFilter(0xFF38BDF8);
+                holder.ivIcon.setColorFilter(0xFF6B6154);
                 long bytes = file.length();
                 String sizeStr = (bytes > 1048576) ? (bytes / 1048576) + " MB" : (bytes / 1024) + " KB";
                 SimpleDateFormat sdf = new SimpleDateFormat("dd MMM, HH:mm", Locale.getDefault());
