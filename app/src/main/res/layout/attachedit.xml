@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="visible"
+    android:id="@+id/attach_main_layot"
+    android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Mode buttons: horizontal row, bottom-center (like PC edit object UI) -->
+    <LinearLayout
+        android:id="@+id/attach_mode_row"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/_30sdp"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <Button
+            android:id="@+id/attach_mode_pos"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="✛"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_20sdp" />
+
+        <Button
+            android:id="@+id/attach_mode_rot"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="↻"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_20sdp" />
+
+        <Button
+            android:id="@+id/attach_mode_scale"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="⛶"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_20sdp" />
+
+        <Button
+            android:id="@+id/attach_mode_save"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="💾"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_20sdp" />
+
+    </LinearLayout>
+
+    <!-- Description text above mode buttons -->
+    <TextView
+        android:id="@+id/attach_text_description"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/attach_black_round_rect"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:text="Pilih mode edit"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_10sdp"
+        app:layout_constraintBottom_toTopOf="@+id/attach_mode_row"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Adjust buttons: left-middle edge -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/attach_adjust_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/_16sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <Button
+            android:id="@+id/attach_left_butt"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="−"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_24sdp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <Button
+            android:id="@+id/attach_right_button"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="+"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_24sdp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/attach_left_butt" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
