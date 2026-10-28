@@ -147,7 +147,11 @@ const SCRIPT_COMMAND destroy_object						= { 0x0108, "i" };
 const SCRIPT_COMMAND set_object_rotation				= { 0x0453, "ifff" };
 const SCRIPT_COMMAND create_pickup						= { 0x0213, "iifffv" };
 const SCRIPT_COMMAND destroy_pickup						= { 0x0215, "i" };
-const SCRIPT_COMMAND is_pickup_picked_up				= { 0x0214, "i" };
+// 0x0214 takes no arguments and returns the result in a local var: "v".
+// The old "i" signature passed the pickup handle as an input, so the game
+// always answered "not picked up" and CPickupPool::Process never fired.
+// Handle = 0 means "any pickup picked up by the player".
+const SCRIPT_COMMAND is_pickup_picked_up				= { 0x0214, "v" };
 const SCRIPT_COMMAND attach_object_to_char				= { 0x069b, "iiffffff" };
 const SCRIPT_COMMAND set_object_visible					= { 0x0750, "ii" };
 const SCRIPT_COMMAND set_object_scaling					= { 0x08d2, "if" };
