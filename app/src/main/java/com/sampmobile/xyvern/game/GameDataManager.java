@@ -561,11 +561,20 @@ public final class GameDataManager {
             return hasDat ? null : "unc-without-dat";
         }
 
-        // Single source of truth: GpuTextureFormat.variantFor() is also what
-        // GameDataVerifier expects, so extraction and verification can never
-        // disagree about which file should be on disk.
-        String mine = "." + GpuTextureFormat.variantFor(db, sTextureFormat) + ".";
-        return matched.equals(mine) ? null : "other-variant";
+        // Keep EVERY variant, exactly like v1.8.3 did.
+        //
+        // v1.8.3 is the only build confirmed to run on this Mali device, and its
+        // extractor had no variant filter at all - the zip contents went to disk
+        // untouched (dxt + etc + pvr for the databases that ship all three).
+        // Filtering to a single family was introduced in 0b98420/3daf2c6 and
+        // every release after it either crashed in SortEntries (missing .dxt)
+        // or in _rwOpenGLRasterSetImage. Restoring the unfiltered disk contents
+        // is the one configuration known to boot, so it is the baseline to
+        // return to rather than something to keep optimising.
+        //
+        // Cost is disk only (~390 MB more); no extra download, since the same
+        // files.zip already contains every variant.
+        return null;
     }
 
     /** Returns e.g. "files/" when every entry lives under one top-level folder, else "". */

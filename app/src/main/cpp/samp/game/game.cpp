@@ -754,8 +754,12 @@ static TextureDatabaseFormat ReadEngineTextureFormat() {
     }
 }
 
+// Identifies THIS build in the log. Repeated crash reports were ambiguous
+// because a stale APK looks identical to a new one up to the crash point.
+#define EASTSIDE_TEXDB_BUILD "texdb-set=7-all-variants-on-disk (v1.8.3 baseline)"
+
 bool CGame::InitialiseRenderWare() {
-    FLog("InitialiseRenderWare ..");
+    FLog("InitialiseRenderWare .. build=%s", EASTSIDE_TEXDB_BUILD);
 
     CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
 
