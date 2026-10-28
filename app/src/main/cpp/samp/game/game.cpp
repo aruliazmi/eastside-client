@@ -772,12 +772,15 @@ bool CGame::InitialiseRenderWare() {
     // Databases the package only ever ships as DXT/PVR. An ETC device has no
     // exact match for these, so DXT is the only complete choice - mirroring
     // GpuTextureFormat.variantFor() on the Java side.
+    // One format for every database. Mixing ETC (most databases) with DXT
+    // (`player`, which ships no ETC) made the texture upload path compute a
+    // stride that did not match and it wrote one surface past the end of the
+    // buffer in _rwOpenGLRasterSetImage. v1.8.3 loaded DXT for all seven on the
+    // same Mali device and worked, so DXT is the proven-consistent choice.
     auto fmtFor = [texFmt](const char* db) {
-        if (strcmp(db, "player") == 0 || strcmp(db, "playerhi") == 0) {
-            if (texFmt == TextureDatabaseFormat::DF_PVR) return TextureDatabaseFormat::DF_PVR;
-            return TextureDatabaseFormat::DF_DXT;
-        }
-        return texFmt;
+        (void)db;
+        (void)texFmt;
+        return TextureDatabaseFormat::DF_DXT;
     };
 
     // Never hand the engine a database whose payload is not on disk. Load()

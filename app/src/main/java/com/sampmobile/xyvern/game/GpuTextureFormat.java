@@ -64,11 +64,24 @@ public final class GpuTextureFormat {
      * was pushed into a full 634 MB re-download.
      */
     public static String variantFor(String db, int fmt) {
-        String gpu = tagOf(fmt);
-        if (DXT_PVR_ONLY.contains(db)) {
-            return ("pvr".equals(gpu) || "dxt".equals(gpu)) ? gpu : "dxt";
-        }
-        return gpu;
+        // DXT wins on every device, including Mali and PowerVR.
+        //
+        // History: this used to return the GPU's native family, so a Mali device
+        // got ETC for every database except `player` (which ships no ETC). The
+        // engine then held a mixture - six ETC databases plus one DXT - and the
+        // texture upload path computes its surface stride from the container
+        // format. With a mixed set it wrote past the end of the destination
+        // buffer in _rwOpenGLRasterSetImage (strb [x13], x13 == buffer+0x800000,
+        // i.e. exactly one 2048x2048 RGBA4444 surface past the mapping).
+        //
+        // v1.8.3 extracted every variant and the engine loaded DXT for all of
+        // them; that build was confirmed working on Mali. One format, one stride,
+        // no mixture. DXT decodes in software on GPUs without S3TC, which is why
+        // it worked there in the first place.
+        //
+        // A .dxt.dat is present for all seven databases in the package; the
+        // native side still falls back to another variant if one goes missing.
+        return "dxt";
     }
 
     /**
