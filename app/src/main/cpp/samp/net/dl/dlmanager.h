@@ -93,6 +93,8 @@ public:
     std::string GetCachePath() const { return m_cachePath; }
     std::string GetModelPath(uint32_t crc, bool isDff) const;
     bool IsModelCached(uint32_t crc, uint32_t expectedSize, bool isDff) const;
+    /** Rejects truncated or non-RenderWare model files before the engine parses them. */
+    bool IsRenderWareModelValid(const std::string& path, bool isDff) const;
     static uint32_t CalculateCRC32(const void* data, size_t length);
     static uint32_t CalculateFileCRC32(const std::string& filepath);
 

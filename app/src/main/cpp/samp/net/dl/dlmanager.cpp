@@ -297,6 +297,50 @@ bool DLManager::IsModelCached(uint32_t crc, uint32_t expectedSize, bool isDff) c
         unlink(path.c_str());
         return false;
     }
+    // A CRC match alone is not enough: a truncated or non-RenderWare file still
+    // reaches RwStreamOpen and crashes inside
+    // _rwPluginRegistryReadDataChunks (ldr x8,[x22] on an object the parser never
+    // managed to build). Reject structurally broken models so they get fetched
+    // again instead of being handed to the engine.
+    if (!IsRenderWareModelValid(path, isDff)) {
+        unlink(path.c_str());
+        return false;
+    }
+    return true;
+}
+
+// RenderWare binary streams start with a chunk header:
+//   uint32 type, uint32 size, uint32 libraryStamp
+// A DFF (clump) begins with type 0x10, a TXD (texture dictionary) with 0x16.
+// Both need at least one full header plus a little payload to be parseable.
+bool DLManager::IsRenderWareModelValid(const std::string& path, bool isDff) const {
+    FILE* fp = fopen(path.c_str(), "rb");
+    if (!fp) return false;
+
+    unsigned char hdr[12];
+    size_t got = fread(hdr, 1, sizeof(hdr), fp);
+    fseek(fp, 0, SEEK_END);
+    long size = ftell(fp);
+    fclose(fp);
+
+    const uint32_t kMinModelBytes = 64;
+    if (got < sizeof(hdr) || size < (long)kMinModelBytes) return false;
+
+    uint32_t chunkType = (uint32_t)hdr[0] | ((uint32_t)hdr[1] << 8)
+                       | ((uint32_t)hdr[2] << 16) | ((uint32_t)hdr[3] << 24);
+    uint32_t chunkSize = (uint32_t)hdr[4] | ((uint32_t)hdr[5] << 8)
+                       | ((uint32_t)hdr[6] << 16) | ((uint32_t)hdr[7] << 24);
+
+    const uint32_t kClump = 0x10;
+    const uint32_t kTexDict = 0x16;
+    uint32_t want = isDff ? kClump : kTexDict;
+    if (chunkType != want) return false;
+
+    // The declared chunk body must fit inside the file. A header that promises
+    // more bytes than the file holds is exactly what makes the chunk reader walk
+    // past the mapped region.
+    if ((uint64_t)chunkSize + 12ull > (uint64_t)size) return false;
+
     return true;
 }
 
