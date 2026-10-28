@@ -832,6 +832,16 @@ bool CGame::InitialiseRenderWare() {
     };
 
 #if VER_SAMP
+    // Exactly the set v1.8.3 loaded, which is the build confirmed working on
+    // Mali. `samp` is deliberately absent here: adding it back on top of these
+    // makes the texture upload path fault in _rwOpenGLRasterSetImage with a
+    // constant 0x801000 request regardless of which variant is on disk - the
+    // failure survived switching every database to .dxt, so it is the extra
+    // database and not the texture format.
+    //
+    // LoadTextureFromDB("samp", ...) callers in playertags.cpp tolerate a
+    // missing database: CUtil::LoadTextureFromDB checks GetDatabase() and
+    // returns nullptr with a log line.
     loadDb("mobile");
     loadDb("txd");
     loadDb("gta3");
@@ -839,7 +849,6 @@ bool CGame::InitialiseRenderWare() {
     loadDb("cutscene");
     loadDb("player");
     loadDb("menu");
-    loadDb("samp");
 #else
     loadDb("samp");
     loadDb("mobile");
