@@ -139,9 +139,29 @@ $BT/apksigner verify --min-sdk-version 26 --max-sdk-version 36 app.apk
 $BT/zipalign -c -P 16 4 app.apk
 ```
 
-Modul `libAML.so`, `libluajit-5.1.so`, dan `libmonetloader.so` **tidak lagi dibundel**
-karena tidak 16 KB-compatible. Switch AML/CLEO di Pengaturan default `false` dan
-pemuatannya dibungkus `catch (Throwable)` supaya tidak pernah menghentikan proses game.
+Modul `libAML.so`, `libCLEOMod.so`, dan `libmonetloader.so` dibangun dari source
+dengan `-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384`. Binary resmi
+yang beredar semuanya 4 KB (`p_align 0x1000`), jadi tidak bisa dipakai di
+Android 15/16.
+
+| Modul | Ukuran | Lokasi | Dimuat oleh |
+|---|---|---|---|
+| `libAML.so` | 1.32 MB | `jniLibs/arm64-v8a` | `System.loadLibrary("AML")` |
+| `libCLEOMod.so` | 1.33 MB | `assets/amlmods` | AML (`__GetModInfo`) |
+| `libmonetloader.so` | 7.96 MB | `assets/amlmods` | AML (`__GetModInfo`) |
+
+CLEO dan MonetLoader adalah **mod AML**, bukan library mandiri. `AmlModInstaller`
+menyalinnya ke `files/mods/` — direktori yang dipindai `LoadMods()` milik AML —
+dan memperbaruinya saat `versionName` berubah. MonetLoader di-link statis dengan
+LuaJIT sehingga tidak butuh `libluajit-5.1.so` terpisah.
+
+Switch AML di Pengaturan default `false`; pemuatannya dibungkus `catch (Throwable)`
+supaya tidak pernah menghentikan proses game. CLEO tidak punya switch sendiri
+karena dimuat oleh AML.
+
+Catatan arm64: CLEO butuh perbaikan source (cast pointer ke `int` menjadi
+`uintptr_t`). Trampoline asm ARM32 untuk opcode `0DD2` diganti stub, jadi opcode
+itu tidak tersedia di 64-bit — opcode lain normal.
 
 ---
 
