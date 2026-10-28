@@ -725,6 +725,35 @@ void LightsCreate(RpWorld* world) {
 
 void InitGui();
 
+// Reads the texture format the launcher detected from the GPU's GL strings.
+// Falls back to DXT when the hint is absent, which is what this code did
+// unconditionally before.
+static TextureDatabaseFormat ReadEngineTextureFormat() {
+    const char* base = g_pszStorage ? g_pszStorage : "";
+    char path[512];
+    snprintf(path, sizeof(path), "%s%s", base, "texture_format.txt");
+
+    FILE* fp = fopen(path, "rb");
+    if (!fp) {
+        FLog("texture format hint missing (%s), assuming DXT", path);
+        return TextureDatabaseFormat::DF_DXT;
+    }
+    char buf[16] = {0};
+    size_t n = fread(buf, 1, sizeof(buf) - 1, fp);
+    fclose(fp);
+    if (n == 0) return TextureDatabaseFormat::DF_DXT;
+
+    int v = atoi(buf);
+    switch (v) {
+        case TextureDatabaseFormat::DF_DXT: return TextureDatabaseFormat::DF_DXT;
+        case TextureDatabaseFormat::DF_PVR: return TextureDatabaseFormat::DF_PVR;
+        case TextureDatabaseFormat::DF_ETC: return TextureDatabaseFormat::DF_ETC;
+        default:
+            FLog("texture format hint was %d, assuming DXT", v);
+            return TextureDatabaseFormat::DF_DXT;
+    }
+}
+
 bool CGame::InitialiseRenderWare() {
     FLog("InitialiseRenderWare ..");
 
@@ -733,24 +762,61 @@ bool CGame::InitialiseRenderWare() {
     CTxdStore::Initialise();
     CVisibilityPlugins::Initialise();
 
-#if VER_SAMP
-    TextureDatabaseRuntime::Load("mobile", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("txd", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("gta3", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("gta_int", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("cutscene", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("player", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("menu", false, TextureDatabaseFormat::DF_DXT);
-#else
-    TextureDatabaseRuntime::Load("samp", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("mobile", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("txd", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("gta3", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("gta_int", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("player", false, TextureDatabaseFormat::DF_DXT);
-    TextureDatabaseRuntime::Load("menu", false, TextureDatabaseFormat::DF_DXT);
-    //TextureDatabaseRuntime::Load("cutscene", false, TextureDatabaseFormat::DF_DXT);
+    // The GPU's compression family, published by GpuTextureFormat before the
+    // game starts. It used to be a constant DF_DXT here, which meant every
+    // device loaded .dxt databases - on Mali that file does not exist, so
+    // Load() returned an unfinished database and SortEntries() then walked an
+    // empty entry array (fault 0x4, ldr at SortEntries+0x270).
+    const TextureDatabaseFormat texFmt = ReadEngineTextureFormat();
 
+    // Databases the package only ever ships as DXT/PVR. An ETC device has no
+    // exact match for these, so DXT is the only complete choice - mirroring
+    // GpuTextureFormat.variantFor() on the Java side.
+    auto fmtFor = [texFmt](const char* db) {
+        if (strcmp(db, "player") == 0 || strcmp(db, "playerhi") == 0) {
+            if (texFmt == TextureDatabaseFormat::DF_PVR) return TextureDatabaseFormat::DF_PVR;
+            return TextureDatabaseFormat::DF_DXT;
+        }
+        return texFmt;
+    };
+
+    // Never hand the engine a database whose payload is not on disk. Load()
+    // happily returns a half-initialised database when the .dat is missing -
+    // that is exactly the state SortEntries() dereferences (fault 0x4). Skipping
+    // early turns a segfault into a missing-texture warning.
+    auto loadDb = [&](const char* db) {
+        TextureDatabaseFormat f = fmtFor(db);
+        const char* tag = (f == TextureDatabaseFormat::DF_PVR) ? "pvr"
+                        : (f == TextureDatabaseFormat::DF_ETC) ? "etc" : "dxt";
+        char path[512];
+        snprintf(path, sizeof(path), "%stexdb/%s/%s.%s.dat",
+                 g_pszStorage ? g_pszStorage : "", db, db, tag);
+        FILE* probe = fopen(path, "rb");
+        if (!probe) {
+            FLog("texture db '%s' has no .%s.dat - skipping (%s)", db, tag, path);
+            return;
+        }
+        fclose(probe);
+        TextureDatabaseRuntime::Load(db, false, f);
+    };
+
+#if VER_SAMP
+    loadDb("mobile");
+    loadDb("txd");
+    loadDb("gta3");
+    loadDb("gta_int");
+    loadDb("cutscene");
+    loadDb("player");
+    loadDb("menu");
+    loadDb("samp");
+#else
+    loadDb("samp");
+    loadDb("mobile");
+    loadDb("txd");
+    loadDb("gta3");
+    loadDb("gta_int");
+    loadDb("player");
+    loadDb("menu");
 #endif
 
 

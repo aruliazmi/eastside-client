@@ -71,6 +71,35 @@ public final class GpuTextureFormat {
         return gpu;
     }
 
+    /**
+     * Publishes the detected format where the native side can read it, because
+     * the engine's own detection picks DF_DXT unconditionally on this build.
+     *
+     * Written as the raw TextureDatabaseFormat value (1/4/5) so C++ needs no
+     * parsing beyond atoi().
+     */
+    public static void writeEngineHint(Context ctx) {
+        int fmt = get(ctx);
+        if (fmt == 0) return;
+        try {
+            java.io.File root = ctx.getExternalFilesDir(null);
+            if (root == null) return;
+            java.io.File out = new java.io.File(root, HINT_FILE);
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(out);
+            try {
+                fos.write(String.valueOf(fmt).getBytes("UTF-8"));
+            } finally {
+                fos.close();
+            }
+            Log.i(TAG, "engine hint " + HINT_FILE + " = " + fmt + " (" + tagOf(fmt) + ")");
+        } catch (Throwable t) {
+            Log.w(TAG, "cannot write engine hint: " + t);
+        }
+    }
+
+    /** Must match the name read by CGame::InitialiseRenderWare. */
+    public static final String HINT_FILE = "texture_format.txt";
+
     public static int get(Context ctx) {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getInt(KEY, 0);
