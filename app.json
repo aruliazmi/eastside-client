@@ -5,7 +5,7 @@
   "app_beta_status": false,
   "game_version": "1.7.2",
   "data_url": "https://github.com/aruliazmi/eastside-client/releases/download/data-v2/files.zip",
-  "data_version": "3",
+  "data_version": "4",
   "data_size": 664401280,
   "data_sentinel": "SAMP/SAMP.ide",
   "discord": "https://discord.gg/eastsidestories"
