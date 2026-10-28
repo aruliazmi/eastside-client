@@ -725,38 +725,9 @@ void LightsCreate(RpWorld* world) {
 
 void InitGui();
 
-// Reads the texture format the launcher detected from the GPU's GL strings.
-// Falls back to DXT when the hint is absent, which is what this code did
-// unconditionally before.
-static TextureDatabaseFormat ReadEngineTextureFormat() {
-    const char* base = g_pszStorage ? g_pszStorage : "";
-    char path[512];
-    snprintf(path, sizeof(path), "%s%s", base, "texture_format.txt");
-
-    FILE* fp = fopen(path, "rb");
-    if (!fp) {
-        FLog("texture format hint missing (%s), assuming DXT", path);
-        return TextureDatabaseFormat::DF_DXT;
-    }
-    char buf[16] = {0};
-    size_t n = fread(buf, 1, sizeof(buf) - 1, fp);
-    fclose(fp);
-    if (n == 0) return TextureDatabaseFormat::DF_DXT;
-
-    int v = atoi(buf);
-    switch (v) {
-        case TextureDatabaseFormat::DF_DXT: return TextureDatabaseFormat::DF_DXT;
-        case TextureDatabaseFormat::DF_PVR: return TextureDatabaseFormat::DF_PVR;
-        case TextureDatabaseFormat::DF_ETC: return TextureDatabaseFormat::DF_ETC;
-        default:
-            FLog("texture format hint was %d, assuming DXT", v);
-            return TextureDatabaseFormat::DF_DXT;
-    }
-}
-
 // Identifies THIS build in the log. Repeated crash reports were ambiguous
 // because a stale APK looks identical to a new one up to the crash point.
-#define EASTSIDE_TEXDB_BUILD "texdb-set=7-all-variants-on-disk (v1.8.3 baseline)"
+#define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe (v1.8.3 baseline)"
 
 bool CGame::InitialiseRenderWare() {
     FLog("InitialiseRenderWare .. build=%s", EASTSIDE_TEXDB_BUILD);
@@ -766,26 +737,14 @@ bool CGame::InitialiseRenderWare() {
     CTxdStore::Initialise();
     CVisibilityPlugins::Initialise();
 
-    // The GPU's compression family, published by GpuTextureFormat before the
-    // game starts. It used to be a constant DF_DXT here, which meant every
-    // device loaded .dxt databases - on Mali that file does not exist, so
-    // Load() returned an unfinished database and SortEntries() then walked an
-    // empty entry array (fault 0x4, ldr at SortEntries+0x270).
-    const TextureDatabaseFormat texFmt = ReadEngineTextureFormat();
-
-    // Databases the package only ever ships as DXT/PVR. An ETC device has no
-    // exact match for these, so DXT is the only complete choice - mirroring
-    // GpuTextureFormat.variantFor() on the Java side.
-    // One format for every database. Mixing ETC (most databases) with DXT
-    // (`player`, which ships no ETC) made the texture upload path compute a
-    // stride that did not match and it wrote one surface past the end of the
-    // buffer in _rwOpenGLRasterSetImage. v1.8.3 loaded DXT for all seven on the
-    // same Mali device and worked, so DXT is the proven-consistent choice.
-    auto fmtFor = [texFmt](const char* db) {
-        (void)db;
-        (void)texFmt;
-        return TextureDatabaseFormat::DF_DXT;
-    };
+    // One texture format for every database: DXT. The engine's own detection
+    // picks DF_DXT unconditionally, DXT decodes in software on GPUs without
+    // S3TC and is the only variant complete for every database in the package.
+    // Mixing ETC (most databases) with DXT (`player`, which ships no ETC) made
+    // the texture upload path compute a mismatched stride and write one surface
+    // past the end of the buffer in _rwOpenGLRasterSetImage. v1.8.3 loaded DXT
+    // for all seven on the same Mali device and worked.
+    const TextureDatabaseFormat kWantFormat = TextureDatabaseFormat::DF_DXT;
 
     // Never hand the engine a database whose payload is not on disk. Load()
     // happily returns a half-initialised database when the .dat is missing -
@@ -807,18 +766,32 @@ bool CGame::InitialiseRenderWare() {
     // reaching Load() with absent data - the state SortEntries() crashes on.
     auto loadDb = [&](const char* db) {
         auto tryOne = [&](TextureDatabaseFormat f) -> bool {
-            char path[512];
-            snprintf(path, sizeof(path), "%stexdb/%s/%s.%s.dat",
+            // Load() needs the .tmb (thumbnails), .toc (entries) and .dat
+            // (payload). A missing .tmb is exactly what made SortEntries()
+            // deref an empty entry array (fault 0x1db), so probe both files
+            // before handing the database to the engine.
+            char dat[512];
+            char tmb[512];
+            snprintf(dat, sizeof(dat), "%stexdb/%s/%s.%s.dat",
                      g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
-            FILE* probe = fopen(path, "rb");
-            if (!probe) return false;
-            fclose(probe);
-            FLog("texture db '%s' -> .%s.dat", db, tagOfFmt(f));
+            snprintf(tmb, sizeof(tmb), "%stexdb/%s/%s.%s.tmb",
+                     g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
+            FILE* d = fopen(dat, "rb");
+            if (!d) return false;
+            fclose(d);
+            FILE* t = fopen(tmb, "rb");
+            if (!t) {
+                FLog("texture db '%s' has .%s.dat but no .%s.tmb - skipping",
+                     db, tagOfFmt(f), tagOfFmt(f));
+                return false;
+            }
+            fclose(t);
+            FLog("texture db '%s' -> .%s", db, tagOfFmt(f));
             TextureDatabaseRuntime::Load(db, false, f);
             return true;
         };
 
-        const TextureDatabaseFormat want = fmtFor(db);
+        const TextureDatabaseFormat want = kWantFormat;
         if (tryOne(want)) return;
 
         const TextureDatabaseFormat order[] = {
@@ -835,13 +808,11 @@ bool CGame::InitialiseRenderWare() {
         FLog("texture db '%s' is missing in every variant - skipping", db);
     };
 
-#if VER_SAMP
-    // Exactly the set v1.8.3 loaded, which is the build confirmed working on
-    // Mali. `samp` is deliberately absent here: adding it back on top of these
-    // makes the texture upload path fault in _rwOpenGLRasterSetImage with a
-    // constant 0x801000 request regardless of which variant is on disk - the
-    // failure survived switching every database to .dxt, so it is the extra
-    // database and not the texture format.
+    // The set v1.8.3 loaded, which is the build confirmed working on Mali.
+    // `samp` is deliberately absent: adding it here makes the texture upload
+    // path fault in _rwOpenGLRasterSetImage with a constant 0x801000 request
+    // regardless of which variant is on disk - the failure survived switching
+    // every database to .dxt, so it is the extra database, not the format.
     //
     // LoadTextureFromDB("samp", ...) callers in playertags.cpp tolerate a
     // missing database: CUtil::LoadTextureFromDB checks GetDatabase() and
@@ -853,15 +824,6 @@ bool CGame::InitialiseRenderWare() {
     loadDb("cutscene");
     loadDb("player");
     loadDb("menu");
-#else
-    loadDb("samp");
-    loadDb("mobile");
-    loadDb("txd");
-    loadDb("gta3");
-    loadDb("gta_int");
-    loadDb("player");
-    loadDb("menu");
-#endif
 
 
     const auto camera = RwCameraCreate();

@@ -142,6 +142,11 @@ void handler(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	// Returning from a SIGSEGV handler re-runs the faulting instruction, which
+	// loops or double-faults mid-log. Re-raise so the system traps a real
+	// tombstone and Crashlytics records the native stack.
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
@@ -163,6 +168,8 @@ void handler1(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
@@ -184,6 +191,8 @@ void handler2(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
@@ -205,6 +214,8 @@ void handler3(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
