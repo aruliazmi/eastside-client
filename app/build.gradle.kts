@@ -25,8 +25,8 @@ android {
         applicationId = "com.sampmobile.xyvern"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10808
-        versionName = "1.8.8"
+        versionCode = 10809
+        versionName = "1.8.9"
 
         multiDexEnabled = true
 
