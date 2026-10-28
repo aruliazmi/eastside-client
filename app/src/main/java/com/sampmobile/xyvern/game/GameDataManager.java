@@ -497,13 +497,7 @@ public final class GameDataManager {
      * complete - the alternative, shipping none of the ped textures, breaks
      * every player model on screen.
      */
-    private static final java.util.Map<String, java.util.Set<String>> DB_VARIANTS;
-    static {
-        java.util.Map<String, java.util.Set<String>> m = new java.util.HashMap<>();
-        m.put("player", new java.util.HashSet<>(java.util.Arrays.asList("dxt", "pvr")));
-        m.put("playerhi", new java.util.HashSet<>(java.util.Arrays.asList("dxt", "pvr")));
-        DB_VARIANTS = java.util.Collections.unmodifiableMap(m);
-    }
+
 
     private static String textureVariantSkip(String entryName) {
         int marker = entryName.indexOf("texdb/");
@@ -535,18 +529,10 @@ public final class GameDataManager {
             return hasDat ? null : "unc-without-dat";
         }
 
-        String wanted = GpuTextureFormat.tagOf(sTextureFormat);
-
-        // Databases with a restricted variant set: keep the GPU's variant when
-        // it exists, otherwise fall back to DXT (the only set that is complete
-        // for every database in the package).
-        java.util.Set<String> allowed = DB_VARIANTS.get(db);
-        if (allowed != null && !allowed.contains(wanted)) {
-            return matched.equals(".dxt.") ? null : "no-" + wanted + "-variant";
-        }
-
-        // Everything else keeps exactly the variant this GPU asked for.
-        String mine = "." + wanted + ".";
+        // Single source of truth: GpuTextureFormat.variantFor() is also what
+        // GameDataVerifier expects, so extraction and verification can never
+        // disagree about which file should be on disk.
+        String mine = "." + GpuTextureFormat.variantFor(db, sTextureFormat) + ".";
         return matched.equals(mine) ? null : "other-variant";
     }
 

@@ -20,14 +20,6 @@ public class GameDataVerifier {
             "gta3", "gta_int", "menu", "mobile", "player", "samp", "txd"
     };
 
-    /**
-     * Databases with a restricted variant set. The engine asks for the GPU's
-     * variant for every database, but upstream never published `player.etc`, so
-     * the extractor falls back to DXT there. Verification has to expect exactly
-     * what the extractor wrote, or it would flag a healthy install.
-     */
-    private static final String[] DXT_FALLBACK_DB = {"player", "playerhi"};
-
     /** Non-texture files required for the engine to boot. */
     public static final String[] ESSENTIAL_FILES = {
             "data/gta.dat",
@@ -70,12 +62,12 @@ public class GameDataVerifier {
             else totalSize += f.length();
         }
 
-        String gpuVariant = GpuTextureFormat.tagOf(GpuTextureFormat.get(context));
+        int gpuFmt = GpuTextureFormat.get(context);
         for (String db : TEXDB) {
-            // player/playerhi have no ETC build upstream: keep DXT when the GPU
-            // wants ETC, otherwise trust the GPU variant.
-            String variant = (!"etc".equals(gpuVariant) && isDxtFallback(db))
-                    ? "dxt" : gpuVariant;
+            // Same rule the extractor used. Previously this kept "pvr" for
+            // player on a PVR device while the extractor wrote DXT, so a healthy
+            // install was reported as missing player.etc.dat forever.
+            String variant = GpuTextureFormat.variantFor(db, gpuFmt);
             String base = "texdb/" + db + "/" + db + "." + variant;
             File dat = new File(baseDir, base + ".dat");
             File toc = new File(baseDir, base + ".toc");
@@ -139,10 +131,5 @@ public class GameDataVerifier {
             }
         }
         return b.toString().trim();
-    }
-
-    private static boolean isDxtFallback(String db) {
-        for (String d : DXT_FALLBACK_DB) if (d.equals(db)) return true;
-        return false;
     }
 }

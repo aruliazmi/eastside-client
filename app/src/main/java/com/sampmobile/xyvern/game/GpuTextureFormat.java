@@ -47,6 +47,30 @@ public final class GpuTextureFormat {
         }
     }
 
+    /**
+     * Databases whose upstream package only ever ships DXT and PVR.
+     * player.etc has never been published, so an ETC device has no exact match
+     * and falls back to DXT - the only variant that is complete for every
+     * database in the package.
+     */
+    private static final java.util.Set<String> DXT_PVR_ONLY =
+            new java.util.HashSet<>(java.util.Arrays.asList("player", "playerhi"));
+
+    /**
+     * The variant that is actually on disk for {@code db} given the detected GPU
+     * format. Both the extractor and the verifier MUST use this: they drifted
+     * once, and verification then demanded player.etc.dat - a file that does not
+     * exist anywhere - so a healthy install was reported as broken and the user
+     * was pushed into a full 634 MB re-download.
+     */
+    public static String variantFor(String db, int fmt) {
+        String gpu = tagOf(fmt);
+        if (DXT_PVR_ONLY.contains(db)) {
+            return ("pvr".equals(gpu) || "dxt".equals(gpu)) ? gpu : "dxt";
+        }
+        return gpu;
+    }
+
     public static int get(Context ctx) {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getInt(KEY, 0);
