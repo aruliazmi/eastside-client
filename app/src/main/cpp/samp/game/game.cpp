@@ -784,20 +784,48 @@ bool CGame::InitialiseRenderWare() {
     // happily returns a half-initialised database when the .dat is missing -
     // that is exactly the state SortEntries() dereferences (fault 0x4). Skipping
     // early turns a segfault into a missing-texture warning.
-    auto loadDb = [&](const char* db) {
-        TextureDatabaseFormat f = fmtFor(db);
-        const char* tag = (f == TextureDatabaseFormat::DF_PVR) ? "pvr"
-                        : (f == TextureDatabaseFormat::DF_ETC) ? "etc" : "dxt";
-        char path[512];
-        snprintf(path, sizeof(path), "%stexdb/%s/%s.%s.dat",
-                 g_pszStorage ? g_pszStorage : "", db, db, tag);
-        FILE* probe = fopen(path, "rb");
-        if (!probe) {
-            FLog("texture db '%s' has no .%s.dat - skipping (%s)", db, tag, path);
-            return;
+    auto tagOfFmt = [](TextureDatabaseFormat f) {
+        switch (f) {
+            case TextureDatabaseFormat::DF_PVR: return "pvr";
+            case TextureDatabaseFormat::DF_ETC: return "etc";
+            case TextureDatabaseFormat::DF_360: return "360";
+            case TextureDatabaseFormat::DF_UNC: return "unc";
+            default:                            return "dxt";
         }
-        fclose(probe);
-        TextureDatabaseRuntime::Load(db, false, f);
+    };
+
+    // Probe the disk instead of trusting the hint. The hint only sets the
+    // preference; the file that actually exists decides. That keeps a missing
+    // hint, a stale install, or a package that ships a single variant from ever
+    // reaching Load() with absent data - the state SortEntries() crashes on.
+    auto loadDb = [&](const char* db) {
+        auto tryOne = [&](TextureDatabaseFormat f) -> bool {
+            char path[512];
+            snprintf(path, sizeof(path), "%stexdb/%s/%s.%s.dat",
+                     g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
+            FILE* probe = fopen(path, "rb");
+            if (!probe) return false;
+            fclose(probe);
+            FLog("texture db '%s' -> .%s.dat", db, tagOfFmt(f));
+            TextureDatabaseRuntime::Load(db, false, f);
+            return true;
+        };
+
+        const TextureDatabaseFormat want = fmtFor(db);
+        if (tryOne(want)) return;
+
+        const TextureDatabaseFormat order[] = {
+            TextureDatabaseFormat::DF_DXT,
+            TextureDatabaseFormat::DF_ETC,
+            TextureDatabaseFormat::DF_PVR,
+        };
+        FLog("texture db '%s' has no .%s.dat, trying other variants",
+             db, tagOfFmt(want));
+        for (TextureDatabaseFormat f : order) {
+            if (f == want) continue;
+            if (tryOne(f)) return;
+        }
+        FLog("texture db '%s' is missing in every variant - skipping", db);
     };
 
 #if VER_SAMP
