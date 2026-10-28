@@ -510,6 +510,15 @@ public final class GameDataManager {
         if (file.indexOf('.') < 0) return null;     // directory entry
 
         String lower = file.toLowerCase();
+
+        // Stray build artefact in the published package: gta3.dxt.dat.temp is a
+        // leftover 105 MB partial that no engine path opens. Extracting it wastes
+        // storage and, worse, its presence next to gta3.dxt.dat makes any
+        // "*.dat" glob or cleanup pass see two candidates for one database.
+        if (lower.contains(".temp") || lower.endsWith(".bak") || lower.endsWith(".part")) {
+            return "stray-file";
+        }
+
         String matched = null;
         for (String v : new String[]{".dxt.", ".etc.", ".pvr.", ".unc."}) {
             if (lower.contains(v)) { matched = v; break; }
