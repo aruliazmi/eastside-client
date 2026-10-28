@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -97,33 +97,36 @@ input, textarea, select {
 }
 
 html, body {
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    min-height: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow: hidden;      /* the scrolling happens on #app, not here */
     background: transparent;
     font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
 }
 
 #app {
-    width: 100vw;
-    height: 100vh;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
+    min-height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(10, 12, 16, 0.75);
     z-index: 100;
+    /* The panel can be taller than the viewport on a phone in portrait, so the
+       root has to scroll. `position: fixed` combined with `overflow: hidden`
+       on html/body clipped it with no way to reach the rest. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
 }
 
 /* Authentication Container - Guaranteed Screen Center */
 .auth-container {
-    width: 420px;
+    /* Was a hard 420px, wider than a phone viewport, which is what made the
+       form overflow and get clipped. Cap it to the viewport instead. */
+    width: min(420px, 100%);
     background: rgba(18, 20, 26, 0.96);
     border: 1px solid rgba(255, 255, 255, 0.10);
     border-radius: 8px;
@@ -135,7 +138,7 @@ html, body {
 }
 
 .auth-container.wide {
-    width: 540px;
+    width: min(540px, 100%);
 }
 
 /* Server Brand Header */
@@ -365,7 +368,7 @@ html, body {
     flex-direction: column;
     gap: 10px;
     margin-bottom: 18px;
-    max-height: 290px;
+    max-height: min(290px, 38vh);
     overflow-y: auto;
     padding-right: 2px;
 }
@@ -521,12 +524,86 @@ html, body {
     margin-top: 18px;
 }
 
+/* ====================================================================
+   Responsive: phone viewports.
+
+   The Android CEF surface is a WebView whose CSS viewport is the device
+   width in CSS px (a 1080x2400 phone reports ~360-412 px wide), so the
+   desktop-tuned 420/540 px panel and its 13 px body text were both too big
+   and too wide at the same time. PC (omp-cef) runs at 1280+ px and is
+   unaffected by everything below.
+   ==================================================================== */
+
+/* Narrow phones: shrink the panel, tighten padding and type. */
+@media (max-width: 480px), (max-height: 640px) {
+    #app {
+        padding: 10px;
+        align-items: flex-start;   /* let tall forms scroll from the top */
+    }
+
+    .auth-container {
+        width: 100%;
+        padding: 20px 16px;
+        border-radius: 6px;
+    }
+
+    .auth-container.wide {
+        width: 100%;
+    }
+
+    .server-logo {
+        width: 56px;
+    }
+
+    .logo-title {
+        font-size: 17px;
+    }
+
+    .form-input {
+        font-size: 15px;          /* >=16px avoids WebView focus zoom */
+        padding: 11px 12px;
+    }
+
+    .form-label,
+    .form-hint,
+    .footer-credit {
+        font-size: 11px;
+    }
+
+    .char-grid {
+        max-height: min(240px, 34vh);
+    }
+}
+
+/* Very short viewports (landscape phone): the form must still be reachable. */
+@media (max-height: 480px) {
+    #app {
+        align-items: flex-start;
+        padding: 8px;
+    }
+
+    .auth-container {
+        padding: 14px 14px;
+    }
+
+    .server-header {
+        margin-bottom: 12px;
+    }
+}
+
+/* Tablet / large phone: keep the desktop widths but never exceed the viewport. */
+@media (min-width: 481px) and (max-width: 1024px) {
+    .auth-container {
+        width: min(460px, 100%);
+    }
+}
+
     </style>
 </head>
 <body>
     <div id="app"></div>
     <script>
-"use strict";(()=>{var D="",p=!0,I=1,v=[],S=!1,u=null,c=null,l=null,r=null,L=null,w=null,h=null,k=null,b=null;function N(){let n=document.getElementById("app")||document.body;n.innerHTML=`
+"use strict";(()=>{var K="",p=!0,I=1,b=[],H=!1,u=null,c=null,l=null,d=null,k=null,w=null,h=null,L=null,g=null;function N(){let e=document.getElementById("app")||document.body;e.innerHTML=`
     <div class="auth-container" id="mainContainer">
         <!-- Brand Header -->
         <div class="server-header">
@@ -641,7 +718,7 @@ html, body {
 
         <div class="footer-credit">Eastside Stories Roleplay &bull; Built with TypeScript</div>
     </div>
-  `,c=document.getElementById("mainContainer"),l=document.getElementById("panelSubtitle"),r=document.getElementById("errorBanner"),L=document.getElementById("panelDownload"),w=document.getElementById("panelPin"),h=document.getElementById("panelAuth"),k=document.getElementById("panelCharSelect"),b=document.getElementById("panelCharCreate")}function s(n){r&&(r.innerText=n,r.style.display="block",setTimeout(()=>{r&&(r.style.display="none")},5e3))}function f(n){r&&(r.style.display="none"),L?.classList.remove("active"),w?.classList.remove("active"),h?.classList.remove("active"),k?.classList.remove("active"),b?.classList.remove("active"),n==="download"?(c?.classList.remove("wide"),L?.classList.add("active"),l&&(l.innerText="Sinkronisasi & Mengunduh Aset...")):n==="pin"?(c?.classList.remove("wide"),w?.classList.add("active"),l&&(l.innerText="Verifikasi PIN Akun"),null):n==="auth"?(c?.classList.remove("wide"),h?.classList.add("active"),l&&(l.innerText=p?"Masuk ke Akun Kamu":"Pendaftaran Akun Baru"),null):n==="select"?(c?.classList.add("wide"),k?.classList.add("active"),l&&(l.innerText="Pilih Karakter untuk Masuk Kota")):n==="create"&&(c?.classList.add("wide"),b?.classList.add("active"),l&&(l.innerText="Buat Karakter Baru"),null)}function R(){let n=()=>typeof window<"u"&&window.cef?(window.cef.emit("auth:ready"),!0):!1;if(n())setTimeout(()=>{u||n()},2500);else{let e=0,t=setInterval(()=>{if(e++,u||e>50){clearInterval(t);return}n()&&clearInterval(t)},100)}}function K(n){S=!0,n()}function P(){if(!u)return;let{username:n,isRegistered:e,needPin:t}=u;D=n,p=e===1;let a=document.getElementById("pinUcpName"),i=document.getElementById("authUcpName"),o=document.getElementById("selectUcpName");if(a&&(a.innerText=n),i&&(i.innerText=n),o&&(o.innerText=n),t===1)f("pin");else{let m=document.getElementById("authPwLabel"),d=document.getElementById("authSubmitBtn");m&&(m.innerText=p?"Password Login":"Buat Password Baru (7-32 karakter)"),d&&(d.innerText=p?"MASUK SERVER":"DAFTAR AKUN"),f("auth")}}function C(){let e=document.getElementById("pinInput")?.value.trim()||"";if(e.length<3)return s("PIN verifikasi harus diisi!");typeof window<"u"&&window.cef&&window.cef.emit("auth:pin",e)}function g(){let e=document.getElementById("authPwInput")?.value||"";if(p){if(e.length<1)return s("Password tidak boleh kosong!")}else if(e.length<7||e.length>32)return s("Password baru harus 7 sampai 32 karakter!");let t=document.getElementById("authSubmitBtn");t&&(t.innerText="MEMVERIFIKASI...",t.disabled=!0,t.style.opacity="0.7"),T(),typeof window<"u"&&window.cef?window.cef.emit("auth:submit",e):(t&&(t.innerText="MASUK SERVER",t.disabled=!1,t.style.opacity="1"),s("Koneksi browser CEF ke server belum siap. Silakan tunggu beberapa detik."))}function E(n){I=n;let e=document.getElementById("genderMale"),t=document.getElementById("genderFemale");n===1?(e?.classList.add("selected"),t?.classList.remove("selected")):(t?.classList.add("selected"),e?.classList.remove("selected"))}function M(){if(v.length>=3)return s("Slot karakter sudah penuh (Maksimal 3)!");f("create")}function A(){f("select")}function B(n){console.log("[Auth] selectCharacter executing for index:",n);let e=document.querySelector(`button[data-action="play"][data-index="${n}"]`);e&&(e.innerText="MEMASUKI KOTA...",e.disabled=!0,e.style.opacity="0.7"),typeof window<"u"&&window.cef?window.cef.emit("char:select",n):s("Koneksi CEF terputus!")}function H(n,e){let t=document.querySelector(`button[data-action="delete"][data-index="${n}"]`);if(t&&t.dataset.armed!=="1"){t.dataset.armed="1",t.innerText="YAKIN?",t.style.background="rgba(231, 76, 60, 0.6)",t.style.color="#ffffff",s(`Klik "YAKIN?" sekali lagi untuk menghapus "${e}".`),setTimeout(()=>{t.dataset.armed==="1"&&(t.dataset.armed="0",t.innerText="HAPUS",t.style.background="",t.style.color="")},5e3);return}t&&(t.dataset.armed="0",t.innerText="HAPUS",t.style.background="",t.style.color=""),typeof window<"u"&&window.cef&&window.cef.emit("char:delete",n,e)}function y(){let n=document.getElementById("newCharName"),e=document.getElementById("newCharOrigin"),t=document.getElementById("newCharBirth"),a=n?.value.trim()||"",i=e?.value.trim()||"",o=t?.value.trim()||"";if(!a.includes("_")||a.length<4)return s("Nama karakter harus format Roleplay (Contoh: Marcus_Vance)!");if(i.length<2)return s("Harap isi asal negara/kota karakter!");if(o.length<6)return s("Harap isi tanggal lahir (DD/MM/YYYY)!");let m=I===1?26:91;typeof window<"u"&&window.cef&&window.cef.emit("char:create",a,I,i,o,m)}function x(){typeof window<"u"&&window.cef&&window.cef.emit("auth:exit")}function U(n){v=n||[];let e=document.getElementById("charListContainer");if(!e)return;e.innerHTML="",v.forEach(a=>{let i=document.createElement("div");i.className="char-card",i.style.cursor="pointer",i.setAttribute("data-index",String(a.index)),i.innerHTML=`
+  `,c=document.getElementById("mainContainer"),l=document.getElementById("panelSubtitle"),d=document.getElementById("errorBanner"),k=document.getElementById("panelDownload"),w=document.getElementById("panelPin"),h=document.getElementById("panelAuth"),L=document.getElementById("panelCharSelect"),g=document.getElementById("panelCharCreate")}function s(e){d&&(d.innerText=e,d.style.display="block",setTimeout(()=>{d&&(d.style.display="none")},5e3))}function v(e){d&&(d.style.display="none"),k?.classList.remove("active"),w?.classList.remove("active"),h?.classList.remove("active"),L?.classList.remove("active"),g?.classList.remove("active"),e==="download"?(c?.classList.remove("wide"),k?.classList.add("active"),l&&(l.innerText="Sinkronisasi & Mengunduh Aset...")):e==="pin"?(c?.classList.remove("wide"),w?.classList.add("active"),l&&(l.innerText="Verifikasi PIN Akun")):e==="auth"?(c?.classList.remove("wide"),h?.classList.add("active"),l&&(l.innerText=p?"Masuk ke Akun Kamu":"Pendaftaran Akun Baru")):e==="select"?(c?.classList.add("wide"),L?.classList.add("active"),l&&(l.innerText="Pilih Karakter untuk Masuk Kota")):e==="create"&&(c?.classList.add("wide"),g?.classList.add("active"),l&&(l.innerText="Buat Karakter Baru"))}function U(){let e=()=>typeof window<"u"&&window.cef?(window.cef.emit("auth:ready"),!0):!1;if(e())setTimeout(()=>{u||e()},2500);else{let t=0,n=setInterval(()=>{if(t++,u||t>50){clearInterval(n);return}e()&&clearInterval(n)},100)}}function G(e){H=!0,e()}function D(){if(!u)return;let{username:e,isRegistered:t,needPin:n}=u;K=e,p=t===1;let a=document.getElementById("pinUcpName"),i=document.getElementById("authUcpName"),o=document.getElementById("selectUcpName");if(a&&(a.innerText=e),i&&(i.innerText=e),o&&(o.innerText=e),n===1)v("pin");else{let m=document.getElementById("authPwLabel"),r=document.getElementById("authSubmitBtn");m&&(m.innerText=p?"Password Login":"Buat Password Baru (7-32 karakter)"),r&&(r.innerText=p?"MASUK SERVER":"DAFTAR AKUN"),v("auth")}}function A(){let t=document.getElementById("pinInput")?.value.trim()||"";if(t.length<3)return s("PIN verifikasi harus diisi!");typeof window<"u"&&window.cef&&window.cef.emit("auth:pin",t)}var f=null;function T(){f!==null&&(window.clearTimeout(f),f=null)}function F(){T(),f=window.setTimeout(()=>{f=null;let e=document.getElementById("authSubmitBtn");e&&e.innerText.indexOf("MEMVERIFIKASI")!==-1&&(e.innerText="MASUK SERVER",e.disabled=!1,e.style.opacity="1",s("Server tidak merespons. Periksa koneksi lalu coba lagi."))},12e3)}function M(){let t=document.getElementById("authPwInput")?.value||"";if(p){if(t.length<1)return s("Password tidak boleh kosong!")}else if(t.length<7||t.length>32)return s("Password baru harus 7 sampai 32 karakter!");let n=document.getElementById("authSubmitBtn");n&&(n.innerText="MEMVERIFIKASI...",n.disabled=!0,n.style.opacity="0.7"),C(),F(),typeof window<"u"&&window.cef?window.cef.emit("auth:submit",t):(n&&(n.innerText="MASUK SERVER",n.disabled=!1,n.style.opacity="1"),s("Koneksi browser CEF ke server belum siap. Silakan tunggu beberapa detik."))}function y(e){I=e;let t=document.getElementById("genderMale"),n=document.getElementById("genderFemale");e===1?(t?.classList.add("selected"),n?.classList.remove("selected")):(n?.classList.add("selected"),t?.classList.remove("selected"))}function S(){if(b.length>=3)return s("Slot karakter sudah penuh (Maksimal 3)!");v("create")}function x(){v("select")}function B(e){console.log("[Auth] selectCharacter executing for index:",e);let t=document.querySelector(`button[data-action="play"][data-index="${e}"]`);t&&(t.innerText="MEMASUKI KOTA...",t.disabled=!0,t.style.opacity="0.7"),typeof window<"u"&&window.cef?window.cef.emit("char:select",e):s("Koneksi CEF terputus!")}function R(e,t){let n=document.querySelector(`button[data-action="delete"][data-index="${e}"]`);if(n&&n.dataset.armed!=="1"){n.dataset.armed="1",n.innerText="YAKIN?",n.style.background="rgba(231, 76, 60, 0.6)",n.style.color="#ffffff",s(`Klik "YAKIN?" sekali lagi untuk menghapus "${t}".`),setTimeout(()=>{n.dataset.armed==="1"&&(n.dataset.armed="0",n.innerText="HAPUS",n.style.background="",n.style.color="")},5e3);return}n&&(n.dataset.armed="0",n.innerText="HAPUS",n.style.background="",n.style.color=""),typeof window<"u"&&window.cef&&window.cef.emit("char:delete",e,t)}function E(){let e=document.getElementById("newCharName"),t=document.getElementById("newCharOrigin"),n=document.getElementById("newCharBirth"),a=e?.value.trim()||"",i=t?.value.trim()||"",o=n?.value.trim()||"";if(!a.includes("_")||a.length<4)return s("Nama karakter harus format Roleplay (Contoh: Marcus_Vance)!");if(i.length<2)return s("Harap isi asal negara/kota karakter!");if(o.length<6)return s("Harap isi tanggal lahir (DD/MM/YYYY)!");let m=I===1?26:91;typeof window<"u"&&window.cef&&window.cef.emit("char:create",a,I,i,o,m)}function P(){typeof window<"u"&&window.cef&&window.cef.emit("auth:exit")}function O(e){b=e||[];let t=document.getElementById("charListContainer");if(!t)return;t.innerHTML="",b.forEach(a=>{let i=document.createElement("div");i.className="char-card",i.style.cursor="pointer",i.setAttribute("data-index",String(a.index)),i.innerHTML=`
       <div class="char-info">
         <div class="char-name">${a.name}</div>
         <div class="char-meta">
@@ -653,7 +730,7 @@ html, body {
         <button type="button" class="btn-play" data-action="play" data-index="${a.index}" onclick="selectCharacter(${a.index})">MAIN</button>
         <button type="button" class="btn-del" data-action="delete" data-index="${a.index}" data-name="${a.name}" onclick="deleteCharacter(${a.index}, '${a.name}')">HAPUS</button>
       </div>
-    `,i.addEventListener("click",d=>{d.target.closest('button[data-action="delete"]')||B(a.index)}),i.querySelector('button[data-action="play"]')?.addEventListener("click",d=>{d.stopPropagation(),B(a.index)}),i.querySelector('button[data-action="delete"]')?.addEventListener("click",d=>{d.stopPropagation(),H(a.index,a.name)}),e.appendChild(i)});let t=document.getElementById("newCharBtn");t&&(t.style.display=v.length>=3?"none":"flex")}if(typeof window<"u"){window.submitPin=C,window.submitPassword=g,window.selectGender=E,window.openCharCreate=M,window.backToCharSelect=A,window.selectCharacter=B,window.deleteCharacter=H,window.submitNewCharacter=y,window.quitGame=x;let n=()=>{N(),document.getElementById("authSubmitBtn")?.addEventListener("click",e=>{e.preventDefault(),g()}),document.getElementById("newCharBtn")?.addEventListener("click",e=>{e.preventDefault(),M()}),document.getElementById("quitGameBtn")?.addEventListener("click",e=>{e.preventDefault(),x()}),document.getElementById("backToSelectBtn")?.addEventListener("click",e=>{e.preventDefault(),A()}),document.getElementById("submitNewCharBtn")?.addEventListener("click",e=>{e.preventDefault(),y()}),document.getElementById("genderMale")?.addEventListener("click",()=>E(1)),document.getElementById("genderFemale")?.addEventListener("click",()=>E(2)),K(()=>{if(u)P();else{let e=document.getElementById("dlStatusText"),t=document.getElementById("dlPercentText"),a=document.getElementById("dlFillBar");e&&(e.innerText="Aset lengkap, menunggu server..."),t&&(t.innerText="100%"),a&&(a.style.width="100%"),l&&(l.innerText="Menunggu respon server..."),R()}})};if(document.readyState==="loading"?window.addEventListener("DOMContentLoaded",n):n(),document.addEventListener("keydown",e=>{e.key==="Enter"&&(w?.classList.contains("active")?C():h?.classList.contains("active")?g():b?.classList.contains("active")&&y())}),!T()){let e=setInterval(()=>{T()&&clearInterval(e)},100)}}function T(){return typeof window>"u"||!window.cef?!1:(window.__cef_auth_listeners_attached||(window.__cef_auth_listeners_attached=!0,window.cef.on("auth:init",(n,e,t)=>{u={username:n,isRegistered:e,needPin:t},S&&P()}),window.cef.on("auth:error",n=>{let e=document.getElementById("authSubmitBtn");e&&(e.innerText="MASUK SERVER",e.disabled=!1,e.style.opacity="1"),s(n)}),window.cef.on("char:list_data",n=>{let e=document.getElementById("authSubmitBtn");e&&(e.innerText="MASUK SERVER",e.disabled=!1,e.style.opacity="1");try{let t=Array.isArray(n)?n:JSON.parse(n);U(t),f("select")}catch(t){console.error("Failed to parse characters JSON:",t),s("Gagal memuat daftar karakter!")}})),!0)}})();
+    `,i.addEventListener("click",r=>{r.target.closest('button[data-action="delete"]')||B(a.index)}),i.querySelector('button[data-action="play"]')?.addEventListener("click",r=>{r.stopPropagation(),B(a.index)}),i.querySelector('button[data-action="delete"]')?.addEventListener("click",r=>{r.stopPropagation(),R(a.index,a.name)}),t.appendChild(i)});let n=document.getElementById("newCharBtn");n&&(n.style.display=b.length>=3?"none":"flex")}if(typeof window<"u"){window.submitPin=A,window.submitPassword=M,window.selectGender=y,window.openCharCreate=S,window.backToCharSelect=x,window.selectCharacter=B,window.deleteCharacter=R,window.submitNewCharacter=E,window.quitGame=P;let e=()=>{N(),document.getElementById("newCharBtn")?.addEventListener("click",t=>{t.preventDefault(),S()}),document.getElementById("quitGameBtn")?.addEventListener("click",t=>{t.preventDefault(),P()}),document.getElementById("backToSelectBtn")?.addEventListener("click",t=>{t.preventDefault(),x()}),document.getElementById("submitNewCharBtn")?.addEventListener("click",t=>{t.preventDefault(),E()}),document.getElementById("genderMale")?.addEventListener("click",()=>y(1)),document.getElementById("genderFemale")?.addEventListener("click",()=>y(2)),G(()=>{if(u)D();else{let t=document.getElementById("dlStatusText"),n=document.getElementById("dlPercentText"),a=document.getElementById("dlFillBar");t&&(t.innerText="Aset lengkap, menunggu server..."),n&&(n.innerText="100%"),a&&(a.style.width="100%"),l&&(l.innerText="Menunggu respon server..."),U()}})};if(document.readyState==="loading"?window.addEventListener("DOMContentLoaded",e):e(),document.addEventListener("keydown",t=>{t.key==="Enter"&&(w?.classList.contains("active")?A():h?.classList.contains("active")?M():g?.classList.contains("active")&&E())}),!C()){let t=setInterval(()=>{C()&&clearInterval(t)},100)}}function C(){return typeof window>"u"||!window.cef?!1:(window.__cef_auth_listeners_attached||(window.__cef_auth_listeners_attached=!0,window.cef.on("auth:init",(e,t,n)=>{u={username:e,isRegistered:t,needPin:n},H&&D()}),window.cef.on("auth:error",e=>{T();let t=document.getElementById("authSubmitBtn");t&&(t.innerText="MASUK SERVER",t.disabled=!1,t.style.opacity="1"),s(e)}),window.cef.on("char:list_data",e=>{T();let t=document.getElementById("authSubmitBtn");t&&(t.innerText="MASUK SERVER",t.disabled=!1,t.style.opacity="1");try{let n;if(Array.isArray(e))n=e.flat();else if(typeof e=="string"){let a=JSON.parse(e);n=Array.isArray(a)?a.flat():[a]}else e&&typeof e=="object"?n=[e]:n=[];O(n),v("select")}catch(n){console.error("Failed to parse characters JSON:",n),s("Gagal memuat daftar karakter!")}})),!0)}})();
 
     </script>
 </body>

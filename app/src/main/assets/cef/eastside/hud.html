@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -93,38 +93,95 @@ html, body, #app {
 
 :root {
     /* ====================================================================
-       Tuff Advance HUD 2.0 palette — tokens taken from the resource's
-       release thread (forum.cfx.re/t/free-tuff-advance-hud-2-0/5392029)
-       and its published settings/config docs.
+       Tuff Advance HUD 2.0 palette.
+
+       Not eyeballed from screenshots: every value below is read out of the
+       vendor package's own `shared/settings.lua` (Settings.Default) and its
+       compiled `nui/dist` stylesheet — the shipped NUI dist is plain, only
+       the Lua is FXAP-escrowed. Geometry (radii, blur, hairline) was measured
+       off the mounted NUI with getComputedStyle.
+
+       Where settings.lua and the dist stylesheet disagree, settings.lua wins:
+       it is what the resource actually drives. So health is #FF635C and food
+       #FFD373 (Settings.Default.PLAYERINFO.STATUS.COLOR), which is why the
+       accent red is not the #FD4444 the stylesheet happens to use for its
+       hardcoded alert pulse — same family, different token.
        ==================================================================== */
     --tuff-surface: #0E0F11;
     --tuff-surface-2: #141518;
     --tuff-surface-3: #191B1F;
     --tuff-line: rgba(240, 247, 250, 0.07);
     --tuff-line-lit: rgba(240, 247, 250, 0.16);
+    --tuff-hairline: rgba(240, 247, 250, 0.06);   /* the `inset 0 1px` top edge */
     --tuff-text: #F0F7FA;
     --tuff-dim: rgba(240, 247, 250, 0.55);
     --tuff-mute: rgba(240, 247, 250, 0.32);
     --tuff-shadow: 0 10px 30px rgba(0, 0, 0, 0.62);
-    --tuff-panel: linear-gradient(180deg, rgba(20, 21, 24, 0.94) 0%, rgba(14, 15, 17, 0.96) 100%);
     --tuff-lime: #C4FF48;
     --tuff-mint: #00FFA6;
     --tuff-cyan: #00D0FF;
     --tuff-yellow: #FFD373;
     --tuff-red: #FF635C;
+    --tuff-stress: #B672FF;                        /* Stress icon only        */
+    --tuff-blackmoney: #C91D15;                    /* Settings.Default BLACKMONEY bg */
+    --tuff-gang: #9A33FF;                          /* Settings.Default GANG bg       */
+
+    /* The single most recognisable thing about the vendor HUD: surfaces are
+       frosted glass, not opaque panels. Measured live — bg is
+       rgba(14,15,17,0.7) with backdrop-filter blur(18px) saturate(125%).
+       Using #0E0F11 at 0.7 alpha rather than a gradient is what keeps the
+       GTA world legible through the panel. */
+    --tuff-glass: rgba(14, 15, 17, 0.70);
+    --tuff-blur: blur(18px) saturate(125%);
+    /* Full-bleed surfaces (Fleeca, inventory, modals) sit a little denser. */
+    --tuff-glass-heavy: rgba(14, 15, 17, 0.86);
+    --tuff-blur-heavy: blur(20px) saturate(120%);
 
     /* --- legacy --vhud-* names remapped onto the Tuff palette ----------- */
     --vhud-bg: var(--tuff-surface);
-    --vhud-panel: var(--tuff-panel);
+    --vhud-panel: var(--tuff-glass);
     --vhud-panel-solid: var(--tuff-surface-2);
     --vhud-line: var(--tuff-line);
     --vhud-line-lit: var(--tuff-line-lit);
+    --vhud-hairline: var(--tuff-hairline);
+    --vhud-blur: var(--tuff-blur);
     --vhud-shadow: var(--tuff-shadow);
     --vhud-accent: var(--tuff-cyan);    /* water / armour / focus       */
     --vhud-gold: var(--tuff-yellow);    /* food / warning               */
     --vhud-green: var(--tuff-mint);     /* cash / success / mood        */
     --vhud-red: var(--tuff-red);        /* low stats / destructive      */
     --vhud-lime: var(--tuff-lime);      /* speed / fuel / primary CTA   */
+    --vhud-stress: var(--tuff-stress);  /* stress icon                  */
+}
+
+/* Frosted glass on every HUD surface. The vendor ships exactly two blur
+   values: blur(18px) saturate(125%) on the HUD widgets, blur(20px) on the
+   full-bleed screens. Only the blur lives here — the drop shadows are
+   per-surface and get their hairline added further down, after every element
+   rule has had its say. */
+.vhud-street-box,
+.checkpoint-widget,
+.vhud-cluster-box,
+.toast,
+.info-tile,
+.vhud-tile {
+    backdrop-filter: var(--tuff-blur);
+    -webkit-backdrop-filter: var(--tuff-blur);
+}
+
+/* Deliberately NOT in the list above: .vhud-compass-top, .modal-inv and the
+   overlay .modal-card — those are transparent layout wrappers, not surfaces.
+   A backdrop-filter on a transparent element still renders a blurred
+   rectangle, so blurring the compass wrapper would paint a 56px smear across
+   the top of the screen with nothing inside it. The compass tiles carry their
+   own glass. */
+.modal-card,
+.modal-fleeca,
+.esx-item-card,
+.esx-qty-input,
+.esx-btn {
+    backdrop-filter: var(--tuff-blur-heavy);
+    -webkit-backdrop-filter: var(--tuff-blur-heavy);
 }
 
 body {
@@ -190,7 +247,7 @@ body {
     position: relative;
     width: 40px;
     height: 40px;
-    background: rgba(20, 21, 24, 0.90);
+    background: var(--tuff-glass);
     border: 1px solid var(--vhud-line);
     border-top: 1px solid var(--vhud-line-lit);
     border-radius: 10px;
@@ -198,7 +255,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), inset 0 1px 0 var(--vhud-hairline);
     transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
@@ -319,7 +376,7 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: var(--vhud-shadow);
+    box-shadow: var(--vhud-shadow), inset 0 1px 0 var(--vhud-hairline);
     pointer-events: none;
     z-index: 95;
     max-width: 280px;
@@ -401,7 +458,7 @@ body {
     border-left: 3px solid var(--vhud-gold);
     border-radius: 999px;
     padding: 6px 14px 6px 10px;
-    box-shadow: var(--vhud-shadow), 0 0 16px rgba(255, 211, 115, 0.2);
+    box-shadow: var(--vhud-shadow), 0 0 16px rgba(255, 211, 115, 0.2), inset 0 1px 0 var(--vhud-hairline);
     pointer-events: none;
     z-index: 96;
     opacity: 0;
@@ -480,7 +537,7 @@ body {
     border: 1px solid var(--vhud-line);
     border-top: 1px solid var(--vhud-line-lit);
     border-radius: 12px;
-    box-shadow: var(--vhud-shadow), 0 0 24px rgba(0, 0, 0, 0.75);
+    box-shadow: var(--vhud-shadow), 0 0 24px rgba(0, 0, 0, 0.75), inset 0 1px 0 var(--vhud-hairline);
     padding: 12px 14px;
     display: flex;
     flex-direction: column;
@@ -785,7 +842,7 @@ body {
     border: 1px solid var(--vhud-line);
     border-top: 1px solid var(--vhud-line-lit);
     border-left: 4px solid var(--vhud-accent);
-    box-shadow: var(--vhud-shadow);
+    box-shadow: var(--vhud-shadow), inset 0 1px 0 var(--vhud-hairline);
     animation: toastSlideIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     transition: all var(--transition-fast);
 }
@@ -1476,7 +1533,7 @@ body {
 }
 
 .info-tile {
-    background: rgba(20, 21, 24, 0.85);
+    background: var(--tuff-glass);
     border: 1px solid var(--vhud-line);
     border-radius: 8px;
     padding: 10px 14px;
@@ -1932,6 +1989,68 @@ body {
 
 .dialog-input-row .form-input {
     flex: 1;
+}
+
+/* ====================================================================
+   Responsive: phone viewports.
+
+   The HUD is desktop-tuned: fixed px widths on the panels and absolute
+   placement that assumes a 1920-wide surface. On a phone the CSS viewport is
+   only ~360-412 px wide, so wide panels overflowed off-screen and anything
+   anchored to the right edge was unreachable. PC (omp-cef) stays above these
+   breakpoints and is unchanged.
+   ==================================================================== */
+
+@media (max-width: 900px) {
+    /* Panels that used a hard desktop width. */
+    .modal-fleeca,
+    .modal-help,
+    .modal-gas,
+    .dialog-card,
+    .esx-inv-panel {
+        width: calc(100vw - 24px) !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100vh - 24px) !important;
+        margin: 12px !important;
+    }
+
+    .esx-inv-panel {
+        max-width: calc(100vw - 24px) !important;
+    }
+
+    /* Inventory: stack the two columns on a phone instead of overflowing. */
+    .esx-inv-wrap,
+    .esx-inv-body {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    /* Keep panels inside the viewport when they are absolutely placed. */
+    .modal-fleeca,
+    .dialog-card {
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Brand mark and similar corner anchors: stop them eating the screen. */
+    .server-logo-img {
+        width: 44px;
+        max-height: 40px;
+    }
+
+    /* Dialogs get slimmer padding so the content still fits. */
+    .dialog-card {
+        padding: 14px !important;
+    }
+
+    /* Any remaining tall panels must not be taller than the screen. */
+    .modal-fleeca {
+        height: auto !important;
+    }
 }
 
     </style>
