@@ -525,16 +525,21 @@ public final class GameDataManager {
         }
         if (matched == null) return null;           // .txt, numeric — keep
 
-        // UNC is format 0 and the engine falls back to it when it finds no
-        // compressed format, so it cannot simply be discarded. But the package
-        // only ships a complete UNC set for `samp` (the .dat is 33 MB); the
-        // other databases carry an orphan .unc.tmb with no .dat, which is the
-        // same "engine seeks into a file that is not there" shape that crashed
-        // Mali devices. Keep the triplet only when the .dat is present.
+        // UNC is format 0 and TextureDatabaseRuntime::Load falls back to it when
+        // no compressed format is advertised (Ghidra: param_3 == 6 -> DF_UNC
+        // when the S3TC, ATC and PVRTC flags are all clear). Keep every .unc.
+        // DAT.
+        //
+        // A previous attempt keyed this lookup on "samp.unc.dat" instead of
+        // "texdb/samp/samp.unc.dat", so the 33 MB samp.unc.dat was rejected on
+        // every device and devices that resolve to DF_UNC crashed on a missing
+        // database. The orphan .unc.tmb files for gta3/gta_int/menu/txd are
+        // dropped, because those databases genuinely never ship a .unc.dat.
         if (".unc.".equals(matched)) {
-            String base = lower.substring(0, lower.lastIndexOf('.'));
+            if (lower.endsWith(".dat")) return null;
+            String base = rest.substring(0, rest.lastIndexOf('.'));
             boolean hasDat = sZipEntries != null
-                    && sZipEntries.contains(sZipStripPrefix + base + ".dat");
+                    && sZipEntries.contains(sZipStripPrefix + "texdb/" + base + ".dat");
             return hasDat ? null : "unc-without-dat";
         }
 
