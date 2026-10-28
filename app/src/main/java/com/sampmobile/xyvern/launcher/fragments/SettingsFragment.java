@@ -28,7 +28,10 @@ import com.joom.paranoid.Obfuscate;
 import com.sampmobile.xyvern.R;
 import com.sampmobile.xyvern.launcher.MainActivity;
 import com.sampmobile.xyvern.launcher.util.SharedPreferenceCore;
+import com.sampmobile.xyvern.launcher.util.GameDataRepair;
+import com.sampmobile.xyvern.launcher.util.GameDataVerifier;
 import com.sampmobile.xyvern.launcher.util.UpdateChecker;
+import com.sampmobile.xyvern.game.GameDataManager;
 
 import org.ini4j.Wini;
 
@@ -41,7 +44,6 @@ import java.util.concurrent.Executors;
 public class SettingsFragment extends Fragment {
 
     Wini mWini = null;
-    EditText mNickName;
     SwitchCompat mKeyboardSwitch;
     SwitchCompat mVoiceSwitch;
     SwitchCompat mModifySwitch;
@@ -59,6 +61,12 @@ public class SettingsFragment extends Fragment {
     private TextView tvUpdateProgress;
     private android.widget.Button btnCheckUpdate;
     private ProgressBar pbUpdate;
+    private TextView tvResourceStatus;
+    private TextView tvResourceDetail;
+    private TextView tvRepairProgress;
+    private ProgressBar pbRepair;
+    private View layoutRepairProgress;
+    private android.widget.Button btnCheckResource;
     private View layoutUpdateProgress;
     private final ExecutorService updater = Executors.newSingleThreadExecutor();
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -79,7 +87,6 @@ public class SettingsFragment extends Fragment {
         }
 
         // Ánh xạ các thành phần giao diện
-        mNickName = view.findViewById(R.id.settings_nickname);
         autoCompleteTextView = view.findViewById(R.id.spinner);
         mKeyboardSwitch = view.findViewById(R.id.keyboard_switch);
         mFPSSwitch = view.findViewById(R.id.fps_switch);
@@ -105,6 +112,14 @@ public class SettingsFragment extends Fragment {
         tvClientVersion.setText(UpdateChecker.currentVersion());
         btnCheckUpdate.setOnClickListener(v -> onCheckUpdateClicked());
 
+        tvResourceStatus   = view.findViewById(R.id.tv_resource_status);
+        tvResourceDetail   = view.findViewById(R.id.tv_resource_detail);
+        tvRepairProgress   = view.findViewById(R.id.tv_repair_progress);
+        pbRepair           = view.findViewById(R.id.pb_repair);
+        layoutRepairProgress = view.findViewById(R.id.layout_repair_progress);
+        btnCheckResource   = view.findViewById(R.id.btn_check_resource);
+        btnCheckResource.setOnClickListener(v -> onCheckResourceClicked());
+
 
         adapter = new ArrayAdapter<String>(getActivity(), R.layout.spinner_item, titles);
         adapter.setDropDownViewResource(R.layout.spinner_item);
@@ -122,17 +137,6 @@ public class SettingsFragment extends Fragment {
         try {
             com.sampmobile.xyvern.launcher.util.ConfigValidator.validateConfigFiles(getActivity());
             mWini = new Wini(file);
-
-            // The launcher pref is the source of truth for the player-visible name.
-            // A fresh install has no pref yet, so the field stays empty instead of
-            // inheriting whatever placeholder the engine wrote into settings.ini.
-            android.content.SharedPreferences nickPrefs = requireContext()
-                    .getSharedPreferences("com.sampmobile.xyvern", android.content.Context.MODE_PRIVATE);
-            String nn = nickPrefs.contains("nickname")
-                    ? nickPrefs.getString("nickname", "")
-                    : "";
-            if (nn == null) nn = "";
-            mNickName.setText(nn);
 
             mWini.store();
         } catch (IOException e) {
@@ -158,23 +162,6 @@ public class SettingsFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        mNickName.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) { }
-
-            @Override
-            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-                String text = charSequence.toString();
-                if (getActivity() != null) {
-                    android.content.SharedPreferences sp = getActivity().getSharedPreferences("com.sampmobile.xyvern", android.content.Context.MODE_PRIVATE);
-                    sp.edit().putString("nickname", text).apply();
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable editable) { }
         });
 
         mModifySwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -343,6 +330,104 @@ public class SettingsFragment extends Fragment {
     // ==========================================================
     // Pembaruan aplikasi (GitHub Releases)
     // ==========================================================
+
+    /**
+     * Checks the installed game data and, when files are missing, repairs only
+     * those files by fetching them out of the remote package with HTTP Range.
+     * A full re-download is the fallback, not the first offer.
+     */
+    private void onCheckResourceClicked() {
+        if (getActivity() == null) return;
+        btnCheckResource.setEnabled(false);
+        tvResourceStatus.setText("Memeriksa...");
+        tvResourceDetail.setText("Menghitung kelengkapan file game");
+
+        new Thread(() -> {
+            GameDataVerifier.VerificationResult r =
+                    GameDataVerifier.verifyGameData(requireContext().getApplicationContext());
+            if (getActivity() == null) return;
+            getActivity().runOnUiThread(() -> {
+                btnCheckResource.setEnabled(true);
+                if (r.isValid) {
+                    tvResourceStatus.setText("Data lengkap");
+                    tvResourceDetail.setText(GameDataVerifier.summary(r));
+                    return;
+                }
+                tvResourceStatus.setText("Data belum lengkap");
+                tvResourceDetail.setText(GameDataVerifier.summary(r));
+                offerRepair(r);
+            });
+        }, "resource-check").start();
+    }
+
+    private void offerRepair(GameDataVerifier.VerificationResult r) {
+        if (getActivity() == null) return;
+        int total = r.missingFiles.size() + r.problems.size();
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Data resource kurang")
+                .setMessage(GameDataVerifier.describe(r)
+                        + "\n\nPerbaiki sekarang? Hanya file yang hilang yang diunduh, "
+                        + "bukan seluruh paket (634 MB).")
+                .setPositiveButton("Perbaiki", (d, w) -> startRepair(r))
+                .setNegativeButton("Nanti", null)
+                .show();
+    }
+
+    private void startRepair(GameDataVerifier.VerificationResult r) {
+        if (getActivity() == null) return;
+        layoutRepairProgress.setVisibility(View.VISIBLE);
+        btnCheckResource.setEnabled(false);
+
+        String url = GameDataManager.packageUrl(requireContext().getApplicationContext());
+        GameDataRepair.repair(requireActivity(), url, r.missingFiles, new GameDataRepair.Progress() {
+            @Override
+            public void onPhase(String phase, String detail) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    tvRepairProgress.setText(phase + "  ·  " + detail);
+                    pbRepair.setIndeterminate(true);
+                });
+            }
+
+            @Override
+            public void onProgress(int permille, long done, long total) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    pbRepair.setIndeterminate(false);
+                    pbRepair.setProgress(permille / 10);
+                    tvRepairProgress.setText("Memperbaiki " + (permille / 10) + "%  ·  "
+                            + done + " / " + total + " file");
+                });
+            }
+
+            @Override
+            public void onDone(int repaired, int failed) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    layoutRepairProgress.setVisibility(View.GONE);
+                    btnCheckResource.setEnabled(true);
+                    String msg = repaired + " file diperbaiki"
+                            + (failed > 0 ? ", " + failed + " gagal" : "");
+                    tvResourceStatus.setText(failed == 0 ? "Data lengkap" : "Sebagian diperbaiki");
+                    tvResourceDetail.setText(msg);
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show();
+                    onCheckResourceClicked();
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    layoutRepairProgress.setVisibility(View.GONE);
+                    btnCheckResource.setEnabled(true);
+                    tvResourceStatus.setText("Perbaikan gagal");
+                    tvResourceDetail.setText(message);
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
 
     private void onCheckUpdateClicked() {
         // Kalau sudah ada hasil cek sebelumnya, tombol berubah jadi "Pasang".

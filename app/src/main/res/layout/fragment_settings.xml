@@ -42,31 +42,6 @@
                 android:layout_marginTop="14dp"
                 android:background="@color/es_brass" />
 
-            <!-- ===== NICKNAME ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="26dp"
-                android:layout_marginStart="2dp"
-                android:text="Nama karakter" />
-
-            <EditText
-                android:id="@+id/settings_nickname"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/es_input"
-                android:fontFamily="@font/plex_mono_semibold"
-                android:hint="Nama_Karakter"
-                android:imeOptions="actionDone"
-                android:inputType="textPersonName"
-                android:lines="1"
-                android:paddingHorizontal="14dp"
-                android:textColor="@color/es_ink"
-                android:textColorHint="@color/es_ink_ghost"
-                android:textSize="15sp" />
-
             <!-- ===== TAMPILAN ===== -->
             <TextView
                 style="@style/EsLabel"
@@ -467,6 +442,99 @@
 
                 <ProgressBar
                     android:id="@+id/pb_update"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="8dp"
+                    android:indeterminate="false"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressDrawable="@drawable/download_progress"
+                    android:progressTint="@color/es_brass" />
+            </LinearLayout>
+
+            <!-- ===== RESOURCE GAME ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="34dp"
+                android:layout_marginStart="2dp"
+                android:text="Data resource" />
+
+            <View style="@style/EsRule" android:layout_marginTop="10dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingVertical="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tv_resource_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/plex_mono_medium"
+                        android:text="Belum diperiksa"
+                        android:textColor="@color/es_ink_dim"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:id="@+id/tv_resource_detail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:fontFamily="@font/plex_mono_medium"
+                        android:text="Periksa kelengkapan file game"
+                        android:textColor="@color/es_ink_ghost"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_check_resource"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:background="@drawable/es_btn_primary"
+                    android:fontFamily="@font/plex_mono_semibold"
+                    android:letterSpacing="0.08"
+                    android:minWidth="0dp"
+                    android:paddingHorizontal="18dp"
+                    android:text="CEK DATA"
+                    android:textAllCaps="true"
+                    android:textColor="@color/es_asphalt"
+                    android:textSize="10sp"
+                    android:stateListAnimator="@null" />
+            </LinearLayout>
+
+            <View style="@style/EsRule" />
+
+            <!-- Progres perbaikan data, hanya tampil saat memperbaiki -->
+            <LinearLayout
+                android:id="@+id/layout_repair_progress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingVertical="12dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/tv_repair_progress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/plex_mono_medium"
+                    android:text="Memperbaiki 0%"
+                    android:textColor="@color/es_brass"
+                    android:textSize="10sp" />
+
+                <ProgressBar
+                    android:id="@+id/pb_repair"
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"

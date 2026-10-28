@@ -1,6 +1,7 @@
 package com.sampmobile.xyvern.game;
 
 import android.app.Activity;
+import android.content.Context;
 import android.app.AlertDialog;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
@@ -87,6 +88,26 @@ public final class GameDataManager {
     }
 
     private GameDataManager() {}
+
+    /**
+     * URL of the data package this build expects. The Settings "check resource"
+     * feature needs it to fetch individual missing entries by HTTP Range instead
+     * of asking the user to re-download the whole ~634 MB archive.
+     */
+    public static String packageUrl(Context context) {
+        try {
+            JSONObject config = getJson(APP_CONFIG);
+            DataInfo info = new DataInfo();
+            info.url = config.optString("data_url", FALLBACK_DATA_URL);
+            return info.url;
+        } catch (Exception e) {
+            try {
+                return new JSONObject(BUNDLED_CONFIG).optString("data_url", FALLBACK_DATA_URL);
+            } catch (Exception ignored) {
+                return FALLBACK_DATA_URL;
+            }
+        }
+    }
 
     public static void checkAndPrepare(Activity activity, ReadyCallback callback) {
         showLoading(activity, "Memeriksa Launcher", "Menghubungkan ke server konfigurasi...");

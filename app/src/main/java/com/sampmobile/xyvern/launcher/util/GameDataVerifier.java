@@ -104,6 +104,43 @@ public class GameDataVerifier {
         return new VerificationResult(isValid, missing, totalSize, problems);
     }
 
+    /** One-line status for the Settings row. */
+    public static String summary(VerificationResult r) {
+        if (r.isValid) {
+            return "Semua file inti dan tekstur tersedia";
+        }
+        int n = r.missingFiles.size();
+        int p = r.problems.size();
+        StringBuilder b = new StringBuilder();
+        if (n > 0) b.append(n).append(" file hilang");
+        if (p > 0) {
+            if (b.length() > 0) b.append(", ");
+            b.append(p).append(" bermasalah");
+        }
+        return b.toString();
+    }
+
+    /** Human-readable detail used by the repair confirmation dialog. */
+    public static String describe(VerificationResult r) {
+        StringBuilder b = new StringBuilder();
+        if (!r.problems.isEmpty()) {
+            b.append("Bermasalah:\n");
+            for (int i = 0; i < Math.min(5, r.problems.size()); i++) {
+                b.append("  • ").append(r.problems.get(i)).append('\n');
+            }
+        }
+        if (!r.missingFiles.isEmpty()) {
+            b.append("Hilang:\n");
+            for (int i = 0; i < Math.min(5, r.missingFiles.size()); i++) {
+                b.append("  • ").append(r.missingFiles.get(i)).append('\n');
+            }
+            if (r.missingFiles.size() > 5) {
+                b.append("  … dan ").append(r.missingFiles.size() - 5).append(" lainnya\n");
+            }
+        }
+        return b.toString().trim();
+    }
+
     private static boolean isDxtFallback(String db) {
         for (String d : DXT_FALLBACK_DB) if (d.equals(db)) return true;
         return false;
