@@ -135,6 +135,15 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     // =========================================================================
     // KHU VỰC SỬA LOGIC ONCREATE - GHI SETTINGS.INI TRỰC TIẾP VÀ KHỞI CHẠY ENGINE
     // =========================================================================
+    /** versionName of this build, used to decide when to refresh AML mods. */
+    private String versionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "**** onCreate");
@@ -158,22 +167,17 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
                     .getBoolean("aml_enabled", false);
             if (amlEnabled) {
                 try {
+                    // Refresh files/mods/ before AML starts scanning it. CLEO and
+                    // MonetLoader are AML mods, so they are loaded by AML itself
+                    // and must not be loadLibrary()'d here.
+                    AmlModInstaller.sync(this, versionName());
                     System.loadLibrary("AML");
                     Log.i(TAG, "AndroidModLoader loaded");
                 } catch (Throwable e) {
                     Log.i(TAG, "libAML.so optional module not present: " + e.getMessage());
                 }
-            }
-
-            boolean cleoEnabled = getSharedPreferences("com.sampmobile.xyvern", MODE_PRIVATE)
-                    .getBoolean("cleo_enabled", false);
-            if (cleoEnabled) {
-                try {
-                    System.loadLibrary("cleo");
-                    Log.i(TAG, "CLEO Android loaded");
-                } catch (Throwable e) {
-                    Log.i(TAG, "libcleo.so optional module not present: " + e.getMessage());
-                }
+            } else {
+                Log.i(TAG, "AndroidModLoader disabled in settings");
             }
         } catch (Exception error) {
             Log.e(TAG, "Error initializing mod loaders", error);
