@@ -381,6 +381,11 @@ public final class GameDataManager {
             if (!stripPrefix.isEmpty())
                 android.util.Log.i("GameDataManager", "stripping zip prefix: " + stripPrefix);
 
+            // The texture filter needs to know which entries exist (an orphan
+            // .unc.tmb has no .dat). Feed it the raw, unstripped names once.
+            sZipEntries = new java.util.HashSet<>(names);
+            sZipStripPrefix = stripPrefix;
+
             postPhase(ui, "Mengekstrak data...", "0 / " + totalEntries + " file");
             Enumeration<? extends ZipEntry> en = zip.entries();
             int done = 0; long lastUi = 0;
@@ -451,15 +456,33 @@ public final class GameDataManager {
      * Returns null to extract, or a reason string to skip.
      */
     private static volatile int sTextureFormat = 0;
+    /** Entry names of the package being extracted, used for .unc.dat pairing. */
+    private static java.util.Set<String> sZipEntries = null;
+    private static String sZipStripPrefix = "";
 
     /**
-     * Databases that only ever ship the PVR variant. GTA:SA keeps the ped skin
-     * textures here and the engine always reads them as PVR regardless of GPU,
-     * so substituting the DXT/ETC variant would point it at a database that was
-     * never built for that layout.
+     * Per-database variant availability.
+     *
+     * The engine picks the format from GL extensions (the strings
+     * GL_EXT_texture_compression_s3tc, GL_EXT_texture_compression_dxt1 and
+     * GL_IMG_texture_compression_pvrtc are all in libGTASA.so), so it asks for
+     * one variant for *every* database. A database that does not ship that
+     * variant makes TextureDatabase::LoadThumbs build a path to a file that is
+     * absent, and the caller then reads past the end of the loaded buffer.
+     *
+     * `player` is the awkward one: upstream only ever publishes DXT and PVR for
+     * it (player.etc 404s on every mirror tried), so on an ETC device there is
+     * no correct answer. DXT is the lesser evil because it is at least
+     * complete - the alternative, shipping none of the ped textures, breaks
+     * every player model on screen.
      */
-    private static final java.util.Set<String> PVR_ONLY_DB =
-            new java.util.HashSet<>(java.util.Arrays.asList("player", "playerhi"));
+    private static final java.util.Map<String, java.util.Set<String>> DB_VARIANTS;
+    static {
+        java.util.Map<String, java.util.Set<String>> m = new java.util.HashMap<>();
+        m.put("player", new java.util.HashSet<>(java.util.Arrays.asList("dxt", "pvr")));
+        m.put("playerhi", new java.util.HashSet<>(java.util.Arrays.asList("dxt", "pvr")));
+        DB_VARIANTS = java.util.Collections.unmodifiableMap(m);
+    }
 
     private static String textureVariantSkip(String entryName) {
         int marker = entryName.indexOf("texdb/");
@@ -473,18 +496,36 @@ public final class GameDataManager {
 
         String lower = file.toLowerCase();
         String matched = null;
-        for (String v : new String[]{".dxt.", ".etc.", ".pvr."}) {
+        for (String v : new String[]{".dxt.", ".etc.", ".pvr.", ".unc."}) {
             if (lower.contains(v)) { matched = v; break; }
         }
-        if (matched == null) return null;           // .unc., .txt, numeric — keep
+        if (matched == null) return null;           // .txt, numeric — keep
 
-        // PVR-only databases keep their PVR triplet verbatim.
-        if (PVR_ONLY_DB.contains(db)) {
-            return ".pvr.".equals(matched) ? null : "pvr-only-db";
+        // UNC is format 0 and the engine falls back to it when it finds no
+        // compressed format, so it cannot simply be discarded. But the package
+        // only ships a complete UNC set for `samp` (the .dat is 33 MB); the
+        // other databases carry an orphan .unc.tmb with no .dat, which is the
+        // same "engine seeks into a file that is not there" shape that crashed
+        // Mali devices. Keep the triplet only when the .dat is present.
+        if (".unc.".equals(matched)) {
+            String base = lower.substring(0, lower.lastIndexOf('.'));
+            boolean hasDat = sZipEntries != null
+                    && sZipEntries.contains(sZipStripPrefix + base + ".dat");
+            return hasDat ? null : "unc-without-dat";
         }
 
-        // Every other database keeps exactly the variant this GPU asked for.
-        String mine = "." + GpuTextureFormat.tagOf(sTextureFormat) + ".";
+        String wanted = GpuTextureFormat.tagOf(sTextureFormat);
+
+        // Databases with a restricted variant set: keep the GPU's variant when
+        // it exists, otherwise fall back to DXT (the only set that is complete
+        // for every database in the package).
+        java.util.Set<String> allowed = DB_VARIANTS.get(db);
+        if (allowed != null && !allowed.contains(wanted)) {
+            return matched.equals(".dxt.") ? null : "no-" + wanted + "-variant";
+        }
+
+        // Everything else keeps exactly the variant this GPU asked for.
+        String mine = "." + wanted + ".";
         return matched.equals(mine) ? null : "other-variant";
     }
 

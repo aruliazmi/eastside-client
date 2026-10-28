@@ -21,10 +21,12 @@ public class GameDataVerifier {
     };
 
     /**
-     * Databases that only ever ship PVR (ped skins). The engine reads these as
-     * PVR on every GPU, so DXT/ETC files are not expected for them.
+     * Databases with a restricted variant set. The engine asks for the GPU's
+     * variant for every database, but upstream never published `player.etc`, so
+     * the extractor falls back to DXT there. Verification has to expect exactly
+     * what the extractor wrote, or it would flag a healthy install.
      */
-    private static final String[] PVR_ONLY_DB = {"player", "playerhi"};
+    private static final String[] DXT_FALLBACK_DB = {"player", "playerhi"};
 
     /** Non-texture files required for the engine to boot. */
     public static final String[] ESSENTIAL_FILES = {
@@ -70,7 +72,10 @@ public class GameDataVerifier {
 
         String gpuVariant = GpuTextureFormat.tagOf(GpuTextureFormat.get(context));
         for (String db : TEXDB) {
-            String variant = isPvrOnly(db) ? "pvr" : gpuVariant;
+            // player/playerhi have no ETC build upstream: keep DXT when the GPU
+            // wants ETC, otherwise trust the GPU variant.
+            String variant = (!"etc".equals(gpuVariant) && isDxtFallback(db))
+                    ? "dxt" : gpuVariant;
             String base = "texdb/" + db + "/" + db + "." + variant;
             File dat = new File(baseDir, base + ".dat");
             File toc = new File(baseDir, base + ".toc");
@@ -99,8 +104,8 @@ public class GameDataVerifier {
         return new VerificationResult(isValid, missing, totalSize, problems);
     }
 
-    private static boolean isPvrOnly(String db) {
-        for (String d : PVR_ONLY_DB) if (d.equals(db)) return true;
+    private static boolean isDxtFallback(String db) {
+        for (String d : DXT_FALLBACK_DB) if (d.equals(db)) return true;
         return false;
     }
 }
