@@ -73,23 +73,25 @@ public class GameDataVerifier {
             File toc = new File(baseDir, base + ".toc");
             File tmb = new File(baseDir, base + ".tmb");
 
-            // A .toc/.tmb with no .dat is exactly what made Mali devices crash:
-            // the engine seeks into a file that is not there.
-            boolean tocOrTmb = toc.exists() || tmb.exists();
+            // Only .dat is required. TextureDatabase::LoadDataOffsets opens
+            // "<db>.<variant>.dat" first and bails out only when that fails;
+            // the .toc is opened afterwards inside an optional branch (Ghidra,
+            // LoadDataOffsets 0x384bb8). Treating .toc/.tmb as mandatory used to
+            // block the play button on an install that the engine boots happily.
             boolean datOk = dat.exists() && dat.length() > 0;
 
-            if (tocOrTmb && !datOk) {
-                problems.add(db + "." + variant + ": .toc/.tmb ada tapi .dat hilang");
-                continue;
-            }
             if (datOk) {
                 totalSize += dat.length();
-                if (!toc.exists()) missing.add(base + ".toc");
-                if (!tmb.exists()) missing.add(base + ".tmb");
                 continue;
             }
-            // Nothing there at all: that database did not ship this variant.
-            missing.add(base + ".dat");
+            // A .toc/.tmb with no .dat is still a real problem: something
+            // extracted half a database.
+            boolean tocOrTmb = toc.exists() || tmb.exists();
+            if (tocOrTmb) {
+                problems.add(db + "." + variant + ": .toc/.tmb ada tapi .dat hilang");
+            } else {
+                missing.add(base + ".dat");
+            }
         }
 
         boolean isValid = missing.isEmpty() && problems.isEmpty();

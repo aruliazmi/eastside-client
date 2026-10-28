@@ -24,7 +24,9 @@ import com.joom.paranoid.Obfuscate;
 import com.sampmobile.xyvern.R;
 import com.sampmobile.xyvern.game.SAMP;
 import com.sampmobile.xyvern.launcher.MainActivity;
+import com.sampmobile.xyvern.launcher.util.GameDataRepair;
 import com.sampmobile.xyvern.launcher.util.GameDataVerifier;
+import com.sampmobile.xyvern.game.GameDataManager;
 import com.sampmobile.xyvern.launcher.util.SampQueryAPI;
 
 import java.io.File;
@@ -124,8 +126,27 @@ public class HomeFragment extends Fragment {
 
                 GameDataVerifier.VerificationResult vRes = GameDataVerifier.verifyGameData(requireContext());
                 if (!vRes.isValid) {
-                    Toast.makeText(getContext(), "Aset game belum lengkap! Silakan unduh aset terlebih dahulu.", Toast.LENGTH_LONG).show();
-                    return;
+                    // Verification used to hard-block entry. When it disagreed
+                    // with the extractor (it did, for player on PVR/ETC) the user
+                    // was locked out of a game the engine could actually boot.
+                    // Only a missing .dat is fatal; anything else is a warning
+                    // the player can override.
+                    boolean fatal = false;
+                    for (String p : vRes.problems) {
+                        if (p.contains("tapi .dat hilang")) fatal = true;
+                    }
+                    if (fatal) {
+                        Toast.makeText(getContext(),
+                                "Data tekstur tidak lengkap. Buka Pengaturan → Cek Data untuk memperbaiki.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    if (!vRes.missingFiles.isEmpty()) {
+                        Toast.makeText(getContext(),
+                                "Sebagian file belum lengkap, tetap mencoba masuk. "
+                                        + "Buka Pengaturan → Cek Data bila ada masalah.",
+                                Toast.LENGTH_LONG).show();
+                    }
                 }
 
                 Intent intent = new Intent(getActivity(), SAMP.class);
@@ -235,19 +256,95 @@ public class HomeFragment extends Fragment {
                     }
                     btnVerifyData.setVisibility(View.VISIBLE);
                     btnVerifyData.setText("Cek Ulang");
+
+                    // Repair, not re-download. The package is a ZIP with a central
+                    // directory, so the missing entries can be fetched with HTTP
+                    // Range for a few KB instead of moving ~634 MB again. Only
+                    // fall back to the full download when the repair cannot
+                    // resolve the files (e.g. the remote package no longer has
+                    // them).
                     btnDownloadData.setVisibility(View.VISIBLE);
                     btnDownloadData.setEnabled(true);
-                    btnDownloadData.setText("Unduh Aset");
+                    btnDownloadData.setText("Perbaiki Data");
                     btnDownloadData.setOnClickListener(v -> {
                         if (isDownloading) {
                             Toast.makeText(getContext(), "Unduhan sedang berlangsung...", Toast.LENGTH_SHORT).show();
-                        } else {
-                            startOnlineDataDownload();
+                            return;
                         }
+                        if (result.missingFiles.isEmpty()) {
+                            // Only structural problems were reported; nothing to
+                            // fetch, so a full re-extract is the honest answer.
+                            confirmFullDownload();
+                            return;
+                        }
+                        startIncrementalRepair(result.missingFiles);
                     });
                 }
             });
         });
+    }
+
+    /** Fetches only the missing entries out of the remote ZIP. */
+    private void startIncrementalRepair(java.util.List<String> missing) {
+        if (getContext() == null) return;
+        isDownloading = true;
+        btnDownloadData.setEnabled(false);
+        tvDataTitle.setText("Memperbaiki data...");
+        tvDataDesc.setText("Mengunduh " + missing.size() + " file yang hilang");
+
+        String url = GameDataManager.packageUrl(requireContext().getApplicationContext());
+        GameDataRepair.repair(requireActivity(), url, missing, new GameDataRepair.Progress() {
+            @Override
+            public void onPhase(String phase, String detail) {
+                mainHandler.post(() -> tvDataDesc.setText(phase + " · " + detail));
+            }
+
+            @Override
+            public void onProgress(int permille, long done, long total) {
+                mainHandler.post(() -> tvDataDesc.setText(
+                        "Memperbaiki " + (permille / 10) + "% · " + done + " / " + total + " file"));
+            }
+
+            @Override
+            public void onDone(int repaired, int failed) {
+                isDownloading = false;
+                mainHandler.post(() -> {
+                    btnDownloadData.setEnabled(true);
+                    String msg = repaired + " file diperbaiki" + (failed > 0 ? ", " + failed + " gagal" : "");
+                    Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+                    runVerification();
+                });
+            }
+
+            @Override
+            public void onError(String message) {
+                isDownloading = false;
+                mainHandler.post(() -> {
+                    btnDownloadData.setEnabled(true);
+                    tvDataTitle.setText("Perbaikan gagal");
+                    tvDataDesc.setText(message);
+                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    /** Last resort: a full package re-download. */
+    private void confirmFullDownload() {
+        if (getContext() == null) return;
+        new android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Unduh ulang penuh?")
+                .setMessage("Tidak ada file yang bisa diambil sebagian. Paket aset ~634 MB "
+                        + "akan diunduh ulang dari awal.")
+                .setPositiveButton("Unduh", (d, w) -> {
+                    if (isDownloading) {
+                        Toast.makeText(getContext(), "Unduhan sedang berlangsung...", Toast.LENGTH_SHORT).show();
+                    } else {
+                        startOnlineDataDownload();
+                    }
+                })
+                .setNegativeButton("Batal", null)
+                .show();
     }
 
     private void startOnlineDataDownload() {
