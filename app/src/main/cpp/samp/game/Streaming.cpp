@@ -252,9 +252,29 @@ int CStreaming::AddImageToList(char const* pFileName, bool bNotPlayerImg) {
     }
 
     // free slot found, load the IMG file
-    strncpy(ms_files[fileIndex].m_szName, pFileName, sizeof(ms_files[fileIndex].m_szName) - 1);
-    ms_files[fileIndex].m_szName[sizeof(ms_files[fileIndex].m_szName) - 1] = '\0';
-    ms_files[fileIndex].m_StreamHandle = CdStreamOpen(pFileName);
+    // The engine takes the last '\\'-separated component of this name inside
+    // CStreaming::ConvertBufferToObject and passes it to
+    // CTxdStore::SetCurrentTxd as the texture-database name. If the name
+    // contains no backslash, strrchr returns NULL, the engine does NULL+1 and
+    // later strcmp()s (char*)1 -> SIGSEGV at fault address 0x1. Accept '\\' or
+    // '/' from callers but always store the backslash form.
+    {
+        const char* p = pFileName;
+        char* dst = ms_files[fileIndex].m_szName;
+        std::size_t n = sizeof(ms_files[fileIndex].m_szName) - 1;
+        std::size_t i = 0;
+        for (; p && *p && i < n; ++p, ++i)
+            dst[i] = (*p == '/') ? '\\' : *p;
+        dst[i] = '\0';
+        if (i == 0) {
+            // Empty name: bail out instead of registering a slot the engine
+            // cannot derive a database name from.
+            ms_files[fileIndex].m_StreamHandle = 0;
+            ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
+            return -1;
+        }
+    }
+    ms_files[fileIndex].m_StreamHandle = CdStreamOpen(ms_files[fileIndex].m_szName);
     ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
     return fileIndex;
 }

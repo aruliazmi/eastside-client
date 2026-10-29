@@ -437,10 +437,18 @@ bool DLManager::RegisterCustomModels() {
         std::lock_guard<std::mutex> lock(m_cachePathMutex);
         cacheBase = m_cachePath;
     }
-    const char* imgRelPath = "SAMP/custom_dl.img";
+    // NOTE: the engine derives the texture-database name from this path with
+    // strrchr(name, '\\') + 1 inside CStreaming::ConvertBufferToObject. Using a
+    // forward slash ("SAMP/custom_dl.img") makes strrchr return NULL, so the
+    // basename becomes (char*)1 and CTxdStore::SetCurrentTxd ends up doing
+    // strcmp((char*)1, "player") -> SIGSEGV at fault address 0x1.
+    // Every engine-registered IMG uses backslashes ("TEXDB\\GTA3.IMG"); match it.
+    const char* imgRelPath = "SAMP\\custom_dl.img";
+    // The on-disk path still needs POSIX separators; only the engine-facing
+    // registration name uses backslashes.
     std::string imgFullPath = (g_pszStorage ? std::string(g_pszStorage) : cacheBase);
     if (!imgFullPath.empty() && imgFullPath.back() != '/') imgFullPath += "/";
-    imgFullPath += imgRelPath;
+    imgFullPath += "SAMP/custom_dl.img";
 
     std::vector<DLImgPack::ImgEntry> entries;
     entries.reserve(toRegister.size() * 2);
