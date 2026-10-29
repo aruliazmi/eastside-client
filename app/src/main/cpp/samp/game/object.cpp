@@ -111,16 +111,16 @@ CObject::~CObject()
 			delete[] m_szMaterialFontName[i];
 			m_szMaterialFontName[i] = nullptr;
 		}
-		// Textures created by SetMaterial/ProcessMaterialText are owned by this
-		// object; without these two the textures leaked on every object delete.
-		if (m_MaterialTexture[i]) {
-			RwTextureDestroy(reinterpret_cast<RwTexture*>(m_MaterialTexture[i]));
-			m_MaterialTexture[i] = 0;
-		}
+		// Textures created by ProcessMaterialText are owned by this object and must
+		// be destroyed. Material textures (m_MaterialTexture) are NOT: they come
+		// from the engine's txd dictionary / CUtil::LoadTextureFromDB and are
+		// engine-owned, so destroying them here left dangling pointers inside the
+		// texture database and crashed the game shortly after spawn.
 		if (m_MaterialTextTexture[i]) {
 			RwTextureDestroy(reinterpret_cast<RwTexture*>(m_MaterialTextTexture[i]));
 			m_MaterialTextTexture[i] = 0;
 		}
+		m_MaterialTexture[i] = 0;
 	}
 }
 
@@ -378,29 +378,48 @@ float CObject::DistanceRemaining(RwMatrix* matPos)
 
 void CObject::SetMaterial(int iModel, int iMaterialIndex, char* txdname, char* texturename, uint32_t dwColor)
 {
-	FLog("SetMaterial: model: %d, %s, %s", iModel, txdname, texturename);
+	// Only log genuine failures, and only once per distinct pair: the server
+	// re-sends SetObjectMaterial on every stream-in, so the old unconditional
+	// logging turned one missing texture into ~30 lines per frame and buried
+	// the real crash site in the log.
+	if (iMaterialIndex >= 16) return;
 
-	int iTryCount = 0;
+	if (m_MaterialTexture[iMaterialIndex]) {
+		// NOTE: material textures come from the engine's txd dictionary or from
+		// CUtil::LoadTextureFromDB (which returns an engine-owned texture and only
+		// bumps refCount). They are NOT ours to destroy - doing so left dangling
+		// pointers inside the texture database and crashed the game a few seconds
+		// later, usually right after spawning. Just drop the reference.
+		m_MaterialTexture[iMaterialIndex] = 0;
+	}
 
-	if (iMaterialIndex < 16)
-	{
-		if (m_MaterialTexture[iMaterialIndex]) {
-			RwTextureDestroy(reinterpret_cast<RwTexture *>(m_MaterialTexture[iMaterialIndex]));
-			m_MaterialTexture[iMaterialIndex] = 0;
-		}
+	RwTexture* tex = nullptr;
+	if (txdname && txdname[0] && strncmp(txdname, "none", 4) != 0) {
+		tex = LoadTextureFromTxd(txdname, texturename);
+	}
+	if (!tex && texturename && texturename[0]) {
+		tex = (RwTexture*)LoadTexture(texturename);
+	}
 
-		RwTexture* tex = nullptr;
-		if (txdname && txdname[0] && strncmp(txdname, "none", 4) != 0) {
-			tex = LoadTextureFromTxd(txdname, texturename);
+	m_MaterialTexture[iMaterialIndex] = (uintptr_t)tex;
+	m_dwMaterialColor[iMaterialIndex] = dwColor;
+	m_iMaterialType[iMaterialIndex] = MATERIAL_TYPE_MATERIAL;
+	m_bHasMaterial = true;
+
+	// Engine-side objects still reference the original texture, so a missing
+	// replacement is safe: ObjectMaterialCallBack only swaps when non-null and
+	// CustomPipeRenderCB sanitises NULL rasters.
+	if (!tex) {
+		static char s_lastMissTxd[32] = {0};
+		static char s_lastMissTex[32] = {0};
+		const char* t1 = txdname ? txdname : "";
+		const char* t2 = texturename ? texturename : "";
+		if (strncmp(s_lastMissTxd, t1, 31) != 0 || strncmp(s_lastMissTex, t2, 31) != 0) {
+			strncpy(s_lastMissTxd, t1, 31); s_lastMissTxd[31] = 0;
+			strncpy(s_lastMissTex, t2, 31); s_lastMissTex[31] = 0;
+			FLog("SetMaterial: texture %s/%s unavailable (model %d) - keeping original",
+			     t1, t2, iModel);
 		}
-		if (!tex && texturename && texturename[0]) {
-			tex = (RwTexture*)LoadTexture(texturename);
-		}
-		m_MaterialTexture[iMaterialIndex] = (uintptr_t)tex;
-		m_dwMaterialColor[iMaterialIndex] = dwColor;
-		m_iMaterialType[iMaterialIndex] = MATERIAL_TYPE_MATERIAL;
-		m_bHasMaterial = true;
-		return;
 	}
 }
 

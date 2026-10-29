@@ -2013,9 +2013,30 @@ uintptr_t LoadTexture(const char* texname)
     {
         uintptr_t texture = (uintptr_t)CUtil::LoadTextureFromDB(texdb[i], texname);
         if (texture != 0) {
-            FLog("Texture: %s loaded from %s", texname, texdb[i]);
             return texture;
         }
+    }
+
+    // Negative cache: the server re-sends SetObjectMaterial for every object that
+    // streams back in, so a genuinely absent texture used to emit ~30 lines per
+    // frame and drown the log. Report each distinct missing name once per 30 s.
+    {
+        static char s_miss[16][32] = {{0}};
+        static uint32_t s_missAt[16] = {0};
+        uint32_t now = CTimer::m_snTimeInMillisecondsNonClipped;
+        int slot = -1;
+        for (int i = 0; i < 16; i++) {
+            if (s_miss[i][0] == 0) { slot = i; break; }
+            if (strncmp(s_miss[i], texname, 31) == 0) {
+                if (now - s_missAt[i] < 30000) return 0;
+                s_missAt[i] = now;
+                return 0;
+            }
+        }
+        if (slot < 0) slot = static_cast<int>(now % 16);
+        strncpy(s_miss[slot], texname, 31);
+        s_miss[slot][31] = 0;
+        s_missAt[slot] = now;
     }
 
     FLog("Texture: %s not found!", texname);
@@ -2030,28 +2051,30 @@ uintptr_t LoadTexture(const char* texname)
 RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
 {
     RwTexture* tex = nullptr;
-    if (txdname && txdname[0] && strncmp(txdname, "none", 4) != 0)
+    if (!txdname || !txdname[0] || strncmp(txdname, "none", 4) == 0)
+        return nullptr;
+
+    int32 slot = CTxdStore::FindTxdSlot(txdname);
+
+    if (slot != -1)
     {
-        int32 slot = CTxdStore::FindTxdSlot(txdname);
-        if (slot != -1)
+        CTxdStore::PushCurrentTxd();
+        CTxdStore::SetCurrentTxd(slot);
+        void* curDict = CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x1DBA64 + 1 : 0x27427C));
+        if (curDict && texturename && texturename[0])
         {
-            CTxdStore::PushCurrentTxd();
-            CTxdStore::SetCurrentTxd(slot);
-            void* curDict = CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x1DBA64 + 1 : 0x27427C));
-            if (curDict && texturename && texturename[0])
-            {
-                tex = CHook::CallFunction<RwTexture*>(g_libGTASA + (VER_x32 ? 0x1DB9B0 + 1 : 0x27417C), curDict, texturename);
-            }
-            CTxdStore::PopCurrentTxd();
+            tex = CHook::CallFunction<RwTexture*>(g_libGTASA + (VER_x32 ? 0x1DB9B0 + 1 : 0x27417C), curDict, texturename);
         }
+        CTxdStore::PopCurrentTxd();
     }
 
+    // The slot is often not registered yet for a mapping txd ("mroadhelix1");
+    // the engine creates it lazily. Search the archive texture databases by the
+    // TEXTURE name (not the txd name) and the usual name permutations.
     if(!tex && texturename && texturename[0])
     {
-        if (txdname && txdname[0]) {
-            tex = (RwTexture*)LoadTexture(std::string(std::string(texturename) + "_" + txdname).c_str());
-            if(!tex) tex = (RwTexture*)LoadTexture(std::string(std::string(txdname) + "_" + texturename).c_str());
-        }
+        tex = (RwTexture*)LoadTexture(std::string(std::string(texturename) + "_" + txdname).c_str());
+        if(!tex) tex = (RwTexture*)LoadTexture(std::string(std::string(txdname) + "_" + texturename).c_str());
         if(!tex) tex = (RwTexture*)LoadTexture(texturename);
         if(!tex)
         {
@@ -2059,7 +2082,7 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
             std::transform(str.begin(), str.end(), str.begin(), ::tolower);
             tex = (RwTexture*)LoadTexture(str.c_str());
         }
-        if(!tex && txdname && txdname[0])
+        if(!tex)
         {
             std::string str = texturename;
             std::transform(str.begin(), str.end(), str.begin(), ::toupper);
@@ -2067,10 +2090,10 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
         }
     }
 
-    if(!tex && txdname && txdname[0] && texturename && texturename[0])
-    {
-        tex = (RwTexture*)CUtil::LoadTextureFromDB(txdname, texturename);
-    }
+    // NOTE: the old code ended with CUtil::LoadTextureFromDB(txdname, texturename),
+    // which passed the TXD name where a texture-DATABASE name is expected. That
+    // produced "Database not found! (mroadhelix1)" for every mapping texture.
+    // The database search is already covered by LoadTexture() above.
 
     return tex;
 }
