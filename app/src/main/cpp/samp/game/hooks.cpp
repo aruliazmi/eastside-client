@@ -40,6 +40,18 @@ uint8_t byteInternalPlayer = 0;
 CPedGTA* dwCurPlayerActor = 0;
 uint8_t byteCurPlayer = 0;
 
+// IK guard (installed in InstallHooks): the engine walks ped->taskManager
+// (+1336) inside IsFacingTarget; on a dying/freed ped that field is garbage
+// and the call faults at tiny addresses (SEGV 0x5, tombstone_03/04).
+static void* (*IKIsFacingTarget_orig)(void* ikmgr, void* ped, int slot);
+static void* IKIsFacingTarget_hook(void* ikmgr, void* ped, int slot)
+{
+    if (!ped) return nullptr;
+    uintptr_t tm = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(ped) + 1336);
+    if (tm < 0x10000 || (tm & 7)) return nullptr;
+    return IKIsFacingTarget_orig(ikmgr, ped, slot);
+}
+
 extern "C" uintptr_t get_lib()
 {
 	return g_libGTASA;
@@ -1869,6 +1881,13 @@ void InstallHooks()
 #endif*/
 
     CHook::InlineHook("_ZN21CAEWeatherAudioEntity16UpdateParametersEP8CAESounds", &CAEWeatherAudioEntity__UpdateParameter_hook, &CAEWeatherAudioEntity__UpdateParameter);
+
+    // Dying peds can reach the IK chain with a freed task-manager pointer;
+    // GetTaskSecondary(this = tm+8) then faults at tiny addresses
+    // (IKChainManager_c::IsFacingTarget, SEGV fault 0x5 - tombstone_03/04).
+    // Validate the pointer the engine is about to deref and bail out cleanly.
+    CHook::InlineHook("_ZN16IKChainManager_c14IsFacingTargetEP4CPedi",
+                      &IKIsFacingTarget_hook, &IKIsFacingTarget_orig);
 
     HookCPad();
 }

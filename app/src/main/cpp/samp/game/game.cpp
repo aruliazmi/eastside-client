@@ -735,7 +735,7 @@ void InitGui();
 
 // Identifies THIS build in the log. Repeated crash reports were ambiguous
 // because a stale APK looks identical to a new one up to the crash point.
-#define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe + txdslot-tex-init + spectate-ped-guard + removeplayer-detach (v1.8.6)"
+#define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe + txdslot-tex-init + spectate-ped-guard + removeplayer-detach + ik-guard (v1.8.7)"
 
 bool CGame::InitialiseRenderWare() {
     FLog("InitialiseRenderWare .. build=%s", EASTSIDE_TEXDB_BUILD);
