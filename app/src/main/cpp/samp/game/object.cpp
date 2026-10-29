@@ -73,8 +73,10 @@ CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance
 
 		/* material text */
 		m_szMaterialText[i] = nullptr;
+		m_szMaterialFontName[i] = nullptr;
 		m_iMaterialSize[i] = 0;
 		m_iMaterialFontSize[i] = 0;
+		m_bMaterialFontBold[i] = false;
 		m_dwMaterialFontColor[i] = 0;
 		m_dwMaterialBackColor[i] = 0;
 		m_iMaterialTextAlign[i] = 0;
@@ -89,15 +91,35 @@ CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance
 
 CObject::~CObject()
 {
-    if(m_pEntity)
+    // Read the model index BEFORE the object is destroyed: the previous order
+    // dereferenced m_pEntity after destroy_object had already freed it.
+    int modelIndex = m_pEntity ? m_pEntity->m_nModelIndex : 0;
+
+    if (m_pEntity)
         ScriptCommand(&destroy_object, m_dwGTAId);
-    CStreaming::RemoveModelIfNoRefs(m_pEntity->m_nModelIndex);
+
+    if (modelIndex)
+        CStreaming::RemoveModelIfNoRefs(modelIndex);
 
 	for (int i = 0; i < 16; i++)
 	{
 		if (m_szMaterialText[i] != nullptr) {
-			delete m_szMaterialText[i];
+			delete[] m_szMaterialText[i];   // allocated with new char[2048]
 			m_szMaterialText[i] = nullptr;
+		}
+		if (m_szMaterialFontName[i] != nullptr) {
+			delete[] m_szMaterialFontName[i];
+			m_szMaterialFontName[i] = nullptr;
+		}
+		// Textures created by SetMaterial/ProcessMaterialText are owned by this
+		// object; without these two the textures leaked on every object delete.
+		if (m_MaterialTexture[i]) {
+			RwTextureDestroy(reinterpret_cast<RwTexture*>(m_MaterialTexture[i]));
+			m_MaterialTexture[i] = 0;
+		}
+		if (m_MaterialTextTexture[i]) {
+			RwTextureDestroy(reinterpret_cast<RwTexture*>(m_MaterialTextTexture[i]));
+			m_MaterialTextTexture[i] = 0;
 		}
 	}
 }
@@ -331,7 +353,10 @@ void CObject::ApplyMoveSpeed()
 {
 	if (m_pEntity)
 	{
-		float fTimeStep = *(float*)(g_libGTASA + 0x96B504);
+		// Was a hardcoded ARMv7 offset (g_libGTASA + 0x96B504) that points into
+		// uninitialised .bss on arm64, so every moved object read garbage as its
+		// timestep. Use the engine-independent CTimer helper instead.
+		float fTimeStep = CTimer::GetTimeStepInSeconds();
 
 		RwMatrix mat;
         mat = m_pEntity->GetMatrix().ToRwMatrix();
@@ -398,12 +423,24 @@ void CObject::SetMaterialText(int index, char* text, int materialSize, char* fon
 		delete[] m_szMaterialText[index];
 		m_szMaterialText[index] = nullptr;
 	}
+	if (m_szMaterialFontName[index] != nullptr) {
+		delete[] m_szMaterialFontName[index];
+		m_szMaterialFontName[index] = nullptr;
+	}
 
 	m_szMaterialText[index] = new char[2048];
-	strcpy(m_szMaterialText[index], text);
+	strncpy(m_szMaterialText[index], text ? text : "", 2047);
+	m_szMaterialText[index][2047] = '\0';
+
+	// The font name and the bold flag used to be discarded here, so every
+	// material text rendered with the default UI font in regular weight.
+	m_szMaterialFontName[index] = new char[64];
+	strncpy(m_szMaterialFontName[index], (fontname && fontname[0]) ? fontname : "Arial", 63);
+	m_szMaterialFontName[index][63] = '\0';
 
 	m_iMaterialSize[index] = materialSize;
 	m_iMaterialFontSize[index] = fontSize;
+	m_bMaterialFontBold[index] = bold;
 	m_dwMaterialFontColor[index] = dwFontColor;
 	m_dwMaterialBackColor[index] = dwBackColor;
 	m_iMaterialTextAlign[index] = textAlignment;
@@ -416,10 +453,12 @@ void CObject::ProcessMaterialText()
 	{
 		if (m_iMaterialType[i] == MATERIAL_TYPE_TEXT && m_MaterialTextTexture[i] == 0)
 		{
-			m_iMaterialFontSize[i]*=0.75f;
+			// Do NOT scale m_iMaterialFontSize in place: this runs every frame and
+			// the old "*= 0.75f" compounded, shrinking the text to nothing.
+			float renderSize = m_iMaterialFontSize[i] * 0.75f;
 			m_MaterialTextTexture[i] = reinterpret_cast<uintptr_t>(pMaterialTextGenerator->Generate(
-                    m_szMaterialText[i], m_iMaterialSize[i], m_iMaterialFontSize[i],
-                    false, m_dwMaterialFontColor[i], m_dwMaterialBackColor[i],
+                    m_szMaterialText[i], m_iMaterialSize[i], (int)renderSize,
+                    m_bMaterialFontBold[i], m_dwMaterialFontColor[i], m_dwMaterialBackColor[i],
                     m_iMaterialTextAlign[i]));
 			m_bHasMaterialText = true;
 		}

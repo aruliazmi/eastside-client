@@ -322,15 +322,28 @@ void ScrCreateObject(RPCParameters* rpcParams)
 
 		bsData.Read(byteType);
 
+		// Resolve the object once: the material branch used to declare its own local
+		// `CObject* pObject` (shadowing the outer one), while the material-text
+		// branch relied on the outer variable that was never assigned in that scope.
+		CObject* pMatObject = pObjectPool->GetAt(ObjectID);
+
 		if (byteType == 1) // material
 		{
 			bsData.Read(byteMaterialIndex);
 			bsData.Read(MaterialModel);
 			bsData.Read(byteLength);
-			bsData.Read(txdname, byteLength);
+			if (byteLength > 0 && byteLength < sizeof(txdname)) {
+				bsData.Read(txdname, byteLength);
+			} else {
+				byteLength = 0;
+			}
 			txdname[byteLength] = '\0';
 			bsData.Read(byteLength);
-			bsData.Read(texturename, byteLength);
+			if (byteLength > 0 && byteLength < sizeof(texturename)) {
+				bsData.Read(texturename, byteLength);
+			} else {
+				byteLength = 0;
+			}
 			texturename[byteLength] = '\0';
 			bsData.Read(dwColor);
 
@@ -339,9 +352,8 @@ void ScrCreateObject(RPCParameters* rpcParams)
 				if (MaterialModel == 0xFFFF || MaterialModel > 20000)
 					MaterialModel = 0xFFFF;
 
-				CObject* pObject = pObjectPool->GetAt(ObjectID);
-				if (pObject)
-					pObject->SetMaterial(MaterialModel, byteMaterialIndex, txdname, texturename, dwColor);
+				if (pMatObject)
+					pMatObject->SetMaterial(MaterialModel, byteMaterialIndex, txdname, texturename, dwColor);
 			}
 		}
 		else if (byteType == 2) // material text
@@ -349,6 +361,7 @@ void ScrCreateObject(RPCParameters* rpcParams)
 			bsData.Read(byteMaterialIndex);
 			bsData.Read(byteMaterialSize);
 			bsData.Read(byteFontNameLength);
+			if (byteFontNameLength >= sizeof(szFontName)) byteFontNameLength = sizeof(szFontName) - 1;
 			bsData.Read(szFontName, byteFontNameLength);
 			szFontName[byteFontNameLength] = '\0';
 			bsData.Read(byteFontSize);
@@ -358,12 +371,9 @@ void ScrCreateObject(RPCParameters* rpcParams)
 			bsData.Read(byteAlign);
 			stringCompressor->DecodeString(szText, 2048, &bsData);
 
-			if(strlen(szFontName) <= 32)
+			if (pMatObject)
 			{
-				if(pObject)
-				{
-					pObject->SetMaterialText(byteMaterialIndex, szText, byteMaterialSize, szFontName, byteFontSize, byteFontBold, dwFontColor, dwBackgroundColor, byteAlign);
-				}
+				pMatObject->SetMaterialText(byteMaterialIndex, szText, byteMaterialSize, szFontName, byteFontSize, byteFontBold, dwFontColor, dwBackgroundColor, byteAlign);
 			}
 		}
 	}

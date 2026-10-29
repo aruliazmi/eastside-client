@@ -76,10 +76,14 @@ Java_com_sampmobile_xyvern_game_ui_AttachEdit_Exit(JNIEnv *env, jobject thiz) {
     if(CObjectEditor::editType == CObjectEditor::TYPE_OBJECT)
     {
         auto pObject = pNetGame->GetObjectPool()->GetAt(CObjectEditor::iEditedId);
-        if(!pObject)
+        if(!pObject || !pObject->m_pEntity)
         {
+            // BUG FIX: this branch used to fall through with pObject == nullptr and
+            // dereference pObject->m_pEntity right below.
             CObjectEditor::bIsToggle = false;
+            CObjectEditor::time = 0;
             pJavaWrapper->HideEditObject();
+            return;
         }
 
         RwMatrix matrix4X4 = pObject->m_pEntity->GetMatrix().ToRwMatrix();
@@ -91,7 +95,9 @@ Java_com_sampmobile_xyvern_game_ui_AttachEdit_Exit(JNIEnv *env, jobject thiz) {
 
         bsSend.Write((bool)     CObjectEditor::bPlayerObj);
         bsSend.Write((uint16_t) CObjectEditor::iEditedId);
-        bsSend.Write((uint32_t) 0);
+        // Exit = the player aborted the edit; SA-MP expects EDIT_RESPONSE_CANCEL
+        // here and EDIT_RESPONSE_FINAL only from Save().
+        bsSend.Write((uint32_t) CObjectEditor::eResponse::EDIT_RESPONSE_CANCEL);
         bsSend.Write((float)    pos.x);
         bsSend.Write((float)    pos.y);
         bsSend.Write((float)    pos.z);
@@ -102,6 +108,8 @@ Java_com_sampmobile_xyvern_game_ui_AttachEdit_Exit(JNIEnv *env, jobject thiz) {
         pNetGame->GetRakClient()->RPC(&RPC_EditObject, &bsSend, HIGH_PRIORITY, RELIABLE, 0, false, UNASSIGNED_NETWORK_ID, nullptr);
     }
 
+    CObjectEditor::editType = CObjectEditor::TYPE_NONE;
+    CObjectEditor::iEditedId = INVALID_EDITED_SLOT;
     CObjectEditor::bIsToggle = false;
     pJavaWrapper->HideEditObject();
 }
@@ -143,8 +151,13 @@ Java_com_sampmobile_xyvern_game_ui_AttachEdit_AttachClick(JNIEnv *env, jobject t
     CObject *pObject = nullptr;
     if(CObjectEditor::editType == CObjectEditor::TYPE_OBJECT) {
         pObject = pNetGame->GetObjectPool()->GetAt(CObjectEditor::iEditedId);
-        if (!pObject) {
+        if (!pObject || !pObject->m_pEntity) {
+            // BUG FIX: the old code returned early only for player-attach and used
+            // to fall through to pObject->m_pEntity below without a return, which
+            // dereferenced a freed/absent object (SEGV) when the server destroyed
+            // the object while the player still had the editor open.
             CObjectEditor::time = 0;
+            CObjectEditor::bIsToggle = false;
             pJavaWrapper->HideEditObject();
             return;
         }
@@ -339,6 +352,8 @@ Java_com_sampmobile_xyvern_game_ui_AttachEdit_Save(JNIEnv *env, jobject thiz) {
     }
 
     exit:
+    CObjectEditor::editType = CObjectEditor::TYPE_NONE;
+    CObjectEditor::iEditedId = INVALID_EDITED_SLOT;
     CObjectEditor::bIsToggle = false;
     pJavaWrapper->HideEditObject();
     CObjectEditor::time = 0;

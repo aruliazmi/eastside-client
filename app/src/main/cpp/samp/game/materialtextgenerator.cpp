@@ -59,6 +59,12 @@ void MaterialTextGenerator::Render(const char* text, const ImVec2& size, int fon
 		}
 
 		pUI->renderer()->drawText(text_pos, font_color, info, false, font_size);
+		// ImGuiRenderer::drawText's 4th argument is "outlined", not "bold", so the
+		// bold flag from SetObjectMaterialText was silently dropped. Fake it with a
+		// 1px double-draw, which is what a bold glyph effectively looks like.
+		if (bold) {
+			pUI->renderer()->drawText(ImVec2(text_pos.x + 1.0f, text_pos.y), font_color, info, false, font_size);
+		}
 
         ImGui::EndFrame();
 		ImGui::Render();

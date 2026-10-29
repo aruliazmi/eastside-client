@@ -2696,17 +2696,27 @@ bool IsGameEntityArePlaceable(CEntityGTA *pEntity)
 
 RpAtomic* ObjectMaterialCallBack(RpAtomic* rpAtomic, CObject* pObject)
 {
-    if(!pObject) return rpAtomic;
+    if(!pObject || !rpAtomic || !rpAtomic->geometry) return rpAtomic;
     int iTotalEntries = rpAtomic->geometry->matList.numMaterials;
     if (iTotalEntries > 16) iTotalEntries = 16; // fix fucking bug :|
     for (int i = 0; i < iTotalEntries; i++)
     {
-        if(pObject->m_MaterialTexture[i])
-            rpAtomic->geometry->matList.materials[i]->texture = (RwTexture*)pObject->m_MaterialTexture[i];
-            /*material->color.red = pObject->m_dwMaterialColor[i]->red;
-            material->color.green = pObject->m_dwMaterialColor[i]->green;
-            material->color.blue = pObject->m_dwMaterialColor[i]->blue;
-            material->color.alpha = pObject->m_dwMaterialColor[i]->alpha;*/
+        RpMaterial* material = rpAtomic->geometry->matList.materials[i];
+        if (!material) continue;
+
+        if (pObject->m_MaterialTexture[i])
+            material->texture = (RwTexture*)pObject->m_MaterialTexture[i];
+
+        // SetObjectMaterial's colour argument tints the surface. Without this the
+        // texture renders untinted, so a material swapped to a plain colour (e.g.
+        // an object forced orange) looked identical to the original texture.
+        if (pObject->m_dwMaterialColor[i] != 0x00000000u) {
+            uint32_t c = pObject->m_dwMaterialColor[i];
+            material->color.red   = (uint8_t)((c >> 16) & 0xFF);
+            material->color.green = (uint8_t)((c >> 8)  & 0xFF);
+            material->color.blue  = (uint8_t)( c        & 0xFF);
+            material->color.alpha = (uint8_t)((c >> 24) & 0xFF);
+        }
     }
 
     return rpAtomic;

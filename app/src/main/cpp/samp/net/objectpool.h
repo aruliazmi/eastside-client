@@ -15,7 +15,8 @@ public:
 
 	
 	CObject* GetAt(OBJECTID ObjectID) {
-		if (ObjectID <= MAX_OBJECTS && m_bObjectSlotState[ObjectID])
+		// Was "ObjectID <= MAX_OBJECTS": index 1000 read one slot past both arrays.
+		if (ObjectID < MAX_OBJECTS && m_bObjectSlotState[ObjectID])
 			return m_pObjects[ObjectID];
 		
 		return nullptr;

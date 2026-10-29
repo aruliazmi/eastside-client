@@ -55,8 +55,10 @@ public:
 	bool		m_bHasMaterialText;
 	/* materialText */
 	char* m_szMaterialText[16];
-	int			m_iMaterialSize[16];
-	int			m_iMaterialFontSize[16];
+	char* m_szMaterialFontName[16];   // SA-MP SetObjectMaterialText font name (e.g. "Arial")
+	int		m_iMaterialSize[16];
+	int		m_iMaterialFontSize[16];
+	bool	m_bMaterialFontBold[16];  // bold flag was parsed off the wire but never kept
 	uint32_t	m_dwMaterialFontColor[16];
 	uint32_t	m_dwMaterialBackColor[16];
 	int			m_iMaterialTextAlign[16];
