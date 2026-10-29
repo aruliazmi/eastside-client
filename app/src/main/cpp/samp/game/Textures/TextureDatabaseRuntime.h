@@ -32,6 +32,7 @@ public:
 
 public:
     static void InjectHooks();
+    static void InstallLoadGate();
 
     static TextureDatabaseRuntime* Load(const char *withName, bool fullyLoad, TextureDatabaseFormat forcedFormat);
     static TextureDatabaseRuntime* GetDatabase(const char *dbName);

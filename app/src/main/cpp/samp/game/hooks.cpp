@@ -1740,6 +1740,7 @@ void InjectHooks()
     TextureDatabase::InjectHooks();
     TextureDatabaseEntry::InjectHooks();
     TextureDatabaseRuntime::InjectHooks();
+    TextureDatabaseRuntime::InstallLoadGate();
     CCustomBuildingDNPipeline::InjectHooks();
     //CWidgetRadar::InjectHooks();
 
