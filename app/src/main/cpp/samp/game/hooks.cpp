@@ -30,6 +30,8 @@
 #include "CrossHair.h"
 #include "World.h"
 #include "CFileMgr.h"
+#include "RW/rwcore.h"
+#include "RW/rwplcore.h"
 
 extern UI* pUI;
 extern CGame* pGame;
@@ -1088,6 +1090,44 @@ void player_control_zelda_hook(unsigned int *a2, unsigned int *a3)
 	rotate_ped_if_local(a2, a3);
 }
 
+struct NullTexRestore {
+    RpMaterial* mat;
+    RwTexture* tex;
+};
+
+static inline uint16_t SanitizeMeshes(RwResEntry* resEntry, NullTexRestore* restored, uint16_t maxCount)
+{
+    if (!resEntry) return 0;
+    uint16_t numMeshes = *(uint16_t*)((uintptr_t)resEntry + (VER_x32 ? 0x22 : 0x32));
+    if (numMeshes == 0 || numMeshes > 2000) return 0;
+
+    uintptr_t meshPtr = (uintptr_t)resEntry + (VER_x32 ? 0x24 : 0x34);
+    size_t meshStride = VER_x32 ? 0x30 : 0x58;
+    size_t matOffset = VER_x32 ? 0x24 : 0x48;
+
+    uint16_t count = 0;
+    for (uint16_t i = 0; i < numMeshes; i++) {
+        RpMaterial* mat = *(RpMaterial**)(meshPtr + matOffset);
+        if (mat && mat->texture) {
+            if (!mat->texture->raster) {
+                if (count < maxCount) {
+                    restored[count++] = { mat, mat->texture };
+                }
+                mat->texture = nullptr;
+            }
+        }
+        meshPtr += meshStride;
+    }
+    return count;
+}
+
+static inline void RestoreMeshes(const NullTexRestore* restored, uint16_t count)
+{
+    for (uint16_t i = 0; i < count; i++) {
+        restored[i].mat->texture = restored[i].tex;
+    }
+}
+
 // 006778B0
 int (*rxOpenGLDefaultAllInOneRenderCB)(RwResEntry* resEntry, uintptr_t object, uint8_t type, uint32_t flags);
 int rxOpenGLDefaultAllInOneRenderCB_hook(RwResEntry* resEntry, uintptr_t object, uint8_t type, uint32_t flags)
@@ -1095,7 +1135,13 @@ int rxOpenGLDefaultAllInOneRenderCB_hook(RwResEntry* resEntry, uintptr_t object,
 	if(!resEntry || !flags)
 		return 0;
 
-	return rxOpenGLDefaultAllInOneRenderCB(resEntry, object, type, flags);
+    NullTexRestore restored[128];
+    uint16_t count = SanitizeMeshes(resEntry, restored, 128);
+
+	int ret = rxOpenGLDefaultAllInOneRenderCB(resEntry, object, type, flags);
+
+    RestoreMeshes(restored, count);
+    return ret;
 }
 
 // 00677CB4
@@ -1105,7 +1151,28 @@ int CCustomBuildingDNPipeline__CustomPipeRenderCB_hook(RwResEntry* resEntry, uin
     if(!resEntry || !flags)
         return 0;
 
-	return CCustomBuildingDNPipeline__CustomPipeRenderCB(resEntry, object, type, flags);
+    NullTexRestore restored[128];
+    uint16_t count = SanitizeMeshes(resEntry, restored, 128);
+
+	int ret = CCustomBuildingDNPipeline__CustomPipeRenderCB(resEntry, object, type, flags);
+
+    RestoreMeshes(restored, count);
+    return ret;
+}
+
+int (*CCustomBuildingPipeline__CustomPipeRenderCB)(RwResEntry* resEntry, uintptr_t object, uint8_t type, uint32_t flags);
+int CCustomBuildingPipeline__CustomPipeRenderCB_hook(RwResEntry* resEntry, uintptr_t object, uint8_t type, uint32_t flags)
+{
+    if(!resEntry || !flags)
+        return 0;
+
+    NullTexRestore restored[128];
+    uint16_t count = SanitizeMeshes(resEntry, restored, 128);
+
+	int ret = CCustomBuildingPipeline__CustomPipeRenderCB(resEntry, object, type, flags);
+
+    RestoreMeshes(restored, count);
+    return ret;
 }
 
 int (*EmuShader_Select)(uintptr_t *result);
@@ -1775,7 +1842,8 @@ void InstallSpecialHooks()
     //CHook::InlineHook("_Z11OS_FileReadPvS_i", &OS_FileRead_hook, &OS_FileRead);
 
 	CHook::InlineHook("_Z32_rxOpenGLDefaultAllInOneRenderCBP10RwResEntryPvhj", &rxOpenGLDefaultAllInOneRenderCB_hook, &rxOpenGLDefaultAllInOneRenderCB);
-	//CHook::InlineHook("_ZN25CCustomBuildingDNPipeline18CustomPipeRenderCBEP10RwResEntryPvhj", &CCustomBuildingDNPipeline__CustomPipeRenderCB_hook, &CCustomBuildingDNPipeline__CustomPipeRenderCB);
+	CHook::InlineHook("_ZN25CCustomBuildingDNPipeline18CustomPipeRenderCBEP10RwResEntryPvhj", &CCustomBuildingDNPipeline__CustomPipeRenderCB_hook, &CCustomBuildingDNPipeline__CustomPipeRenderCB);
+	CHook::InlineHook("_ZN23CCustomBuildingPipeline18CustomPipeRenderCBEP10RwResEntryPvhj", &CCustomBuildingPipeline__CustomPipeRenderCB_hook, &CCustomBuildingPipeline__CustomPipeRenderCB);
 }
 
 #include <EGL/egl.h>
