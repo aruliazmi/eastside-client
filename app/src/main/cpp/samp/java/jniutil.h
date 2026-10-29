@@ -3,12 +3,27 @@
 #include "main.h"
 
 #define EXCEPTION_CHECK(env) \
-	if ((env)->ExceptionCheck()) \ 
+	if ((env)->ExceptionCheck()) \
 	{ \
 		(env)->ExceptionDescribe(); \
 		(env)->ExceptionClear(); \
 		return; \
 	}
+
+// The game thread is created by libGTASA and is not guaranteed to be attached
+// to the JVM. GetEnv() alone returns JNI_EDETACHED there and leaves the env
+// pointer NULL; every Call*Method on it is a null deref. Callers of
+// CJavaWrapper run on exactly that thread (CNetGame ctor, RPC handlers, touch
+// callbacks), so the env must be fetched through this helper.
+inline JNIEnv* WrapperGetEnv()
+{
+    JNIEnv* p = nullptr;
+    if (javaVM->GetEnv((void**)&p, JNI_VERSION_1_6) == JNI_OK && p)
+        return p;
+    if (javaVM->AttachCurrentThread(&p, nullptr) == JNI_OK && p)
+        return p;
+    return nullptr;
+}
 
 class CJavaWrapper
 {
@@ -31,8 +46,8 @@ public:
 	void exitGame();
 
     jbyteArray as_byte_array(unsigned char* buf, int len) {
-        JNIEnv* p;
-        javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+        JNIEnv* p = WrapperGetEnv();
+        if (!p) return nullptr;
 		jbyteArray array = p->NewByteArray (len);
 		p->SetByteArrayRegion (array, 0, len, reinterpret_cast<jbyte*>(buf));
 		return array;

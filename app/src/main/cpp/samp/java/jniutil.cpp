@@ -38,48 +38,47 @@ CJavaWrapper::CJavaWrapper(JNIEnv *env, jobject activity)
 
 void CJavaWrapper::ShowKeyboard()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_showInputLayout);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::HideKeyboard()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_hideInputLayout);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::ShowLoadingScreen()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_showLoadingScreen);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::HideLoadingScreen()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_hideLoadingScreen);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::SetPauseState(bool pause)
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_setPauseState, pause);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::SetTab(int id, char* names, int score, int pings)
 {
-    JNIEnv* global_env;
-    javaVM->GetEnv((void**)&global_env, JNI_VERSION_1_6);
+    JNIEnv* global_env = WrapperGetEnv();
 
 	if (!global_env)
 	{
@@ -102,32 +101,31 @@ void CJavaWrapper::SetTab(int id, char* names, int score, int pings)
 
 void CJavaWrapper::ShowTab()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_showTab);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::HideTab()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_hideTab);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::ClearTab()
 {
-    JNIEnv* p;
-    javaVM->GetEnv((void**)&p, JNI_VERSION_1_6);
+    JNIEnv* p = WrapperGetEnv();
+    if (!p) return;
     p->CallVoidMethod(activity, s_clearTab);
     EXCEPTION_CHECK(p);
 }
 
 void CJavaWrapper::ShowDialog(int dialogStyle, int dialogID, char* title, char* text, char* button1, char* button2)
 {
-	JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+	JNIEnv* env = WrapperGetEnv();
 
 	if (!env)
 	{
@@ -152,8 +150,7 @@ void CJavaWrapper::ShowDialog(int dialogStyle, int dialogID, char* title, char* 
 
 void CJavaWrapper::exitGame() {
 
-    JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    JNIEnv* env = WrapperGetEnv();
 
     if (!env)
     {
@@ -166,8 +163,7 @@ void CJavaWrapper::exitGame() {
 
 void CJavaWrapper::ShowEditObject() {
 
-    JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    JNIEnv* env = WrapperGetEnv();
 
     if (!env)
     {
@@ -180,8 +176,7 @@ void CJavaWrapper::ShowEditObject() {
 
 void CJavaWrapper::HideEditObject() {
 
-    JNIEnv* env;
-    javaVM->GetEnv((void**)&env, JNI_VERSION_1_6);
+    JNIEnv* env = WrapperGetEnv();
 
     if (!env)
     {

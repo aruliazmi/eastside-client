@@ -84,10 +84,12 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     }
 
     public void showDialog(int dialogId, int dialogTypeId, byte[] bArr, byte[] bArr2, byte[] bArr3, byte[] bArr4) {
-        final String caption = new String(bArr, StandardCharsets.UTF_8);
-        final String content = new String(bArr2, StandardCharsets.UTF_8);
-        final String leftBtnText = new String(bArr3, StandardCharsets.UTF_8);
-        final String rightBtnText = new String(bArr4, StandardCharsets.UTF_8);
+        // Malformed server packets can carry null arrays for empty dialog
+        // strings; new String(null) is an NPE on the native-caller thread.
+        final String caption      = bArr  != null ? new String(bArr,  StandardCharsets.UTF_8) : "";
+        final String content      = bArr2 != null ? new String(bArr2, StandardCharsets.UTF_8) : "";
+        final String leftBtnText  = bArr3 != null ? new String(bArr3, StandardCharsets.UTF_8) : "";
+        final String rightBtnText = bArr4 != null ? new String(bArr4, StandardCharsets.UTF_8) : "";
         runOnUiThread(() -> { this.mDialog.show(dialogId, dialogTypeId, caption, content, leftBtnText, rightBtnText); });
     }
 

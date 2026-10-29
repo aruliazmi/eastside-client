@@ -1017,11 +1017,13 @@ extern CJavaWrapper* pJavaWrapper;
 void (*MainMenuScreen__OnExit)();
 void MainMenuScreen__OnExit_hook()
 {
+	if (!pGame || !pNetGame) return; // quitting before network init
+
 	pGame->bIsGameExiting = true;
 
 	pNetGame->GetRakClient()->Disconnect(0);
 
-	pJavaWrapper->exitGame();
+	if (pJavaWrapper) pJavaWrapper->exitGame();
 }
 
 void (*rqVertexBufferSelect)(unsigned int **result);

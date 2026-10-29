@@ -224,7 +224,7 @@ public final class GameDataManager {
     // ---------------------------------------------------------- UI: offer --
     private static volatile AlertDialog loadingDialog;
     private static void showLoading(Activity a, String title, String message) {
-        if (a.isFinishing()) return;
+        if (a.isFinishing() || a.isDestroyed()) return;
         LinearLayout root = panel(a); root.setPadding(dp(a,24),dp(a,22),dp(a,24),dp(a,22));
         TextView h = text(a,title,21,true); TextView m = text(a,message,14,false); m.setTextColor(Color.LTGRAY);
         ProgressBar p = new ProgressBar(a); p.setIndeterminate(true);
@@ -235,7 +235,7 @@ public final class GameDataManager {
     private static void dismissLoading() { try { if (loadingDialog != null && loadingDialog.isShowing()) loadingDialog.dismiss(); } catch(Exception ignored) {} loadingDialog=null; }
 
     private static void showMaintenance(Activity a) {
-        if (a.isFinishing()) return; dismissLoading(); setImmersive(a, false);
+        if (a.isFinishing() || a.isDestroyed()) return; dismissLoading(); setImmersive(a, false);
         LinearLayout root = panel(a); root.setPadding(dp(a,24),dp(a,24),dp(a,24),dp(a,22));
         ImageView icon=iconView(a,R.drawable.ic_gear,56);
         TextView title=text(a,"M-SAMP Maintenance",22,true); title.setGravity(Gravity.CENTER);
@@ -246,7 +246,7 @@ public final class GameDataManager {
     }
 
     private static void showNetworkError(Activity a, String detail, ReadyCallback cb) {
-        if (a.isFinishing()) return; dismissLoading(); setImmersive(a, false);
+        if (a.isFinishing() || a.isDestroyed()) return; dismissLoading(); setImmersive(a, false);
         new AlertDialog.Builder(a).setTitle("Gagal memuat data game")
                 .setMessage("Tidak bisa membaca app.json. Periksa internet lalu coba lagi.\n\n" + (detail == null ? "" : detail))
                 .setCancelable(false).setPositiveButton("COBA LAGI", (d,w) -> checkAndPrepare(a,cb))
@@ -254,7 +254,7 @@ public final class GameDataManager {
     }
 
     private static void showDownloadOffer(Activity a, DataInfo info, ReadyCallback cb) {
-        if (a.isFinishing()) return; dismissLoading(); setImmersive(a, true);
+        if (a.isFinishing() || a.isDestroyed()) return; dismissLoading(); setImmersive(a, true);
         LinearLayout root=panel(a); root.setPadding(dp(a,22),dp(a,22),dp(a,22),dp(a,20));
         ImageView icon=iconView(a,R.drawable.ic_package,56);
         TextView title=text(a,"Download Game Data",22,true); title.setGravity(Gravity.CENTER);
@@ -296,7 +296,7 @@ public final class GameDataManager {
 
     // ---------------------------------------------------------- install ----
     private static void startInstall(Activity a, DataInfo info, ReadyCallback cb) {
-        if (a.isFinishing()) return;
+        if (a.isFinishing() || a.isDestroyed()) return;
         ProgressUi ui = showProgress(a, info);
         IO.execute(() -> {
             File zipFile = null;
@@ -330,7 +330,7 @@ public final class GameDataManager {
                     if (ui.dialog.isShowing()) ui.dialog.dismiss();
                     setImmersive(a, false);
                     Toast.makeText(a, "Game data siap dimainkan", Toast.LENGTH_SHORT).show();
-                    if (!a.isFinishing()) cb.onReady();
+                    if (!a.isFinishing() && !a.isDestroyed()) cb.onReady();
                 });
             } catch (Exception e) {
                 android.util.Log.e("GameDataManager", "Install failed", e);
@@ -338,7 +338,7 @@ public final class GameDataManager {
                 MAIN.post(() -> {
                     if (ui.dialog.isShowing()) ui.dialog.dismiss();
                     setImmersive(a, false);
-                    if (a.isFinishing()) return;
+                    if (a.isFinishing() || a.isDestroyed()) return;
                     new AlertDialog.Builder(a).setTitle("Download gagal")
                             .setMessage(e.getMessage() == null ? "Silakan coba lagi." : e.getMessage())
                             .setCancelable(false)

@@ -110,7 +110,10 @@ CNetGame::CNetGame(const char* szHostOrIp, int iPort, const char *szPlayerName, 
 	SetGameState(GAMESTATE_WAIT_CONNECT);
 	m_bLanMode = false;
 
-    pJavaWrapper->HideLoadingScreen();
+    // pJavaWrapper is created in initializeSAMP(), which Java calls only after
+    // the config fetch + fake progress loop. The game thread can reach this
+    // constructor first (issue #16) - guard instead of deref.
+    if (pJavaWrapper) pJavaWrapper->HideLoadingScreen();
 
     const char* sampVer = SAMP_VERSION;
     if(pSettings)

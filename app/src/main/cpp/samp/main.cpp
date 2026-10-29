@@ -244,9 +244,14 @@ void DoInitStuff()
 		pAudioStream = new CAudioStream();
 		pAudioStream->Initialize();
 
-		pUI->splashscreen()->setVisible(false);
-		pUI->chat()->setVisible(true);
-		pUI->buttonpanel()->setVisible(true);
+		// pUI is null when the font failed to load (InitGui disabled the UI).
+		// Everything below that touches it must be skipped, not dereferenced.
+		if (pUI)
+		{
+			pUI->splashscreen()->setVisible(false);
+			pUI->chat()->setVisible(true);
+			pUI->buttonpanel()->setVisible(true);
+		}
 
 		pGame->Initialize();
 		pGame->SetMaxStats();
@@ -424,11 +429,18 @@ void InitGui()
         LOGI("Loaded font from assets: %s (size: %zu)", font_path.c_str(), fontData.size());
     } else {
         // Fallback to file (should probably not happen if assets are correct, but safe to keep)
-	    std::string file_path = string_format("%sfonts/%s", g_pszStorage, FONT_NAME);
+	    std::string file_path = string_format("%sfonts/%s", g_pszStorage ? g_pszStorage : "", FONT_NAME);
 	    pUI = new UI(ImVec2(RsGlobal->maximumWidth, RsGlobal->maximumHeight), file_path.c_str());
         LOGI("Loaded font from file: %s", file_path.c_str());
     }
-	pUI->initialize();
+    if (!pUI->initialize()) {
+        // No font atlas = every ImGui draw derefs a null font. Killing the UI
+        // pointers turns a native crash into a visible log line.
+        FLog("UI init failed: font '%s' not in assets or on disk - disabling UI", FONT_NAME);
+        delete pUI;
+        pUI = nullptr;
+        return;
+    }
 	pUI->performLayout();
 }
 
