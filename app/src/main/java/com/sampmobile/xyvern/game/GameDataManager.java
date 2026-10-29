@@ -57,14 +57,14 @@ public final class GameDataManager {
     private static final String APP_CONFIG =
             "https://raw.githubusercontent.com/aruliazmi/eastside-client/config/app.json";
     private static final String FALLBACK_DATA_URL =
-            "https://github.com/aruliazmi/eastside-client/releases/download/data-v2/files.zip";
-    private static final String FALLBACK_DATA_VERSION = "4";
+            "https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip";
+    private static final String FALLBACK_DATA_VERSION = "5";
 
     /** Dipakai saat config jauh tidak terjangkau: launcher tetap bisa dibuka. */
     private static final String BUNDLED_CONFIG = "{"
-            + "\"data_url\":\"https://github.com/aruliazmi/eastside-client/releases/download/data-v2/files.zip\","
-            + "\"data_version\":\"4\","
-            + "\"data_size\":664401280,"
+            + "\"data_url\":\"https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip\","
+            + "\"data_version\":\"5\","
+            + "\"data_size\":1957396608,"
             + "\"data_sentinel\":\"SAMP/SAMP.ide\""
             + "}";
 
