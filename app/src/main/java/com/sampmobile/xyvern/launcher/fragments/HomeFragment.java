@@ -41,7 +41,7 @@ public class HomeFragment extends Fragment {
     // Direct download URL untuk data pack resmi GTA SA / SAMP
     // Di-host di repo sendiri, bukan release repo pihak ketiga.
     private static final String DATA_ZIP_URL =
-            "https://github.com/aruliazmi/eastside-client/releases/download/data-v1/files.zip";
+            "https://github.com/aruliazmi/eastside-client/releases/download/data-v2/files.zip";
     private static final String SERVER_IP = "163.52.135.25";
     private static final int SERVER_PORT = 7777;
 
@@ -118,7 +118,7 @@ public class HomeFragment extends Fragment {
             btnQuickPlay.setOnClickListener(v -> {
                 String nickname = (etPlayerNickname != null) ? etPlayerNickname.getText().toString().trim() : "";
                 if (nickname.isEmpty()) {
-                    Toast.makeText(getContext(), "Masukkan nama username / karakter!", Toast.LENGTH_SHORT).show();
+                    showToast("Masukkan nama username / karakter!", Toast.LENGTH_SHORT);
                     return;
                 }
 
@@ -136,16 +136,16 @@ public class HomeFragment extends Fragment {
                         if (p.contains("tapi .dat hilang")) fatal = true;
                     }
                     if (fatal) {
-                        Toast.makeText(getContext(),
+                        showToast(
                                 "Data tekstur tidak lengkap. Buka Pengaturan → Cek Data untuk memperbaiki.",
-                                Toast.LENGTH_LONG).show();
+                                Toast.LENGTH_LONG);
                         return;
                     }
                     if (!vRes.missingFiles.isEmpty()) {
-                        Toast.makeText(getContext(),
+                        showToast(
                                 "Sebagian file belum lengkap, tetap mencoba masuk. "
                                         + "Buka Pengaturan → Cek Data bila ada masalah.",
-                                Toast.LENGTH_LONG).show();
+                                Toast.LENGTH_LONG);
                     }
                 }
 
@@ -268,7 +268,7 @@ public class HomeFragment extends Fragment {
                     btnDownloadData.setText("Perbaiki Data");
                     btnDownloadData.setOnClickListener(v -> {
                         if (isDownloading) {
-                            Toast.makeText(getContext(), "Unduhan sedang berlangsung...", Toast.LENGTH_SHORT).show();
+                            showToast("Unduhan sedang berlangsung...", Toast.LENGTH_SHORT);
                             return;
                         }
                         if (result.missingFiles.isEmpty()) {
@@ -311,7 +311,7 @@ public class HomeFragment extends Fragment {
                 mainHandler.post(() -> {
                     btnDownloadData.setEnabled(true);
                     String msg = repaired + " file diperbaiki" + (failed > 0 ? ", " + failed + " gagal" : "");
-                    Toast.makeText(getContext(), msg, Toast.LENGTH_LONG).show();
+                    showToast(msg, Toast.LENGTH_LONG);
                     runVerification();
                 });
             }
@@ -323,7 +323,7 @@ public class HomeFragment extends Fragment {
                     btnDownloadData.setEnabled(true);
                     tvDataTitle.setText("Perbaikan gagal");
                     tvDataDesc.setText(message);
-                    Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                    showToast(message, Toast.LENGTH_LONG);
                 });
             }
         });
@@ -338,7 +338,7 @@ public class HomeFragment extends Fragment {
                         + "akan diunduh ulang dari awal.")
                 .setPositiveButton("Unduh", (d, w) -> {
                     if (isDownloading) {
-                        Toast.makeText(getContext(), "Unduhan sedang berlangsung...", Toast.LENGTH_SHORT).show();
+                        showToast("Unduhan sedang berlangsung...", Toast.LENGTH_SHORT);
                     } else {
                         startOnlineDataDownload();
                     }
@@ -460,7 +460,7 @@ public class HomeFragment extends Fragment {
                     pbDownload.setVisibility(View.GONE);
                     tvDownloadProgress.setVisibility(View.GONE);
                     btnDownloadData.setEnabled(true);
-                    Toast.makeText(getContext(), "Aset game berhasil dipasang!", Toast.LENGTH_LONG).show();
+                    showToast("Aset game berhasil dipasang!", Toast.LENGTH_LONG);
                     runVerification();
                 });
 
@@ -471,7 +471,7 @@ public class HomeFragment extends Fragment {
                     tvDownloadProgress.setVisibility(View.GONE);
                     btnDownloadData.setEnabled(true);
                     tvDataDesc.setText("Gagal mengunduh: " + e.getMessage() + "\nTekan Unduh Aset untuk melanjutkan.");
-                    Toast.makeText(getContext(), "Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    showToast("Error: " + e.getMessage(), Toast.LENGTH_LONG);
                     runVerification();
                 });
             }
@@ -531,5 +531,12 @@ public class HomeFragment extends Fragment {
             }
         }
         zf.close();
+    }
+
+    /** getContext() returns null after detach (user leaves the tab mid-download);
+     *  Toast.makeText(null,...) is an NPE on a callback that can fire minutes later. */
+    private void showToast(CharSequence text, int duration) {
+        if (!isAdded()) return;
+        Toast.makeText(requireContext(), text, duration).show();
     }
 }

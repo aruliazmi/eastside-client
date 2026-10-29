@@ -12,7 +12,7 @@ CSettings::CSettings()
 	FLog("Loading settings..");	
 
 	char buff[0x7F];
-	sprintf(buff, "%sSAMP/settings.ini", g_pszStorage);
+	snprintf(buff, sizeof(buff), "%sSAMP/settings.ini", g_pszStorage ? g_pszStorage : "");
 
 	INIReader reader(buff);
 
@@ -52,7 +52,10 @@ CSettings::CSettings()
 	m_Settings.bOnline = reader.GetBoolean("debug", "online", true);
 
 	// gui
-	length = reader.Get("gui", "Font", "arial.ttf").copy(m_Settings.szFont, MAX_SETTINGS_STRING);
+	// szFont is a 40-byte buffer; MAX_SETTINGS_STRING is 0x7F (127). Copying at
+	// that size overflows into the next struct fields on the heap. Copy at most
+	// sizeof-1 and NUL-terminate inside the buffer.
+	length = reader.Get("gui", "Font", "arial.ttf").copy(m_Settings.szFont, sizeof(m_Settings.szFont) - 1);
 	m_Settings.szFont[length] = '\0';
 	m_Settings.fFontSize = reader.GetReal("gui", "FontSize", 30.0f);
 	m_Settings.iFontOutline = reader.GetInteger("gui", "FontOutline", 2);

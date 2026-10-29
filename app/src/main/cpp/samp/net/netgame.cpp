@@ -39,7 +39,10 @@ unsigned char GetPacketID(Packet *p)
 	if (p == 0) return 255;
 
 	if ((unsigned char)p->data[0] == ID_TIMESTAMP)
-		return (unsigned char)p->data[sizeof(unsigned char) + sizeof(unsigned long)];
+		// RakNet writes a 4-byte RakNetTime timestamp, not size_t/unsigned long
+		// (which is 8 bytes on arm64). Using sizeof(unsigned long) read the
+		// packet id 4 bytes too far on 64-bit builds.
+		return (unsigned char)p->data[sizeof(unsigned char) + sizeof(uint32_t)];
 	else
 		return (unsigned char)p->data[0];
 }

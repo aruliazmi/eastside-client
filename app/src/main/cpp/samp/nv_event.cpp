@@ -32,30 +32,46 @@ bool NVEventGetNextEvent(NVEvent* ev)
 
 extern "C"
 {
+	// MotionEvent constants are cached for the life of the process, but FindClass
+	// returns a *local* reference. Cached as-is it is use-after-free once this
+	// JNI call returns. Wrap in NewGlobalRef so the jclass stays valid.
+	static jclass KeyCode_class = nullptr;
+	static int ACTION_DOWN = 0, ACTION_UP = 0, ACTION_POINTER_DOWN = 0,
+	           ACTION_POINTER_UP = 0, ACTION_CANCEL = 0, ACTION_MASK = 0,
+	           ACTION_POINTER_INDEX_MASK = 0, ACTION_POINTER_ID_SHIFT = 0;
+
+	static void InitMotionEventCache(JNIEnv* env)
+	{
+		if (KeyCode_class) return;
+
+		jclass local = env->FindClass("android/view/MotionEvent");
+		if (!local) return;
+		KeyCode_class = (jclass)env->NewGlobalRef(local);
+		env->DeleteLocalRef(local);
+
+		jfieldID ACTION_DOWN_id = env->GetStaticFieldID(KeyCode_class, "ACTION_DOWN", "I");
+		jfieldID ACTION_UP_id = env->GetStaticFieldID(KeyCode_class, "ACTION_UP", "I");
+		jfieldID ACTION_POINTER_DOWN_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_DOWN", "I");
+		jfieldID ACTION_POINTER_UP_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_UP", "I");
+		jfieldID ACTION_CANCEL_id = env->GetStaticFieldID(KeyCode_class, "ACTION_CANCEL", "I");
+		jfieldID ACTION_POINTER_INDEX_SHIFT_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_ID_SHIFT", "I");
+		jfieldID ACTION_POINTER_INDEX_MASK_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_INDEX_MASK", "I");
+		jfieldID ACTION_MASK_id = env->GetStaticFieldID(KeyCode_class, "ACTION_MASK", "I");
+
+		ACTION_DOWN = env->GetStaticIntField(KeyCode_class, ACTION_DOWN_id);
+		ACTION_UP = env->GetStaticIntField(KeyCode_class, ACTION_UP_id);
+		ACTION_POINTER_DOWN = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_DOWN_id);
+		ACTION_POINTER_UP = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_UP_id);
+		ACTION_CANCEL = env->GetStaticIntField(KeyCode_class, ACTION_CANCEL_id);
+		ACTION_MASK = env->GetStaticIntField(KeyCode_class, ACTION_MASK_id);
+		ACTION_POINTER_INDEX_MASK = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_INDEX_MASK_id);
+		ACTION_POINTER_ID_SHIFT = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_ID_SHIFT_id);
+	}
+
 	JNIEXPORT jboolean JNICALL Java_com_nvidia_devtech_NvEventQueueActivity_customMultiTouchEvent(JNIEnv* env, jobject thiz, jint action,
 		jint pointer, jint x1, jint y1, jint x2, jint y2, jint x3, jint y3)
 	{
-		static jclass KeyCode_class = env->FindClass("android/view/MotionEvent");
-		static jfieldID ACTION_DOWN_id = env->GetStaticFieldID(KeyCode_class, "ACTION_DOWN", "I");
-		static jfieldID ACTION_UP_id = env->GetStaticFieldID(KeyCode_class, "ACTION_UP", "I");
-
-		static jfieldID ACTION_POINTER_DOWN_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_DOWN", "I");
-		static jfieldID ACTION_POINTER_UP_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_UP", "I");
-
-		static jfieldID ACTION_CANCEL_id = env->GetStaticFieldID(KeyCode_class, "ACTION_CANCEL", "I");
-		static jfieldID ACTION_POINTER_INDEX_SHIFT_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_ID_SHIFT", "I");
-		static jfieldID ACTION_POINTER_INDEX_MASK_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_ID_MASK", "I");
-		static jfieldID ACTION_MASK_id = env->GetStaticFieldID(KeyCode_class, "ACTION_MASK", "I");
-		static int ACTION_DOWN = env->GetStaticIntField(KeyCode_class, ACTION_DOWN_id);
-		static int ACTION_UP = env->GetStaticIntField(KeyCode_class, ACTION_UP_id);
-
-		static int ACTION_POINTER_DOWN = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_DOWN_id);
-		static int ACTION_POINTER_UP = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_UP_id);
-
-		static int ACTION_CANCEL = env->GetStaticIntField(KeyCode_class, ACTION_CANCEL_id);
-		static int ACTION_POINTER_INDEX_MASK = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_INDEX_MASK_id);
-		static int ACTION_POINTER_INDEX_SHIFT = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_INDEX_SHIFT_id);
-		static int ACTION_MASK = env->GetStaticIntField(KeyCode_class, ACTION_MASK_id);
+		InitMotionEventCache(env);
 
 		{
 			NVEvent ev;

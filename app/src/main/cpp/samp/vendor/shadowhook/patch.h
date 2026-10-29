@@ -186,8 +186,10 @@ public:
 
         auto res = (uintptr_t)dlsym(lib, sym);
         if(res == 0) {
+            // exit(0) here looked like an instant crash with no trace. Return 0
+            // and let the caller decide; every call site checks the address
+            // before dereferencing or writing a hook.
             FLog("[ERROR]: Failed to search for libraries: %s", sym);
-            exit(0);
             return 0;
         }
         return res;
@@ -223,12 +225,21 @@ public:
         if (it == addr_map.end()) {
             addr = (uintptr_t)dlsym(lib, sym);
             if (addr == 0) {
+                // Non-fatal: a missing symbol must not kill the process. Cache
+                // 0 so we do not retry every frame, and let the call fail.
                 FLog("[ERROR]: Function not found: %s", sym);
-                exit(0);
+                addr_map[sym] = 0;
+                addr = 0;
             }
-            addr_map[sym] = addr;
         } else {
             addr = it->second;
+        }
+
+        if (addr == 0) {
+            // Calling address 0 is a guaranteed SIGSEGV; log once and return a
+            // default-constructed Ret instead.
+            FLog("[ERROR]: CallFunction on missing symbol %s", sym);
+            return Ret();
         }
 
         return ((Ret(*)(Args...))(addr))(args...);

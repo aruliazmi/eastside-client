@@ -147,7 +147,12 @@ public class DialogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     }
 
     public void onBindViewHolder(ViewHolder viewHolder) {
-        if (viewHolder.getAdapterPosition() == 0 && !this.mbSkip) {
+        // getAdapterPosition() returns NO_POSITION (-1) while the holder is
+        // detached during a fast rebind (login dialog re-sends are common) -
+        // mRowsList.get(-1) is an IndexOutOfBoundsException.
+        int pos = viewHolder.getAdapterPosition();
+        if (pos == RecyclerView.NO_POSITION || pos >= this.mRowsList.size()) return;
+        if (pos == 0 && !this.mbSkip) {
             updateSizes(viewHolder.mFields[0]);
         }
         for (int i2 = 0; i2 < 4; i2++) {
@@ -161,7 +166,7 @@ public class DialogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 viewHolder.mFields[i2].setText("");
             }
         }
-        String str = this.mRowsList.get(viewHolder.getAdapterPosition());
+        String str = this.mRowsList.get(pos);
         if (!this.mTablist) {
             viewHolder.mFields[0].setText(Util.getColoredString(str));
         } else {

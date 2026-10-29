@@ -11,7 +11,10 @@ import java.io.OutputStream;
 
 public class ConfigValidator {
     public static void validateConfigFiles(Context context) {
+        // getExternalFilesDir returns null when storage is unmounted; that NPE
+        // fired on the main thread during launcher init.
         File externalFilesDir = context.getExternalFilesDir(null);
+        if (externalFilesDir == null) return;
         File file = new File(externalFilesDir, "SAMP/settings.ini");
         if (!file.exists() || file.length() == 0) {
             file.getParentFile().mkdirs();

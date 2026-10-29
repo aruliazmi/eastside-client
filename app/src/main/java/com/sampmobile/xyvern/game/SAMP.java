@@ -149,6 +149,16 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "**** onCreate");
+        // super.onCreate() starts the native game thread (init(false) inside
+        // NvEventQueueActivity). Native callbacks (setPauseState, showDialog,
+        // showKeyboard, hideLoadingScreen, ...) can fire from that thread the
+        // moment it starts, so the UI fields must exist BEFORE it runs.
+        mKeyboard = new CustomKeyboard(this);
+        mDialog = new DialogManager(this);
+        mAttachEdit = new AttachEdit(this);
+        mLoadingScreen = new LoadingScreen(this);
+        instance = this;
+
         super.onCreate(savedInstanceState);
 
         if(!SignatureChecker.isSignatureValid(this, getPackageName())) {
@@ -184,12 +194,6 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
         } catch (Exception error) {
             Log.e(TAG, "Error initializing mod loaders", error);
         }
-
-        mKeyboard = new CustomKeyboard(this);
-        mDialog = new DialogManager(this);
-        mAttachEdit = new AttachEdit(this);
-        mLoadingScreen = new LoadingScreen(this);
-        instance = this;
 
         // ============================================================
         // SA:MP MOBILE CEF (can be toggled in launcher Settings)
