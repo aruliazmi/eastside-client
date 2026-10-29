@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Eastside Client — design tokens.
+
+  Satu sumber kebenaran untuk warna, jarak, dan tipografi.
+  Jangan hardcode hex di layout; selalu rujuk ke sini.
+
+  Arah: warm asphalt + brass. Terinspirasi dokumen kota dan layar
+  loading GTA:SA — bukan cyberpunk, bukan neon, bukan glassmorphism.
+-->
+<resources>
+
+    <!-- ==================== SURFACE ==================== -->
+    <!-- Aspal: hampir hitam, tapi hangat (sedikit merah), bukan biru-slate. -->
+    <color name="es_asphalt">#0D0B09</color>
+    <color name="es_surface">#14110D</color>
+    <color name="es_surface_raised">#1B1712</color>
+    <color name="es_surface_sunken">#090807</color>
+
+    <!-- ==================== GARIS ==================== -->
+    <!-- Garis adalah alat hierarki. Dipakai tipis, tidak di mana-mana. -->
+    <color name="es_rule">#2A241C</color>
+    <color name="es_rule_strong">#3D3428</color>
+
+    <!-- ==================== TEKS ==================== -->
+    <color name="es_ink">#F2EDE4</color>          <!-- teks utama, gading bukan putih -->
+    <color name="es_ink_dim">#A89C8B</color>      <!-- sekunder -->
+    <color name="es_ink_faint">#8F8577</color>    <!-- tersier / metadata, 5.4:1 -->
+    <color name="es_ink_ghost">#877C6B</color>    <!-- nonaktif / path, 4.7:1 -->
+
+    <!-- ==================== KONTROL ==================== -->
+    <!-- State off pada switch harus terbaca, bukan hilang. Kontrol yang
+         tak terlihat bukan kontrol yang "tenang" — itu kontrol yang rusak. -->
+    <color name="es_control_off">#675D4F</color>
+    <color name="es_control_off_thumb">#A79C8B</color>
+
+    <!-- ==================== AKSEN ==================== -->
+    <!-- Kuningan. Satu aksen saja. Kalau semua penting, tidak ada yang penting. -->
+    <color name="es_brass">#D4A548</color>
+    <color name="es_brass_dim">#8A6D30</color>
+    <color name="es_brass_wash">#1F1A10</color>
+
+    <!-- Status. Dipakai hanya untuk status, tidak pernah dekoratif. -->
+    <color name="es_live">#7FA65C</color>         <!-- hijau lumut, bukan #22C55E neon -->
+    <color name="es_live_dim">#28331F</color>
+    <color name="es_warn">#C4703C</color>
+    <color name="es_warn_dim">#2E1D12</color>
+    <color name="es_dead">#A34A42</color>
+    <color name="es_dead_dim">#2B1412</color>
+
+    <!-- ==================== UKURAN ==================== -->
+    <dimen name="es_gutter">20dp</dimen>
+    <dimen name="es_gutter_tight">12dp</dimen>
+    <dimen name="es_rule_hairline">1dp</dimen>
+    <dimen name="es_tap_min">48dp</dimen>
+    <dimen name="es_nav_h">72dp</dimen>
+
+    <!-- Radius: hampir tidak ada. Sudut tajam adalah keputusan, bukan kelalaian. -->
+    <dimen name="es_radius_input">4dp</dimen>
+    <dimen name="es_radius_chip">2dp</dimen>
+
+</resources>

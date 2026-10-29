@@ -66,7 +66,7 @@ import java.util.concurrent.TimeUnit;
 @Obfuscate
 public class MainActivity extends AppCompatActivity {
 
-    public String[] tabTitles = { "Servers", "Info", "Settings" };
+    public String[] tabTitles = { "Home", "Servers", "Settings" };
     public int[] tabImages = { R.drawable.ic_mainmenu, R.drawable.ic_server, R.drawable.ic_settingsmenu};
     public int[] tabSelectedImages = { R.drawable.ic_mainmenu_on, R.drawable.ic_serveron, R.drawable.ic_settingsmenu_on};
 
@@ -329,12 +329,12 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public Fragment getItem(int position) {
             if(position == 0)
-                return new ServersFragment();
-            else if(position == 1)
                 return new HomeFragment();
+            else if(position == 1)
+                return new ServersFragment();
             else if(position == 2)
                 return new SettingsFragment();
-            return new ServersFragment();
+            return new HomeFragment();
         }
 
         @Override

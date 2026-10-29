@@ -1,91 +1,391 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:maxads="http://schemas.applovin.com/android/1.0"
-    xmlns:tools="http://schemas.android.com/tools"
+<!--
+  Home — Eastside Client.
+
+  Server-locked. Tidak ada server browser, tidak ada daftar server,
+  tidak ada favorit. Satu kota, satu pintu masuk.
+
+  Struktur:
+    masthead  nama kota, besar, tanpa kotak
+    panel     status jaringan, garis kiri kuningan
+    isian     nickname, garis bawah
+    aksi      tombol utama
+    aset      status file, datar tanpa card
+
+  Semua android:id dipertahankan persis seperti sebelumnya supaya
+  HomeFragment.java tidak perlu diubah.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    android:background="@color/es_asphalt">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/gpu"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="16dp"
-        android:visibility="invisible"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
 
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="@dimen/_100sdp"
-        android:layout_height="@dimen/_100sdp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.09"
-        app:srcCompat="@drawable/logo" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="@dimen/es_gutter"
+            android:paddingTop="32dp"
+            android:paddingBottom="36dp">
 
-    <TextView
-        android:id="@+id/textView9"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="Our community"
-        android:textColor="@color/white"
-        android:textSize="@dimen/_17sdp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView"
-        app:layout_constraintVertical_bias="0.339" />
+            <!-- ===== MASTHEAD ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Selamat datang di" />
 
-    <View
-        android:id="@+id/view2"
-        android:layout_width="@dimen/_200sdp"
-        android:layout_height="@dimen/_3sdp"
-        android:background="#FF0037"
-        app:layout_constraintBottom_toTopOf="@+id/discord_logo"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.496"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView9"
-        app:layout_constraintVertical_bias="0.434" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:fontFamily="@font/montserrat_black"
+                android:includeFontPadding="false"
+                android:letterSpacing="-0.035"
+                android:lineSpacingMultiplier="0.86"
+                android:text="EASTSIDE\nSTORIES"
+                android:textColor="@color/es_ink"
+                android:textSize="40sp" />
 
-    <ImageView
-        android:id="@+id/discord_logo"
-        android:layout_width="@dimen/_50sdp"
-        android:layout_height="@dimen/_50sdp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.25"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView"
-        app:layout_constraintVertical_bias="0.55"
-        app:srcCompat="@drawable/discord_logo" />
+            <View
+                android:layout_width="44dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="16dp"
+                android:background="@color/es_brass" />
 
-    <ImageView
-        android:id="@+id/youtube_logo"
-        android:layout_width="@dimen/_50sdp"
-        android:layout_height="@dimen/_50sdp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView"
-        app:layout_constraintVertical_bias="0.55"
-        app:srcCompat="@drawable/youtube_logo" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="15dp"
+                android:fontFamily="@font/plex_mono_medium"
+                android:letterSpacing="0.04"
+                android:text="OPEN.MP  ·  ROLEPLAY  ·  MOBILE"
+                android:textColor="@color/es_ink_faint"
+                android:textSize="10sp" />
 
-    <ImageView
-        android:id="@+id/internet_button"
-        android:layout_width="@dimen/_50sdp"
-        android:layout_height="@dimen/_50sdp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.75"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView"
-        app:layout_constraintVertical_bias="0.55"
-        app:srcCompat="@drawable/internet" />
+            <!-- ===== PANEL STATUS ===== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                android:background="@drawable/es_panel_accent"
+                android:orientation="vertical"
+                android:paddingStart="18dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        style="@style/EsLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Status jaringan" />
+
+                    <View
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:layout_marginEnd="7dp"
+                        android:background="@drawable/bg_dot_green" />
+
+                    <TextView
+                        android:id="@+id/tv_server_status"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/plex_mono_semibold"
+                        android:includeFontPadding="false"
+                        android:letterSpacing="0.14"
+                        android:text="ONLINE"
+                        android:textColor="@color/es_live"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <View
+                    style="@style/EsRule"
+                    android:layout_marginTop="14dp" />
+
+                <!-- Endpoint: identifier, jadi mono. -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="bottom"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/EsLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Endpoint" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:fontFamily="@font/plex_mono_semibold"
+                            android:includeFontPadding="false"
+                            android:letterSpacing="-0.01"
+                            android:text="163.52.135.25:7777"
+                            android:textColor="@color/es_ink"
+                            android:textSize="15sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_server_ping"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/plex_mono_medium"
+                        android:includeFontPadding="false"
+                        android:text="-- ms"
+                        android:textColor="@color/es_brass"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <View
+                    style="@style/EsRule"
+                    android:layout_marginTop="14dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/EsLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Pemain" />
+
+                        <TextView
+                            android:id="@+id/tv_server_players"
+                            style="@style/EsFigure"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:text="-- / --" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            style="@style/EsLabel"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Protokol" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="5dp"
+                            android:fontFamily="@font/plex_mono_medium"
+                            android:includeFontPadding="false"
+                            android:text="0.3.DL"
+                            android:textColor="@color/es_ink_dim"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ===== NICKNAME ===== -->
+            <TextView
+                style="@style/EsLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:layout_marginStart="2dp"
+                android:text="Nama karakter" />
+
+            <EditText
+                android:id="@+id/et_player_nickname"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/es_input"
+                android:fontFamily="@font/plex_mono_semibold"
+                android:hint="Nama_Karakter"
+                android:imeOptions="actionDone"
+                android:inputType="textPersonName"
+                android:maxLength="24"
+                android:paddingHorizontal="14dp"
+                android:singleLine="true"
+                android:textColor="@color/es_ink"
+                android:textColorHint="@color/es_ink_ghost"
+                android:textSize="15sp" />
+
+            <!-- ===== AKSI ===== -->
+            <Button
+                android:id="@+id/btn_quick_play"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/es_btn_primary"
+                android:fontFamily="@font/montserrat_bold"
+                android:letterSpacing="0.14"
+                android:text="MASUK KOTA"
+                android:textAllCaps="true"
+                android:textColor="@color/es_asphalt"
+                android:textSize="13sp"
+                app:backgroundTint="@null" />
+
+            <!-- ===== STATUS ASET ===== -->
+            <LinearLayout
+                android:id="@+id/card_data_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/dot_status"
+                        android:layout_width="6dp"
+                        android:layout_height="6dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_dot_green" />
+
+                    <TextView
+                        style="@style/EsLabel"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Aset game" />
+
+                    <TextView
+                        android:id="@+id/tv_data_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/plex_mono_medium"
+                        android:includeFontPadding="false"
+                        android:letterSpacing="0.1"
+                        android:text="SIAP"
+                        android:textColor="@color/es_ink_dim"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <View
+                    style="@style/EsRule"
+                    android:layout_marginTop="12dp" />
+
+                <TextView
+                    android:id="@+id/tv_data_desc"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/montserrat_regular"
+                    android:lineSpacingMultiplier="1.5"
+                    android:text="Seluruh aset GTA SA dan konfigurasi SA-MP terverifikasi."
+                    android:textColor="@color/es_ink_faint"
+                    android:textSize="12sp" />
+
+                <ProgressBar
+                    android:id="@+id/pb_download"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="15dp"
+                    android:progressDrawable="@drawable/download_progress"
+                    android:progressTint="@color/es_brass"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_download_progress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="9dp"
+                    android:fontFamily="@font/plex_mono_medium"
+                    android:text="0%"
+                    android:textColor="@color/es_brass"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/layout_actions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="15dp"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_verify_data"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_marginEnd="5dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/es_btn_ghost"
+                        android:fontFamily="@font/plex_mono_semibold"
+                        android:letterSpacing="0.08"
+                        android:text="VERIFIKASI"
+                        android:textAllCaps="true"
+                        android:textColor="@color/es_ink_dim"
+                        android:textSize="10sp"
+                        app:backgroundTint="@null" />
+
+                    <Button
+                        android:id="@+id/btn_download_data"
+                        android:layout_width="0dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="5dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/es_btn_ghost"
+                        android:fontFamily="@font/plex_mono_semibold"
+                        android:letterSpacing="0.08"
+                        android:text="UNDUH"
+                        android:textAllCaps="true"
+                        android:textColor="@color/es_brass"
+                        android:textSize="10sp"
+                        app:backgroundTint="@null" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Path: teknis, jadi mono dan redup. Bukan CTA. -->
+            <TextView
+                android:id="@+id/tv_manual_path"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:fontFamily="@font/plex_mono_medium"
+                android:lineSpacingMultiplier="1.45"
+                android:text="/Android/data/com.sampmobile.xyvern/files"
+                android:textColor="@color/es_ink_ghost"
+                android:textSize="9.5sp" />
+
+        </LinearLayout>
+    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
