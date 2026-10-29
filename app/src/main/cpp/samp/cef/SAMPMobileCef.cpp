@@ -417,7 +417,9 @@ namespace cef
             {
                 log("RPC_DestroyBrowser");
 
-                callJavaVoidMethod("hideBrowserView");
+                // Real teardown, not just visibility - the hidden page would
+                // otherwise keep its JS context and timers running.
+                callJavaVoidMethod("destroyBrowserView");
                 break;
             }
 

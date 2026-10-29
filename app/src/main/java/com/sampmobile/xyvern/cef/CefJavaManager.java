@@ -614,6 +614,26 @@ public class CefJavaManager {
         });
     }
 
+    // Server RPC_DestroyBrowser semantics: the page must actually be torn
+    // down (JS context + timers + network), not merely hidden - otherwise the
+    // auth page keeps running invisibly behind the HUD.
+    public void destroyBrowserView() {
+        mMainHandler.post(() -> {
+            if (mWebView != null) {
+                if (mWebView instanceof CefHudWebView) {
+                    ((CefHudWebView) mWebView).setInteractionEnabled(false);
+                }
+                mWebView.stopLoading();
+                mWebView.clearFocus();
+                mWebView.loadUrl("about:blank");
+                mWebView.animate().alpha(0f).setDuration(150).withEndAction(() -> {
+                    mWebView.setVisibility(View.GONE);
+                    mIsShown = false;
+                }).start();
+            }
+        });
+    }
+
     public void setBrowserFocus(boolean focused) {
         mMainHandler.post(() -> {
             if (mWebView == null) return;
