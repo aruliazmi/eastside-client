@@ -912,13 +912,22 @@ int CTextureDatabaseRuntime__GetEntry_hook(uintptr_t thiz, const char* a2, bool*
 uintptr_t (*CTxdStore__TxdStoreFindCB)(const char *a1);
 uintptr_t CTxdStore__TxdStoreFindCB_hook(const char *a1)
 {
-	// `samp` is not in InitialiseRenderWare's load set (it faults
-	// _rwOpenGLRasterSetImage with a constant 0x801000 request), but this
-	// fallback still looks the db up. GetDatabase("samp") returns a
-	// half-initialised handle whose entries array was never filled, and
-	// Register+GetTexture then walk it -> SIGSEGV 0x110 inside
-	// _rwStreamReadChunkHeader via TextureDatabaseRuntime::GetTexture.
-	// Only query databases that were actually loaded.
+	// This hook only made sense when the `samp` texture database was loaded:
+	// it walks samp/gta_int/gta3 by name and Register+GetTexture on whatever
+	// the engine's GetDatabase() returns. With `samp` removed from
+	// InitialiseRenderWare's load set (a0508fc) GetDatabase("samp") returns a
+	// half-initialised handle and every fallback path here ends up streaming
+	// from it - SIGSEGV 0x110 in _rwStreamReadChunkHeader (tombstone_02/03/05).
+	//
+	// The engine's own TxdStore::Find callback already searches the loaded
+	// databases; this hook adds nothing but that crash. Disable it outright.
+	(void)a1;
+	return 0;
+}
+
+#if 0 // original hook, kept for reference - do not re-enable without loading `samp` again
+uintptr_t CTxdStore__TxdStoreFindCB_orig_hook(const char *a1)
+{
 	static char* texdbs[] = { "gta_int", "gta3" };
 	for(auto &texdb : texdbs)
 	{
@@ -974,6 +983,7 @@ uintptr_t CTxdStore__TxdStoreFindCB_hook(const char *a1)
 
 	return 0;
 }
+#endif
 
 int (*CCustomRoadsignMgr_RenderRoadsignAtomic)(int a1, int a2);
 int CCustomRoadsignMgr_RenderRoadsignAtomic_hook(int a1, int a2)
@@ -1210,6 +1220,29 @@ stFile* NvFOpen(const char* r0, const char* r1, int r2, int r3)
         sprintf(rel, "SAMP/peds.ide");
         useRel = rel;
         FLog("Loading peds.ide..");
+    }
+    else if (strstr(r1, "samp.dxt.tmb"))
+    {
+        // The engine loads the samp texdb itself inside Initialise3D and picks
+        // the variant from the GL extension list. On Android 15+ ANGLE
+        // advertises S3TC, so it asks for samp.dxt.* even though only the ETC
+        // files are on disk. A missing .tmb makes Load() return a
+        // half-initialised database and SortEntries/GetTexture deref it ->
+        // SIGSEGV 0x110 (tombstone_02/03/05). Serve the ETC files instead;
+        // ETC1 is mandatory in GLES so they exist on every device.
+        sprintf(rel, "texdb/samp/samp.etc.tmb");
+        useRel = rel;
+        FLog("samp.dxt.tmb -> samp.etc.tmb");
+    }
+    else if (strstr(r1, "samp.dxt.dat"))
+    {
+        sprintf(rel, "texdb/samp/samp.etc.dat");
+        useRel = rel;
+    }
+    else if (strstr(r1, "samp.dxt.toc"))
+    {
+        sprintf(rel, "texdb/samp/samp.etc.toc");
+        useRel = rel;
     }
     else if(!strncmp(r1, "DATA/VEHICLES.IDE", 17))
     {
