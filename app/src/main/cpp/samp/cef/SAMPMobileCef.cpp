@@ -274,7 +274,7 @@ namespace cef
     }
     void handleServerConnection()
     {
-        if (!g_bInitialized || !g_pRakClient)
+        if (!g_bInitialized || !g_pRakClient || !g_pJavaManager)
             return;
 
         RakClientInterface* rakClient =

@@ -177,8 +177,8 @@ void Plugin::MainLoop()
 
             if (!Plugin::muteStatus)
             {
-                if (ImGui::ImageButton(Plugin::recordStatus ? (ImTextureID)MicroIcon::tActiveIcon->raster :
-                    (ImTextureID)MicroIcon::tPassiveIcon->raster, vecButSize))
+                RwTexture* curTex = Plugin::recordStatus ? MicroIcon::tActiveIcon : MicroIcon::tPassiveIcon;
+                if (curTex && curTex->raster && ImGui::ImageButton((ImTextureID)curTex->raster, vecButSize))
                 {
                     if (PluginConfig::GetMicroEnable())
                     {
@@ -220,7 +220,7 @@ void Plugin::MainLoop()
             }
             else
             {
-                if (ImGui::ImageButton((ImTextureID)MicroIcon::tMutedIcon->raster, vecButSize))
+                if (MicroIcon::tMutedIcon && MicroIcon::tMutedIcon->raster && ImGui::ImageButton((ImTextureID)MicroIcon::tMutedIcon->raster, vecButSize))
                 {
                     // ~ none
                 }

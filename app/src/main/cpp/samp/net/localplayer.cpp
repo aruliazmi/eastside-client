@@ -144,6 +144,10 @@ bool CLocalPlayer::Process()
     if (CTimer::GetIsUserPaused())
         return false;
 
+    // Safety Check (MUST be checked before accessing m_pPlayerPed / m_pPed!)
+    if (!m_pPlayerPed || !m_pPlayerPed->m_pPed) 
+        return false;
+
     // Basic Updates
     lastPos = m_pPlayerPed->m_pPed->GetPosition();
     m_pPlayerPed->SetCurrentAim(caAim);
@@ -151,10 +155,6 @@ bool CLocalPlayer::Process()
     
     // Cache Time (Optimization)
     uint32_t dwThisTick = CTimer::m_snTimeInMillisecondsNonClipped;
-
-    // Safety Check
-    if (!m_pPlayerPed || !m_pPlayerPed->m_pPed) 
-        return false;
 	m_pPlayerPed->ProcessAttach();
 
     if (m_bIsActive)

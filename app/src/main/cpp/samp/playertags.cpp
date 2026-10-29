@@ -194,13 +194,13 @@ void CPlayerTags::Draw(ImGuiRenderer* renderer, CVector* vec, const char* szNick
 	ImVec2 b = ImVec2(a.x + ((UISettings::fontSize() / 2) * 1.3f), a.y + ((UISettings::fontSize() / 2) * 1.3f));
 
 	// micro icon
-	if (bMicro)
+	if (bMicro && m_pMicroIconTexture && m_pMicroIconTexture->raster)
 	{
 		ImGui::GetBackgroundDrawList()->AddImage((ImTextureID)m_pMicroIconTexture->raster, a, b);
 	}
 
 	// AFK icon
-	if (bAfk)
+	if (bAfk && m_pAFKIconTexture && m_pAFKIconTexture->raster)
 	{
 		ImVec2 a = ImVec2(HealthBarBDR1.x - ((UISettings::fontSize() / 2) * 1.4f), HealthBarBDR1.y);
 		ImVec2 b = ImVec2(a.x + ((UISettings::fontSize() / 2) * 1.3f), a.y + ((UISettings::fontSize() / 2) * 1.3f));
