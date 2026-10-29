@@ -54,7 +54,7 @@ extern "C"
 		jfieldID ACTION_POINTER_DOWN_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_DOWN", "I");
 		jfieldID ACTION_POINTER_UP_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_UP", "I");
 		jfieldID ACTION_CANCEL_id = env->GetStaticFieldID(KeyCode_class, "ACTION_CANCEL", "I");
-		jfieldID ACTION_POINTER_INDEX_SHIFT_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_ID_SHIFT", "I");
+		jfieldID ACTION_POINTER_INDEX_SHIFT_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_INDEX_SHIFT", "I");
 		jfieldID ACTION_POINTER_INDEX_MASK_id = env->GetStaticFieldID(KeyCode_class, "ACTION_POINTER_INDEX_MASK", "I");
 		jfieldID ACTION_MASK_id = env->GetStaticFieldID(KeyCode_class, "ACTION_MASK", "I");
 
@@ -65,7 +65,7 @@ extern "C"
 		ACTION_CANCEL = env->GetStaticIntField(KeyCode_class, ACTION_CANCEL_id);
 		ACTION_MASK = env->GetStaticIntField(KeyCode_class, ACTION_MASK_id);
 		ACTION_POINTER_INDEX_MASK = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_INDEX_MASK_id);
-		ACTION_POINTER_ID_SHIFT = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_ID_SHIFT_id);
+		ACTION_POINTER_ID_SHIFT = env->GetStaticIntField(KeyCode_class, ACTION_POINTER_INDEX_SHIFT_id);
 	}
 
 	JNIEXPORT jboolean JNICALL Java_com_nvidia_devtech_NvEventQueueActivity_customMultiTouchEvent(JNIEnv* env, jobject thiz, jint action,
