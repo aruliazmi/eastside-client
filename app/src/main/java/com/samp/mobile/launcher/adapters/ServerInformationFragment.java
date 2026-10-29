@@ -137,28 +137,9 @@ public class ServerInformationFragment extends Dialog {
                     }
                 }
 
-                File file1 = new File(activity.getExternalFilesDir(null) + "/Text/american.dxt");
-                if(!file1.exists())
-                {
-                    File file2 = new File(activity.getExternalFilesDir(null) + "/Textures/fonts/RussianFont.png");
-                    if(!file2.exists())
-                    {
-                        Toast.makeText(activity, "Some important files in your modified data are missing, such as \"Text\" and \"Textures\"" +
-                                "Please, fix it and after try again. ( You can get that files in my discord channel )", Toast.LENGTH_LONG).show();
-
-                        dismiss();
-                    }
-                    else {
-                        activity.startActivity(new Intent(activity, SAMP.class));
-                        activity.finish();
-                        dismiss();
-                    }
-                }
-                else {
-                    activity.startActivity(new Intent(activity, SAMP.class));
-                    activity.finish();
-                    dismiss();
-                }
+                activity.startActivity(new Intent(activity, SAMP.class));
+                activity.finish();
+                dismiss();
             }
         });
 

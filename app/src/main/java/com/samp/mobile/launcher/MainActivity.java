@@ -93,6 +93,24 @@ public class MainActivity extends AppCompatActivity {
 
         ConfigValidator.validateConfigFiles(this);
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            java.util.ArrayList<String> toReq = new java.util.ArrayList<>();
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                if (checkSelfPermission("android.permission.RECORD_AUDIO") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    toReq.add("android.permission.RECORD_AUDIO");
+                }
+            } else {
+                for (String p : new String[]{"android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.RECORD_AUDIO"}) {
+                    if (checkSelfPermission(p) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        toReq.add(p);
+                    }
+                }
+            }
+            if (!toReq.isEmpty()) {
+                requestPermissions(toReq.toArray(new String[0]), 101);
+            }
+        }
+
         //if(!SignatureChecker.isSignatureValid(this, getPackageName()))
         //{
         //Toast.makeText(this, "Use original launcher! No remake", Toast.LENGTH_LONG).show();
@@ -188,19 +206,12 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 for (Fragment fragment : getSupportFragmentManager().getFragments()) {
-                    if (fragment instanceof ServersFragment) {
-                        while (!fragment.isAdded()) {
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        if(fragment.isAdded()) {
-                            for (Fragment fragment2 : fragment.getChildFragmentManager().getFragments()) {
-                                if ((fragment2 instanceof ServerPagesItemFragment) && ((ServerPagesItemFragment) fragment2).getPage() == 1 && fragment2.getView() != null) {
-                                    Log.d("AXL", "getserverslist");
-                                    ((RecyclerView.Adapter) Objects.requireNonNull(((RecyclerView) ((View) fragment2.requireView()).findViewById(R.id.server_recycler)).getAdapter())).notifyDataSetChanged();
+                    if (fragment instanceof ServersFragment && fragment.isAdded()) {
+                        for (Fragment fragment2 : fragment.getChildFragmentManager().getFragments()) {
+                            if ((fragment2 instanceof ServerPagesItemFragment) && ((ServerPagesItemFragment) fragment2).getPage() == 1 && fragment2.getView() != null) {
+                                RecyclerView rv = fragment2.requireView().findViewById(R.id.server_recycler);
+                                if (rv != null && rv.getAdapter() != null) {
+                                    rv.getAdapter().notifyDataSetChanged();
                                 }
                             }
                         }
@@ -212,8 +223,7 @@ public class MainActivity extends AppCompatActivity {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                Log.d("x1y2z", "error " + error.toString());
-                getServersInfo();
+                Log.d("Eastside", "Hosted servers error: " + error);
                 z[0] = false;
             }
         }));
@@ -318,13 +328,13 @@ public class MainActivity extends AppCompatActivity {
         @NonNull
         @Override
         public Fragment getItem(int position) {
-            if(position == 1)
+            if(position == 0)
                 return new ServersFragment();
-            else if(position == 0)
+            else if(position == 1)
                 return new HomeFragment();
             else if(position == 2)
                 return new SettingsFragment();
-            return new HomeFragment();
+            return new ServersFragment();
         }
 
         @Override
