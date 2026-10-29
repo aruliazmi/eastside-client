@@ -74,7 +74,10 @@ CTextDraw::~CTextDraw()
 
 uintptr_t LoadFromTxdSlot(const char* szSlot, const char* szTexture)
 {
-    RwTexture* tex;
+    // No initializer here = garbage stack value: when FindedLibrary is true the
+    // first `if(!tex)` reads an uninitialised pointer, the whole fallback chain
+    // is skipped, and a junk pointer is returned to the engine as a texture.
+    RwTexture* tex = nullptr;
     if (strncmp(szSlot, "none", 5u))
     {
         /*uintptr_t v10 = ((int (*)(const char*))(g_libGTASA + 0x55BB85))(szSlot);
@@ -124,7 +127,8 @@ uintptr_t LoadFromTxdSlot(const char* szSlot, const char* szTexture)
         tex = (RwTexture*)CUtil::LoadTextureFromDB(szSlot, szTexture);
     }
 
-   FLog("%s loaded from %s", szTexture, szSlot);
+    if (tex) FLog("%s loaded from %s", szTexture, szSlot);
+    else FLog("LoadFromTxdSlot: %s/%s resolved to NULL", szSlot, szTexture);
     return (uintptr_t)tex;
 }
 
