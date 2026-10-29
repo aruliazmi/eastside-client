@@ -473,7 +473,13 @@ bool DLManager::RegisterCustomModels() {
     // Note: path format follows the game's CdStreamOpen expectations (relative to g_pszStorage, max 39 chars).
     int imgIndex = CStreaming::AddImageToList(imgRelPath, false);
     if (imgIndex < 0) {
-        PushChat("Failed to register custom IMG with streaming (no free IMG slot).");
+        // -1 now means either "no free IMG slot" or "the IMG could not be
+        // opened" (AddImageToList rejects a slot it cannot stream from).
+        char msg[320];
+        snprintf(msg, sizeof(msg),
+                 "Failed to register custom IMG (%s): could not open or no free slot.",
+                 imgFullPath.c_str());
+        PushChat(msg);
         std::lock_guard<std::mutex> lock(m_mutex);
         m_bModelsRegistered = true;
         return false;

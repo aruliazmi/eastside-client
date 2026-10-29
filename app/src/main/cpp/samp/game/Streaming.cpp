@@ -274,7 +274,21 @@ int CStreaming::AddImageToList(char const* pFileName, bool bNotPlayerImg) {
             return -1;
         }
     }
-    ms_files[fileIndex].m_StreamHandle = CdStreamOpen(ms_files[fileIndex].m_szName);
+    // CdStreamOpen returns 0 when the file cannot be opened, and in that case the
+    // engine does NOT copy the name into its own gCdImageNames table. The slot
+    // would then be registered with an empty engine-side name, and
+    // CStreaming::ConvertBufferToObject derives the txd database name with
+    // strrchr("", '\\') + 1 == (char*)1, crashing later in
+    // CTxdStore::SetCurrentTxd -> strcmp((char*)1, "player") at fault 0x1.
+    // Refuse to register a slot we cannot actually stream from.
+    int32 streamHandle = CdStreamOpen(ms_files[fileIndex].m_szName);
+    if (streamHandle == 0) {
+        ms_files[fileIndex].m_szName[0] = '\0';
+        ms_files[fileIndex].m_StreamHandle = 0;
+        ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
+        return -1;
+    }
+    ms_files[fileIndex].m_StreamHandle = streamHandle;
     ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
     return fileIndex;
 }
