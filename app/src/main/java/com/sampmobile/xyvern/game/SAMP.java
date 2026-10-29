@@ -159,13 +159,14 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
         mLoadingScreen = new LoadingScreen(this);
         instance = this;
 
-        super.onCreate(savedInstanceState);
-
-        if(!SignatureChecker.isSignatureValid(this, getPackageName())) {
-            Toast.makeText(this, "Use original launcher! No remake", Toast.LENGTH_LONG).show();
-            return;
-        }
-
+        // ============================================================
+        // AML (AndroidModLoader) must be loaded BEFORE super.onCreate():
+        // NvEventQueueActivity.onCreate() calls init(false), which boots the
+        // GTASA engine and installs its hooks. Loading libAML.so afterwards
+        // meant "Working with mods..." ran against an already-initialized
+        // engine, so every AML mod (CLEO, MonetLoader) failed to hook and
+        // nothing in files/mods/ had any effect.
+        // ============================================================
         try {
             File extFiles = getExternalFilesDir(null);
             if (extFiles != null) {
@@ -178,21 +179,24 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
             boolean amlEnabled = getSharedPreferences("com.sampmobile.xyvern", MODE_PRIVATE)
                     .getBoolean("aml_enabled", false);
             if (amlEnabled) {
-                try {
-                    // Refresh files/mods/ before AML starts scanning it. CLEO and
-                    // MonetLoader are AML mods, so they are loaded by AML itself
-                    // and must not be loadLibrary()'d here.
-                    AmlModInstaller.sync(this, versionName());
-                    System.loadLibrary("AML");
-                    Log.i(TAG, "AndroidModLoader loaded");
-                } catch (Throwable e) {
-                    Log.i(TAG, "libAML.so optional module not present: " + e.getMessage());
-                }
+                // Refresh files/mods/ before AML starts scanning it. CLEO and
+                // MonetLoader are AML mods, so they are loaded by AML itself
+                // and must not be loadLibrary()'d here.
+                AmlModInstaller.sync(this, versionName());
+                System.loadLibrary("AML");
+                Log.i(TAG, "AndroidModLoader loaded (pre-engine)");
             } else {
                 Log.i(TAG, "AndroidModLoader disabled in settings");
             }
-        } catch (Exception error) {
-            Log.e(TAG, "Error initializing mod loaders", error);
+        } catch (Throwable error) {
+            Log.e(TAG, "Error initializing AML", error);
+        }
+
+        super.onCreate(savedInstanceState);
+
+        if(!SignatureChecker.isSignatureValid(this, getPackageName())) {
+            Toast.makeText(this, "Use original launcher! No remake", Toast.LENGTH_LONG).show();
+            return;
         }
 
         // ============================================================

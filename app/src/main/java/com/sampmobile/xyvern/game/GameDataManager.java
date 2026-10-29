@@ -131,6 +131,25 @@ public final class GameDataManager {
 
                 String installed = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
                         .getString(KEY_DATA_VERSION, "");
+                // "Data termodifikasi" switch: the player has custom edits in
+                // files/ (modded .img/.txd/script files). Never force a data
+                // re-download over them - the extractor would overwrite every
+                // modified file. Honour the switch and boot with what is on disk.
+                boolean modifiedData = new com.sampmobile.xyvern.launcher.util.SharedPreferenceCore()
+                        .getBoolean(activity.getApplicationContext(), "MODIFIED_DATA");
+                if (modifiedData && hasGameData(activity)) {
+                    android.util.Log.i("GameDataManager",
+                            "MODIFIED_DATA on -> skipping data update check");
+                    try {
+                        int fmt = GpuTextureFormat.get(activity);
+                        if (fmt == 0) fmt = GpuTextureFormat.detect(activity);
+                        GpuTextureFormat.set(activity, fmt);
+                    } catch (Throwable t) {
+                        android.util.Log.w("GameDataManager", "gpu family cache failed", t);
+                    }
+                    MAIN.post(() -> { dismissLoading(); if (!activity.isFinishing()) callback.onReady(); });
+                    return;
+                }
                 if (info.version.equals(installed) && isInstalled(activity, info)) {
                     // Data is already on disk. The native loadDb() probes the
                     // disk per database, so no hint file is needed - just make
@@ -161,6 +180,12 @@ public final class GameDataManager {
 
                     String installed = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
                             .getString(KEY_DATA_VERSION, "");
+                    boolean modifiedData = new com.sampmobile.xyvern.launcher.util.SharedPreferenceCore()
+                            .getBoolean(activity.getApplicationContext(), "MODIFIED_DATA");
+                    if (modifiedData && hasGameData(activity)) {
+                        MAIN.post(() -> { dismissLoading(); if (!activity.isFinishing()) callback.onReady(); });
+                        return;
+                    }
                     if (info.version.equals(installed) && isInstalled(activity, info)) {
                         MAIN.post(() -> { dismissLoading(); if (!activity.isFinishing()) callback.onReady(); });
                         return;
@@ -171,6 +196,18 @@ public final class GameDataManager {
                 }
             }
         });
+    }
+
+    /** Game data exists on disk at all (independent of the version marker). */
+    private static boolean hasGameData(Activity a) {
+        try {
+            File root = a.getExternalFilesDir(null);
+            if (root == null || !root.isDirectory()) return false;
+            File sentinel = new File(root, "SAMP/SAMP.ide");
+            return sentinel.isFile();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /** Version-pinned completion check: marker + version + optional sentinel file. */

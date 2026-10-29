@@ -25,8 +25,8 @@ android {
         applicationId = "com.eastside.samp"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20109
-        versionName = "2.1.9"
+        versionCode = 20200
+        versionName = "2.2.0"
 
         multiDexEnabled = true
 
