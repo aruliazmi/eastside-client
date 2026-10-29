@@ -55,16 +55,22 @@ RwTexture* CUtil::LoadTextureFromDB(const char* dbname, const char* texture)
         return nullptr;
     }
 
-    TextureDatabaseRuntime::Register(db_handle);
-
-    auto tex = CUtil::GetTexture(texture);
-    if(!tex)
-    {
-        FLog("Error: Texture (%s) not found in database (%s)", dbname, texture);
-        return nullptr;
+    bool alreadyReg = TextureDatabaseRuntime::IsDbRegistered(db_handle);
+    if (!alreadyReg) {
+        TextureDatabaseRuntime::Register(db_handle);
     }
 
-    TextureDatabaseRuntime::Unregister(db_handle);
+    auto tex = TextureDatabaseRuntime::GetTexture(texture);
+
+    if (!alreadyReg) {
+        TextureDatabaseRuntime::Unregister(db_handle);
+    }
+
+    if(!tex)
+    {
+        FLog("Error: Texture (%s) not found in database (%s)", texture, dbname);
+        return nullptr;
+    }
 
     return tex;
 }

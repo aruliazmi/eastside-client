@@ -62,39 +62,71 @@ TextureDatabaseRuntime* TextureDatabaseRuntime::Load(const char *withName, bool 
     return CHook::CallFunction<TextureDatabaseRuntime*>(g_libGTASA + (VER_x32 ? 0x001EA864 + 1 : 0x28771C), withName, fullyLoad, forcedFormat);
 }
 
+static TDBArray<TextureDatabaseRuntime*>* GetRegisteredArray() {
+    if (!g_libGTASA) return nullptr;
+    return (TDBArray<TextureDatabaseRuntime*>*)(g_libGTASA + (VER_x32 ? 0x6BD174 : 0x89AA08));
+}
+
+bool TextureDatabaseRuntime::IsDbRegistered(TextureDatabaseRuntime* db) {
+    if (!db) return false;
+    auto* reg = GetRegisteredArray();
+    if (!reg || !reg->dataPtr) return false;
+    for (unsigned int i = 0; i < reg->numEntries; i++) {
+        if (reg->dataPtr[i] == db) return true;
+    }
+    return false;
+}
+
+void TextureDatabaseRuntime::CleanRegisteredDatabases() {
+    auto* reg = GetRegisteredArray();
+    if (!reg || !reg->dataPtr) return;
+    unsigned int validCount = 0;
+    for (unsigned int i = 0; i < reg->numEntries; i++) {
+        TextureDatabaseRuntime* db = reg->dataPtr[i];
+        if (db != nullptr && db->name != nullptr && db->hashOffsets.dataPtr != nullptr) {
+            reg->dataPtr[validCount++] = db;
+        }
+    }
+    reg->numEntries = validCount;
+}
+
+static RwTexture* (*orig_GetTexture)(const char*) = nullptr;
+
+static RwTexture* GetTexture_hook(const char* name) {
+    if (!name || !name[0]) return nullptr;
+    TextureDatabaseRuntime::CleanRegisteredDatabases();
+    return orig_GetTexture(name);
+}
+
 void TextureDatabaseRuntime::InstallLoadGate()
 {
     CHook::InlineHook("_ZN22TextureDatabaseRuntime4LoadEPKcb21TextureDatabaseFormat",
                       &TdbLoad_hook, &orig_TdbLoad);
+    CHook::InlineHook("_ZN22TextureDatabaseRuntime10GetTextureEPKc",
+                      &GetTexture_hook, &orig_GetTexture);
 }
 
 void TextureDatabaseRuntime::Register(TextureDatabaseRuntime *toRegister) {
+    if (!toRegister || !toRegister->name || !toRegister->hashOffsets.dataPtr) {
+        return;
+    }
+    if (IsDbRegistered(toRegister)) {
+        return;
+    }
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x1E9B48 + 1 : 0x2865D8), toRegister);
-//    if (std::find(registered.dataPtr, registered.dataPtr + registered.numEntries, toRegister) != registered.dataPtr + registered.numEntries) {
-//        return; // ��� ���������������, �������
-//    }
-//
-//    if (registered.numAlloced < registered.numEntries + 1) {
-//        size_t newAlloc = ((3 * (registered.numEntries + 1)) >> 1) + 3;
-//        TextureDatabaseRuntime** newData = static_cast<TextureDatabaseRuntime**>(malloc(sizeof(TextureDatabaseRuntime*) * newAlloc));
-//
-//        if (registered.dataPtr) {
-//            std::memcpy(newData, registered.dataPtr, sizeof(TextureDatabaseRuntime*) * registered.numEntries);
-//            free(registered.dataPtr);
-//        }
-//
-//        registered.dataPtr = newData;
-//        registered.numAlloced = newAlloc;
-//    }
-//
-//    registered.dataPtr[registered.numEntries++] = toRegister;
 }
 
 void TextureDatabaseRuntime::Unregister(TextureDatabaseRuntime *toUnregister) {
+    if (!toUnregister) return;
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x1E9C00 + 1 : 0x2866A4), toUnregister);
 }
 
 RwTexture* TextureDatabaseRuntime::GetTexture(const char *name) {
+    if (!name || !name[0]) return nullptr;
+    TextureDatabaseRuntime::CleanRegisteredDatabases();
+    if (orig_GetTexture) {
+        return orig_GetTexture(name);
+    }
     return ((RwTexture*(*)(const char*))(g_libGTASA + (VER_x32 ? 0x001E9C64 + 1 : 0x286718)))(name);
 }
 

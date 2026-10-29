@@ -912,17 +912,9 @@ int CTextureDatabaseRuntime__GetEntry_hook(uintptr_t thiz, const char* a2, bool*
 uintptr_t (*CTxdStore__TxdStoreFindCB)(const char *a1);
 uintptr_t CTxdStore__TxdStoreFindCB_hook(const char *a1)
 {
-	// This hook only made sense when the `samp` texture database was loaded:
-	// it walks samp/gta_int/gta3 by name and Register+GetTexture on whatever
-	// the engine's GetDatabase() returns. With `samp` removed from
-	// InitialiseRenderWare's load set (a0508fc) GetDatabase("samp") returns a
-	// half-initialised handle and every fallback path here ends up streaming
-	// from it - SIGSEGV 0x110 in _rwStreamReadChunkHeader (tombstone_02/03/05).
-	//
-	// The engine's own TxdStore::Find callback already searches the loaded
-	// databases; this hook adds nothing but that crash. Disable it outright.
-	(void)a1;
-	return 0;
+	if (!a1 || !a1[0]) return 0;
+	TextureDatabaseRuntime::CleanRegisteredDatabases();
+	return (uintptr_t)TextureDatabaseRuntime::GetTexture(a1);
 }
 
 #if 0 // original hook, kept for reference - do not re-enable without loading `samp` again
@@ -1762,6 +1754,7 @@ void InstallSpecialHooks()
     CHook::Redirect("_Z7NvFOpenPKcS0_bb", &NvFOpen);
 
     CHook::InlineHook("_ZN14MainMenuScreen6UpdateEf", &MainMenuScreen__Update_hook, &MainMenuScreen__Update);
+    CHook::InlineHook("_ZN9CTxdStore14TxdStoreFindCBEPKc", &CTxdStore__TxdStoreFindCB_hook, &CTxdStore__TxdStoreFindCB);
 
     CHook::RET("_ZN4CPed31RemoveWeaponWhenEnteringVehicleEi"); // CPed::RemoveWeaponWhenEnteringVehicle
 

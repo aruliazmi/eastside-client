@@ -1,5 +1,6 @@
 #include "../main.h"
 #include "game.h"
+#include "util.h"
 #include "../net/netgame.h"
 
 #include "RW/RenderWare.h"
@@ -363,7 +364,14 @@ void CObject::SetMaterial(int iModel, int iMaterialIndex, char* txdname, char* t
 			m_MaterialTexture[iMaterialIndex] = 0;
 		}
 
-		m_MaterialTexture[iMaterialIndex] = (uintptr_t)LoadTexture(texturename);
+		RwTexture* tex = nullptr;
+		if (txdname && txdname[0] && strncmp(txdname, "none", 4) != 0) {
+			tex = LoadTextureFromTxd(txdname, texturename);
+		}
+		if (!tex && texturename && texturename[0]) {
+			tex = (RwTexture*)LoadTexture(texturename);
+		}
+		m_MaterialTexture[iMaterialIndex] = (uintptr_t)tex;
 		m_dwMaterialColor[iMaterialIndex] = dwColor;
 		m_iMaterialType[iMaterialIndex] = MATERIAL_TYPE_MATERIAL;
 		m_bHasMaterial = true;
