@@ -47,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private View navHome, navFiles, navSettings;
     private ImageView ivHome, ivFiles, ivSettings;
     private TextView tvHome, tvFiles, tvSettings;
+    private View indHome, indFiles, indSettings;
     private boolean launcherInitialized = false;
 
     @Override
@@ -101,6 +102,9 @@ public class MainActivity extends AppCompatActivity {
         tvHome = findViewById(R.id.tv_home);
         tvFiles = findViewById(R.id.tv_files);
         tvSettings = findViewById(R.id.tv_settings);
+        indHome = findViewById(R.id.ind_home);
+        indFiles = findViewById(R.id.ind_files);
+        indSettings = findViewById(R.id.ind_settings);
 
         navHome.setOnClickListener(v -> changeTab(0));
         navFiles.setOnClickListener(v -> changeTab(1));
@@ -110,36 +114,37 @@ public class MainActivity extends AppCompatActivity {
     private void updateNavUI(int position) {
         if (navHome == null || navFiles == null || navSettings == null ||
                 tvHome == null || tvFiles == null || tvSettings == null) return;
-        navHome.setBackground(null);
-        navFiles.setBackground(null);
-        navSettings.setBackground(null);
-        tvHome.setVisibility(View.GONE);
-        tvFiles.setVisibility(View.GONE);
-        tvSettings.setVisibility(View.GONE);
 
-        // Kuningan untuk aktif, redup untuk tidak. Tanpa pill berisi warna:
-        // hierarki ditentukan oleh label yang muncul, bukan oleh blok.
-        // Nilai diambil dari res/values/es_tokens.xml dan harus tetap sama:
-        // es_brass #D4A548, es_ink_ghost #877C6B (4.7:1 di atas es_asphalt).
+        // Label selalu tampil; yang berubah hanya warna. Sebelumnya label
+        // di-GONE untuk tab non-aktif, sehingga tinggi konten bergeser tiap
+        // pindah tab. Nilai warna sama dengan es_tokens.xml:
+        // es_brass #D4A548 (aktif), es_ink_ghost #877C6B (tidak aktif).
         final int colorActive = 0xFFD4A548;
         final int colorInactive = 0xFF877C6B;
 
+        tvHome.setTextColor(colorInactive);
+        tvFiles.setTextColor(colorInactive);
+        tvSettings.setTextColor(colorInactive);
         if (ivHome != null) ivHome.setColorFilter(colorInactive);
         if (ivFiles != null) ivFiles.setColorFilter(colorInactive);
         if (ivSettings != null) ivSettings.setColorFilter(colorInactive);
 
+        indHome.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        indFiles.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        indSettings.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
         if (position == 0) {
-            tvHome.setVisibility(View.VISIBLE);
             tvHome.setTextColor(colorActive);
             if (ivHome != null) ivHome.setColorFilter(colorActive);
+            indHome.setBackgroundColor(colorActive);
         } else if (position == 1) {
-            tvFiles.setVisibility(View.VISIBLE);
             tvFiles.setTextColor(colorActive);
             if (ivFiles != null) ivFiles.setColorFilter(colorActive);
+            indFiles.setBackgroundColor(colorActive);
         } else if (position == 2) {
-            tvSettings.setVisibility(View.VISIBLE);
             tvSettings.setTextColor(colorActive);
             if (ivSettings != null) ivSettings.setColorFilter(colorActive);
+            indSettings.setBackgroundColor(colorActive);
         }
     }
 

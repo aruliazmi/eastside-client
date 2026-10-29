@@ -2,18 +2,14 @@
 <!--
   Home — Eastside Client.
 
-  Server-locked. Tidak ada server browser, tidak ada daftar server,
-  tidak ada favorit. Satu kota, satu pintu masuk.
+  Referensi tata letak: kartu "NAMA PEMAIN" + kartu "SERVER SAAT INI" di
+  tengah, satu tombol utama besar di bawahnya, tautan kecil di kaki layar.
+  Bedanya di sini: server tidak dikunci — kartu server membuka daftar server.
 
-  Struktur:
-    masthead  nama kota, besar, tanpa kotak
-    panel     status jaringan, garis kiri kuningan
-    isian     nickname, garis bawah
-    aksi      tombol utama
-    aset      status file, datar tanpa card
+  Aksen tunggal: kuningan (es_brass). Status memakai es_live/es_dead, tidak
+  pernah dekoratif.
 
-  Semua android:id dipertahankan persis seperti sebelumnya supaya
-  HomeFragment.java tidak perlu diubah.
+  Semua android:id lama dipertahankan; yang baru ditambahkan di bawah.
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -33,237 +29,265 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/es_gutter"
-            android:paddingTop="32dp"
-            android:paddingBottom="36dp">
+            android:paddingTop="26dp"
+            android:paddingBottom="28dp">
 
-            <!-- ===== MASTHEAD ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Selamat datang di" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:fontFamily="@font/montserrat_black"
-                android:includeFontPadding="false"
-                android:letterSpacing="-0.035"
-                android:lineSpacingMultiplier="0.86"
-                android:text="EASTSIDE\nSTORIES"
-                android:textColor="@color/es_ink"
-                android:textSize="40sp" />
-
-            <View
-                android:layout_width="44dp"
-                android:layout_height="2dp"
-                android:layout_marginTop="16dp"
-                android:background="@color/es_brass" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="15dp"
-                android:fontFamily="@font/plex_mono_medium"
-                android:letterSpacing="0.04"
-                android:text="OPEN.MP  ·  ROLEPLAY  ·  MOBILE"
-                android:textColor="@color/es_ink_faint"
-                android:textSize="10sp" />
-
-            <!-- ===== PANEL STATUS ===== -->
+            <!-- ===================== MASTHEAD ===================== -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="30dp"
-                android:background="@drawable/es_panel_accent"
-                android:orientation="vertical"
-                android:paddingStart="18dp"
-                android:paddingTop="16dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="16dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Tanda: blok kuningan, bukan logo ilustrasi. -->
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="34dp"
+                    android:background="@color/es_brass" />
 
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/montserrat_black"
+                        android:includeFontPadding="false"
+                        android:letterSpacing="-0.03"
+                        android:text="EASTSIDE"
+                        android:textColor="@color/es_ink"
+                        android:textSize="22sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="@font/plex_mono_medium"
+                        android:includeFontPadding="false"
+                        android:letterSpacing="0.1"
+                        android:text="STORIES · MOBILE"
+                        android:textColor="@color/es_ink_faint"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/iv_header_settings"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Pengaturan"
+                    android:padding="9dp"
+                    app:srcCompat="@drawable/ic_gear"
+                    app:tint="@color/es_ink_dim" />
+            </LinearLayout>
+
+            <View
+                style="@style/EsRule"
+                android:layout_marginTop="20dp" />
+
+            <!-- ===================== KARTU PEMAIN ===================== -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:background="@drawable/es_card"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <TextView
                         style="@style/EsLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Status jaringan" />
-
-                    <View
-                        android:layout_width="6dp"
-                        android:layout_height="6dp"
-                        android:layout_marginEnd="7dp"
-                        android:background="@drawable/bg_dot_green" />
-
-                    <TextView
-                        android:id="@+id/tv_server_status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/plex_mono_semibold"
-                        android:includeFontPadding="false"
-                        android:letterSpacing="0.14"
-                        android:text="ONLINE"
-                        android:textColor="@color/es_live"
-                        android:textSize="10sp" />
+                        android:text="Nama pemain" />
+
+                    <EditText
+                        android:id="@+id/et_player_nickname"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:background="@null"
+                        android:fontFamily="@font/montserrat_bold"
+                        android:hint="Nama_Karakter"
+                        android:imeOptions="actionDone"
+                        android:inputType="textPersonName"
+                        android:maxLength="24"
+                        android:padding="0dp"
+                        android:singleLine="true"
+                        android:textColor="@color/es_ink"
+                        android:textColorHint="@color/es_ink_ghost"
+                        android:textSize="18sp" />
                 </LinearLayout>
 
-                <View
-                    style="@style/EsRule"
-                    android:layout_marginTop="14dp" />
+                <ImageView
+                    android:id="@+id/iv_edit_nickname"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Ubah nama"
+                    android:padding="8dp"
+                    app:srcCompat="@drawable/ic_pencil"
+                    app:tint="@color/es_brass" />
+            </LinearLayout>
 
-                <!-- Endpoint: identifier, jadi mono. -->
+            <!-- ===================== KARTU SERVER ===================== -->
+            <!-- Klik membuka daftar server. Ini yang menggantikan hardcode. -->
+            <LinearLayout
+                android:id="@+id/card_server"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/es_card_accent"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="14dp">
+
                 <LinearLayout
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:gravity="bottom"
-                    android:orientation="horizontal">
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <TextView
                             style="@style/EsLabel"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Endpoint" />
+                            android:text="Server" />
+
+                        <View
+                            android:id="@+id/dot_server"
+                            android:layout_width="5dp"
+                            android:layout_height="5dp"
+                            android:layout_marginStart="8dp"
+                            android:background="@drawable/bg_dot_gray" />
 
                         <TextView
+                            android:id="@+id/tv_server_status"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginStart="5dp"
                             android:fontFamily="@font/plex_mono_semibold"
                             android:includeFontPadding="false"
-                            android:letterSpacing="-0.01"
-                            android:text="163.52.135.25:7777"
-                            android:textColor="@color/es_ink"
-                            android:textSize="15sp" />
+                            android:letterSpacing="0.12"
+                            android:text="MEMUAT"
+                            android:textColor="@color/es_ink_faint"
+                            android:textSize="8.5sp" />
                     </LinearLayout>
 
                     <TextView
-                        android:id="@+id/tv_server_ping"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/tv_server_name"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:fontFamily="@font/plex_mono_medium"
+                        android:layout_marginTop="5dp"
+                        android:ellipsize="end"
+                        android:fontFamily="@font/montserrat_bold"
                         android:includeFontPadding="false"
-                        android:text="-- ms"
-                        android:textColor="@color/es_brass"
-                        android:textSize="13sp" />
-                </LinearLayout>
-
-                <View
-                    style="@style/EsRule"
-                    android:layout_marginTop="14dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="14dp"
-                    android:orientation="horizontal">
+                        android:maxLines="1"
+                        android:text="Eastside Stories"
+                        android:textColor="@color/es_ink"
+                        android:textSize="16sp" />
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <TextView
-                            style="@style/EsLabel"
+                            android:id="@+id/tv_server_endpoint"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Pemain" />
+                            android:fontFamily="@font/plex_mono_medium"
+                            android:includeFontPadding="false"
+                            android:text="0.0.0.0:7777"
+                            android:textColor="@color/es_ink_faint"
+                            android:textSize="10.5sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginHorizontal="6dp"
+                            android:text="·"
+                            android:textColor="@color/es_ink_ghost"
+                            android:textSize="10.5sp" />
 
                         <TextView
                             android:id="@+id/tv_server_players"
-                            style="@style/EsFigure"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="5dp"
-                            android:text="-- / --" />
-                    </LinearLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                            android:fontFamily="@font/plex_mono_semibold"
+                            android:includeFontPadding="false"
+                            android:text="-- / --"
+                            android:textColor="@color/es_brass"
+                            android:textSize="10.5sp" />
 
                         <TextView
-                            style="@style/EsLabel"
+                            android:id="@+id/tv_server_ping"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Protokol" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="5dp"
+                            android:layout_marginStart="8dp"
                             android:fontFamily="@font/plex_mono_medium"
                             android:includeFontPadding="false"
-                            android:text="0.3.DL"
-                            android:textColor="@color/es_ink_dim"
-                            android:textSize="14sp" />
+                            android:text="-- ms"
+                            android:textColor="@color/es_ink_ghost"
+                            android:textSize="10.5sp" />
                     </LinearLayout>
                 </LinearLayout>
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="Pilih server"
+                    app:srcCompat="@drawable/ic_chevron_right"
+                    app:tint="@color/es_brass" />
             </LinearLayout>
 
-            <!-- ===== NICKNAME ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:layout_marginStart="2dp"
-                android:text="Nama karakter" />
-
-            <EditText
-                android:id="@+id/et_player_nickname"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/es_input"
-                android:fontFamily="@font/plex_mono_semibold"
-                android:hint="Nama_Karakter"
-                android:imeOptions="actionDone"
-                android:inputType="textPersonName"
-                android:maxLength="24"
-                android:paddingHorizontal="14dp"
-                android:singleLine="true"
-                android:textColor="@color/es_ink"
-                android:textColorHint="@color/es_ink_ghost"
-                android:textSize="15sp" />
-
-            <!-- ===== AKSI ===== -->
+            <!-- ===================== AKSI UTAMA ===================== -->
             <Button
                 android:id="@+id/btn_quick_play"
                 android:layout_width="match_parent"
                 android:layout_height="58dp"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="16dp"
                 android:background="@drawable/es_btn_primary"
                 android:fontFamily="@font/montserrat_bold"
                 android:letterSpacing="0.14"
-                android:text="MASUK KOTA"
+                android:text="MAIN ONLINE"
                 android:textAllCaps="true"
                 android:textColor="@color/es_asphalt"
-                android:textSize="13sp"
+                android:textSize="14sp"
                 app:backgroundTint="@null" />
 
-            <!-- ===== STATUS ASET ===== -->
+            <!-- ===================== STATUS ASET ===================== -->
             <LinearLayout
                 android:id="@+id/card_data_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
+                android:layout_marginTop="22dp"
                 android:orientation="vertical">
 
                 <LinearLayout
@@ -293,32 +317,32 @@
                         android:fontFamily="@font/plex_mono_medium"
                         android:includeFontPadding="false"
                         android:letterSpacing="0.1"
-                        android:text="SIAP"
+                        android:text="MEMERIKSA"
                         android:textColor="@color/es_ink_dim"
-                        android:textSize="10sp" />
+                        android:textSize="9.5sp" />
                 </LinearLayout>
 
                 <View
                     style="@style/EsRule"
-                    android:layout_marginTop="12dp" />
+                    android:layout_marginTop="11dp" />
 
                 <TextView
                     android:id="@+id/tv_data_desc"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
+                    android:layout_marginTop="11dp"
                     android:fontFamily="@font/montserrat_regular"
-                    android:lineSpacingMultiplier="1.5"
-                    android:text="Seluruh aset GTA SA dan konfigurasi SA-MP terverifikasi."
+                    android:lineSpacingMultiplier="1.45"
+                    android:text="Memeriksa kelengkapan aset game."
                     android:textColor="@color/es_ink_faint"
-                    android:textSize="12sp" />
+                    android:textSize="11.5sp" />
 
                 <ProgressBar
                     android:id="@+id/pb_download"
                     style="@style/Widget.AppCompat.ProgressBar.Horizontal"
                     android:layout_width="match_parent"
                     android:layout_height="3dp"
-                    android:layout_marginTop="15dp"
+                    android:layout_marginTop="13dp"
                     android:progressDrawable="@drawable/download_progress"
                     android:progressTint="@color/es_brass"
                     android:visibility="gone" />
@@ -327,24 +351,24 @@
                     android:id="@+id/tv_download_progress"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="9dp"
+                    android:layout_marginTop="8dp"
                     android:fontFamily="@font/plex_mono_medium"
                     android:text="0%"
                     android:textColor="@color/es_brass"
-                    android:textSize="11sp"
+                    android:textSize="10.5sp"
                     android:visibility="gone" />
 
                 <LinearLayout
                     android:id="@+id/layout_actions"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="15dp"
+                    android:layout_marginTop="13dp"
                     android:orientation="horizontal">
 
                     <Button
                         android:id="@+id/btn_verify_data"
                         android:layout_width="0dp"
-                        android:layout_height="46dp"
+                        android:layout_height="44dp"
                         android:layout_marginEnd="5dp"
                         android:layout_weight="1"
                         android:background="@drawable/es_btn_ghost"
@@ -353,13 +377,13 @@
                         android:text="VERIFIKASI"
                         android:textAllCaps="true"
                         android:textColor="@color/es_ink_dim"
-                        android:textSize="10sp"
+                        android:textSize="9.5sp"
                         app:backgroundTint="@null" />
 
                     <Button
                         android:id="@+id/btn_download_data"
                         android:layout_width="0dp"
-                        android:layout_height="46dp"
+                        android:layout_height="44dp"
                         android:layout_marginStart="5dp"
                         android:layout_weight="1"
                         android:background="@drawable/es_btn_ghost"
@@ -368,24 +392,46 @@
                         android:text="UNDUH"
                         android:textAllCaps="true"
                         android:textColor="@color/es_brass"
-                        android:textSize="10sp"
+                        android:textSize="9.5sp"
                         app:backgroundTint="@null" />
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Path: teknis, jadi mono dan redup. Bukan CTA. -->
-            <TextView
-                android:id="@+id/tv_manual_path"
+            <!-- ===================== KAKI ===================== -->
+            <View
+                style="@style/EsRule"
+                android:layout_marginTop="22dp" />
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:fontFamily="@font/plex_mono_medium"
-                android:lineSpacingMultiplier="1.45"
-                android:text="/Android/data/com.eastside.samp/files"
-                android:textColor="@color/es_ink_ghost"
-                android:textSize="9.5sp" />
+                android:layout_marginTop="14dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_manual_path"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="middle"
+                    android:fontFamily="@font/plex_mono_medium"
+                    android:maxLines="1"
+                    android:text="/Android/data/com.eastside.samp/files"
+                    android:textColor="@color/es_ink_ghost"
+                    android:textSize="9sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/plex_mono_medium"
+                    android:includeFontPadding="false"
+                    android:letterSpacing="0.1"
+                    android:text="V2"
+                    android:textColor="@color/es_ink_ghost"
+                    android:textSize="9sp" />
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

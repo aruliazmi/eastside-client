@@ -56,7 +56,10 @@ float UISettings::m_dialogListItemHeight = 30.0f;
 
 /* buttonpanel */
 ImVec2 UISettings::m_buttonPanelPos = ImVec2(5.0f, 140.0f/*150.0f*/);
-ImVec2 UISettings::m_buttonPanelSize = ImVec2(380.0f/*250.0f*//*180.0f*//*250.0f*/, 50.0f); //ImVec2(120.0f, 45.0f);
+/* Sebelas tombol (<< ESC TAB ALT SPC F H 2 Y N G). Lebar 380 tidak cukup:
+   Layout membagi sisa ruang ke semua anak, jadi tombol jadi sangat sempit dan
+   labelnya terpotong. */
+ImVec2 UISettings::m_buttonPanelSize = ImVec2(560.0f, 50.0f);
 
 /* voice button */
 ImVec2 UISettings::m_buttonVoicePos = ImVec2(500.0f, 180.0f/*170.0f*/);
@@ -65,8 +68,10 @@ ImVec2 UISettings::m_buttonVoiceSize = ImVec2(55.0f, 80.0f);
 /* ////////////////// colors ////////////////// */
 
 /* button */
-ImColor UISettings::m_buttonColor = ImColor(0.11f, 0.11f, 0.11f, 0.80f);
-ImColor UISettings::m_buttonFocusedColor = ImColor(0x64, 0x95, 0xED);/*ImColor(119, 4, 4, 255);*/ //ImColor(80, 80, 80);
+ImColor UISettings::m_buttonColor = ImColor(0.086f, 0.075f, 0.063f, 0.82f);
+// Aksen tunggal klien: kuningan #D4A548, sama dengan es_brass di launcher.
+// Dipakai hanya untuk state tertekan, bukan untuk semua tombol sekaligus.
+ImColor UISettings::m_buttonFocusedColor = ImColor(0xD4, 0xA5, 0x48);
 
 /* keyboard */
 ImColor UISettings::m_keyboardBackgroundColor = ImColor(0, 0, 0, 150);

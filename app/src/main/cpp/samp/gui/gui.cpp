@@ -211,6 +211,11 @@ void UI::render()
 
     ProcessPushedTextdraws();
 
+	/* Tab list menunda penghapusan widget-nya sampai di sini: hide() bisa
+	   dipanggil dari dalam touchPopEvent(), dan menghapus widget di tengah
+	   event adalah use-after-free. */
+	if (m_playerTabList) m_playerTabList->teardown();
+
 	if (m_bNeedClearMousePos) {
 		ImGuiIO& io = ImGui::GetIO();
 		io.MousePos = ImVec2(-1, -1);

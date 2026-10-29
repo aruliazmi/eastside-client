@@ -9,6 +9,14 @@ public:
 
 	void assemble(const std::string& data);
 
+	/** Drops every row so assemble() can be called again (search filtering). */
+	void clearItems();
+
+	void setHeaderRow(bool header) { m_headerRow = header; }
+
+private:
+	bool m_headerRow = true;
+
 private:
 	class ItemWidget : public ListBoxItem
 	{

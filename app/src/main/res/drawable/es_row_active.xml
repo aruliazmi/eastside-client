@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Baris server yang sedang terpilih: penanda garis kiri kuningan. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/es_brass_wash" />
+        </shape>
+    </item>
+    <item android:width="3dp" android:gravity="left">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/es_brass" />
+        </shape>
+    </item>
+</layer-list>

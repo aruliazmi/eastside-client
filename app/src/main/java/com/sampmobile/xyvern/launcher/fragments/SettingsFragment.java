@@ -86,6 +86,14 @@ public class SettingsFragment extends Fragment {
             ((MainActivity) getActivity()).hideKeyboard(getActivity());
         }
 
+        // Endpoint di footer bukan konstanta lagi: ikuti server yang dipilih.
+        android.widget.TextView about = view.findViewById(R.id.tv_about_endpoint);
+        if (about != null) {
+            com.sampmobile.xyvern.launcher.data.ServerEntry cur =
+                    com.sampmobile.xyvern.launcher.data.ServerStore.current(requireContext());
+            about.setText("EASTSIDE CLIENT  ·  " + cur.endpoint());
+        }
+
         // Ánh xạ các thành phần giao diện
         autoCompleteTextView = view.findViewById(R.id.spinner);
         mKeyboardSwitch = view.findViewById(R.id.keyboard_switch);

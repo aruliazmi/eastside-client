@@ -21,12 +21,16 @@ public class ConfigValidator {
             boolean copied = copyAsset(context.getAssets(), "settings.ini", file.toString());
             if (!copied) {
                 try {
+                    // No hard-coded host: seed from the selected server so a
+                    // newly added server works without touching the template.
+                    com.sampmobile.xyvern.launcher.data.ServerEntry cur =
+                            com.sampmobile.xyvern.launcher.data.ServerStore.current(context);
                     FileOutputStream fos = new FileOutputStream(file);
                     StringBuilder sb = new StringBuilder();
                     sb.append("[client]\n");
                     sb.append("name=AndroidUser\n");
-                    sb.append("host=163.52.135.25\n");
-                    sb.append("port=7777\n");
+                    sb.append("host=").append(cur.host).append("\n");
+                    sb.append("port=").append(cur.port).append("\n");
                     sb.append("password=\n");
                     sb.append("version=0.3.DL-R1\n\n");
                     sb.append("[gui]\n");

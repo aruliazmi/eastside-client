@@ -19,6 +19,16 @@ void TabListWidget::performLayout()
 	ListBox::performLayout();
 }
 
+void TabListWidget::clearItems()
+{
+	/* removeItem(0) sudah memanggil delete pada item, jadi hapus dari depan
+	   sampai kosong. Panel ikut melakukan performLayout tiap langkah. */
+	while (itemsCount() > 0)
+	{
+		removeItem(0);
+	}
+}
+
 void TabListWidget::assemble(const std::string& data)
 {
 	std::vector < std::vector<Label*> > vRows;

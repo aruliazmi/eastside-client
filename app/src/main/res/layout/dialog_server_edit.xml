@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Form tambah/ubah server. Input: garis bawah + label mono, sama seperti
+     isian nama karakter di Home. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="4dp"
+    android:paddingTop="6dp">
+
+    <TextView
+        style="@style/EsLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Nama server" />
+
+    <EditText
+        android:id="@+id/et_srv_name"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/es_input"
+        android:fontFamily="@font/montserrat_bold"
+        android:hint="Nama tampilan"
+        android:inputType="textCapSentences"
+        android:maxLength="40"
+        android:paddingHorizontal="12dp"
+        android:singleLine="true"
+        android:textColor="@color/es_ink"
+        android:textColorHint="@color/es_ink_ghost"
+        android:textSize="14sp" />
+
+    <TextView
+        style="@style/EsLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Host / IP" />
+
+    <EditText
+        android:id="@+id/et_srv_host"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/es_input"
+        android:fontFamily="@font/plex_mono_semibold"
+        android:hint="contoh: 163.52.135.25 atau play.contoh.com"
+        android:inputType="textUri"
+        android:maxLength="120"
+        android:paddingHorizontal="12dp"
+        android:singleLine="true"
+        android:textColor="@color/es_ink"
+        android:textColorHint="@color/es_ink_ghost"
+        android:textSize="13sp" />
+
+    <TextView
+        style="@style/EsLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Port" />
+
+    <EditText
+        android:id="@+id/et_srv_port"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="6dp"
+        android:background="@drawable/es_input"
+        android:fontFamily="@font/plex_mono_semibold"
+        android:hint="7777"
+        android:inputType="number"
+        android:maxLength="5"
+        android:paddingHorizontal="12dp"
+        android:singleLine="true"
+        android:text="7777"
+        android:textColor="@color/es_ink"
+        android:textColorHint="@color/es_ink_ghost"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/tv_form_error"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="@font/plex_mono_medium"
+        android:textColor="@color/es_dead"
+        android:textSize="10sp"
+        android:visibility="gone" />
+</LinearLayout>

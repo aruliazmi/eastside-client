@@ -22,4 +22,32 @@
     <style name="Theme.SAMPLauncher.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
 
     <style name="Theme.SAMPLauncher.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <!-- Dialog gelap untuk launcher.
+
+         AndroidManifest memakai Theme.AppCompat.Light.NoActionBar, jadi
+         AlertDialog bawaan selalu putih: kotak isian gelap di atas latar putih,
+         teks "Simpan"/"Batal" hitam, dan sudut yang tidak senada dengan
+         es_tokens. ThemeOverlay ini dipasang lewat ContextThemeWrapper saat
+         dialog dibuat. -->
+    <style name="Theme.SAMPLauncher.Dialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="colorAccent">@color/es_brass</item>
+        <item name="android:textColorPrimary">@color/es_ink</item>
+        <item name="android:textColorSecondary">@color/es_ink_dim</item>
+        <item name="android:background">@color/es_surface</item>
+        <item name="android:windowBackground">@color/es_surface</item>
+        <item name="android:colorBackground">@color/es_surface</item>
+        <item name="android:textColorAlertDialogListItem">@color/es_ink</item>
+        <item name="alertDialogTheme">@style/Theme.SAMPLauncher.Dialog</item>
+        <item name="buttonBarPositiveButtonStyle">@style/EsDialogButton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/EsDialogButton</item>
+    </style>
+
+    <style name="EsDialogButton" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:textColor">@color/es_brass</item>
+        <item name="android:fontFamily">@font/plex_mono_semibold</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textSize">11sp</item>
+    </style>
 </resources>

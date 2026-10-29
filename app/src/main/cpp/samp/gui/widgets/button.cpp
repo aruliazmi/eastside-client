@@ -70,13 +70,11 @@ void CButton::draw(ImGuiRenderer* renderer)
 {
 	if (OpenButton == false) return;
 
-	renderer->drawRect(absolutePosition(), absolutePosition() + size(),
-		focused() ? m_colorFocused : m_color, true);
-
-	
-	renderer->drawRect(absolutePosition() + ImVec2(UISettings::outlineSize(), UISettings::outlineSize()),
-		(absolutePosition() + size()) - ImVec2(UISettings::outlineSize(), UISettings::outlineSize()),
-		ImColor(0x64, 0x95, 0xED)/*ImColor(0, 0, 0, 200)*/, false, UISettings::outlineSize());
+	/* Kotak gelap semi-transparan dengan sudut membulat kecil, sama seperti
+	   bar tombol SA-MP Mobile. Sebelumnya kotak pekat dengan outline 2dp
+	   warna penuh, sehingga semua tombol terbaca sama penting. */
+	renderer->drawRoundRect(absolutePosition(), absolutePosition() + size(),
+		focused() ? m_colorFocused : m_color, 3.0f, true);
 
 	Widget::draw(renderer);
 }
@@ -120,13 +118,8 @@ void OButton::draw(ImGuiRenderer* renderer)
 		return;
 	}
 
-	renderer->drawRect(absolutePosition(), absolutePosition() + size(),
-		focused() ? m_colorFocused : m_color, true);
-
-
-	renderer->drawRect(absolutePosition() + ImVec2(UISettings::outlineSize(), UISettings::outlineSize()),
-		(absolutePosition() + size()) - ImVec2(UISettings::outlineSize(), UISettings::outlineSize()),
-		ImColor(0x64, 0x95, 0xED)/*ImColor(0, 0, 0, 200)*/, false, UISettings::outlineSize());
+	renderer->drawRoundRect(absolutePosition(), absolutePosition() + size(),
+		focused() ? m_colorFocused : m_color, 3.0f, true);
 
 	Widget::draw(renderer);
 

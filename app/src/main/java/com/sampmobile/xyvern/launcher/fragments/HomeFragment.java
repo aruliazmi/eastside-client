@@ -40,10 +40,9 @@ public class HomeFragment extends Fragment {
 
     // Direct download URL untuk data pack resmi GTA SA / SAMP
     // Di-host di repo sendiri, bukan release repo pihak ketiga.
+    // Server tujuan TIDAK lagi hard-coded di sini: lihat ServerStore.
     private static final String DATA_ZIP_URL =
             "https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip";
-    private static final String SERVER_IP = "163.52.135.25";
-    private static final int SERVER_PORT = 7777;
 
     private View dotStatus;
     private TextView tvDataTitle;
@@ -57,10 +56,18 @@ public class HomeFragment extends Fragment {
     private TextView tvServerPlayers;
     private TextView tvServerPing;
     private TextView tvServerStatus;
+    private TextView tvServerName;
+    private TextView tvServerEndpoint;
+    private View dotServer;
+    private View cardServer;
     private EditText etPlayerNickname;
     private Button btnQuickPlay;
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(2);
+    private final java.util.List<com.sampmobile.xyvern.launcher.data.ServerEntry> servers =
+            new java.util.ArrayList<>();
+    private com.sampmobile.xyvern.launcher.data.ServerEntry selectedServer;
+
+    private ExecutorService executor = Executors.newFixedThreadPool(2);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler queryHandler;
     private Runnable queryRunnable;
@@ -69,6 +76,13 @@ public class HomeFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
+
+        // onDestroyView shuts the executor down, but the fragment instance is
+        // reused when the ViewPager recreates this page. Without a fresh pool
+        // every later submit throws RejectedExecutionException.
+        if (executor.isShutdown()) {
+            executor = Executors.newFixedThreadPool(2);
+        }
 
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).hideKeyboard(getActivity());
@@ -86,8 +100,38 @@ public class HomeFragment extends Fragment {
         tvServerPlayers = view.findViewById(R.id.tv_server_players);
         tvServerPing = view.findViewById(R.id.tv_server_ping);
         tvServerStatus = view.findViewById(R.id.tv_server_status);
+        tvServerName = view.findViewById(R.id.tv_server_name);
+        tvServerEndpoint = view.findViewById(R.id.tv_server_endpoint);
+        dotServer = view.findViewById(R.id.dot_server);
+        cardServer = view.findViewById(R.id.card_server);
         etPlayerNickname = view.findViewById(R.id.et_player_nickname);
         btnQuickPlay = view.findViewById(R.id.btn_quick_play);
+
+        // Server list comes from the store; the layout holds no host string.
+        servers.clear();
+        servers.addAll(com.sampmobile.xyvern.launcher.data.ServerStore.load(requireContext()));
+        selectedServer = servers.get(
+                com.sampmobile.xyvern.launcher.data.ServerStore.currentIndex(requireContext(), servers));
+        bindServerCard();
+
+        if (cardServer != null) {
+            cardServer.setOnClickListener(v -> openServerPicker());
+        }
+        View editNick = view.findViewById(R.id.iv_edit_nickname);
+        if (editNick != null && etPlayerNickname != null) {
+            editNick.setOnClickListener(v -> {
+                etPlayerNickname.requestFocus();
+                android.view.inputmethod.InputMethodManager imm =
+                        (android.view.inputmethod.InputMethodManager)
+                                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) imm.showSoftInput(etPlayerNickname, 0);
+            });
+        }
+
+        View headerSettings = view.findViewById(R.id.iv_header_settings);
+        if (headerSettings != null && getActivity() instanceof MainActivity) {
+            headerSettings.setOnClickListener(v -> ((MainActivity) getActivity()).changeTab(2));
+        }
 
         Context ctx = requireContext();
         File extDir = ctx.getExternalFilesDir(null);
@@ -150,8 +194,8 @@ public class HomeFragment extends Fragment {
                 }
 
                 Intent intent = new Intent(getActivity(), SAMP.class);
-                intent.putExtra("ip", SERVER_IP);
-                intent.putExtra("port", SERVER_PORT);
+                intent.putExtra("ip", selectedServer.host);
+                intent.putExtra("port", selectedServer.port);
                 startActivity(intent);
             });
         }
@@ -162,44 +206,86 @@ public class HomeFragment extends Fragment {
         return view;
     }
 
+    private void openServerPicker() {
+        if (getContext() == null) return;
+        new ServerPickerDialog(requireContext(), servers, entry -> {
+            // Re-read the store: the dialog can add, edit or delete entries, so
+            // the list it was handed is the current truth, not this fragment's
+            // stale copy. Rebuild `servers` before trusting the index.
+            servers.clear();
+            servers.addAll(com.sampmobile.xyvern.launcher.data.ServerStore.load(requireContext()));
+            int idx = com.sampmobile.xyvern.launcher.data.ServerStore.currentIndex(
+                    requireContext(), servers);
+            selectedServer = servers.get(idx);
+            bindServerCard();
+            refreshServerStatus();
+        }).show();
+    }
+
+    /** Paints the server card from {@link #selectedServer}. */
+    private void bindServerCard() {
+        if (selectedServer == null) return;
+        if (tvServerName != null) tvServerName.setText(selectedServer.name);
+        if (tvServerEndpoint != null) tvServerEndpoint.setText(selectedServer.endpoint());
+        if (tvServerPlayers != null) tvServerPlayers.setText(selectedServer.playersLabel());
+        if (tvServerPing != null) tvServerPing.setText(selectedServer.pingLabel());
+        applyServerStatus(selectedServer);
+    }
+
+    private void applyServerStatus(com.sampmobile.xyvern.launcher.data.ServerEntry entry) {
+        if (tvServerStatus == null || dotServer == null) return;
+        if (!entry.queried) {
+            tvServerStatus.setText("MEMUAT");
+            tvServerStatus.setTextColor(0xFF8F8577);
+            dotServer.setBackgroundResource(R.drawable.bg_dot_gray);
+        } else if (entry.online) {
+            tvServerStatus.setText("ONLINE");
+            tvServerStatus.setTextColor(0xFF7FA65C);
+            dotServer.setBackgroundResource(R.drawable.bg_dot_green);
+        } else {
+            tvServerStatus.setText("OFFLINE");
+            tvServerStatus.setTextColor(0xFFA34A42);
+            dotServer.setBackgroundResource(R.drawable.bg_dot_red);
+        }
+    }
+
+    private void refreshServerStatus() {
+        if (selectedServer == null) return;
+        final com.sampmobile.xyvern.launcher.data.ServerEntry target = selectedServer;
+        executor.execute(() -> {
+            long t0 = System.currentTimeMillis();
+            boolean ok = false;
+            try (SampQueryAPI api = new SampQueryAPI(target.host, target.port)) {
+                String[] info = api.mo7164b();
+                if (info != null && info.length >= 3) {
+                    try {
+                        target.players = Integer.parseInt(info[1].trim());
+                        target.maxPlayers = Integer.parseInt(info[2].trim());
+                    } catch (Exception ignored) {
+                    }
+                    ok = true;
+                }
+            } catch (Exception ignored) {
+            }
+            target.pingMs = (int) (System.currentTimeMillis() - t0);
+            target.online = ok;
+            target.queried = true;
+
+            mainHandler.post(() -> {
+                if (!isAdded() || selectedServer != target) return;
+                if (tvServerPlayers != null) tvServerPlayers.setText(target.playersLabel());
+                if (tvServerPing != null) tvServerPing.setText(target.pingLabel());
+                applyServerStatus(target);
+            });
+        });
+    }
+
     private void startServerQueryLoop() {
         queryHandler = new Handler(Looper.getMainLooper());
         queryRunnable = new Runnable() {
             @Override
             public void run() {
-                executor.execute(() -> {
-                    long t0 = System.currentTimeMillis();
-                    try {
-                        SampQueryAPI api = new SampQueryAPI(SERVER_IP, SERVER_PORT);
-                        String[] info = api.mo7164b();
-                        long ping = System.currentTimeMillis() - t0;
-                        if (info != null && info.length >= 3) {
-                            String players = info[1] + " / " + info[2];
-                            mainHandler.post(() -> {
-                                if (tvServerPlayers != null) tvServerPlayers.setText(players);
-                                if (tvServerPing != null) tvServerPing.setText(ping + " ms");
-                                if (tvServerStatus != null) {
-                                    tvServerStatus.setText("ONLINE");
-                                    tvServerStatus.setTextColor(0xFF22C55E);
-                                }
-                            });
-                        } else {
-                            mainHandler.post(() -> {
-                                if (tvServerStatus != null) {
-                                    tvServerStatus.setText("ONLINE");
-                                    tvServerStatus.setTextColor(0xFF22C55E);
-                                }
-                            });
-                        }
-                    } catch (Exception e) {
-                        mainHandler.post(() -> {
-                            if (tvServerStatus != null) {
-                                tvServerStatus.setText("ONLINE");
-                                tvServerStatus.setTextColor(0xFF22C55E);
-                            }
-                        });
-                    }
-                });
+                refreshServerStatus();
                 if (queryHandler != null) {
                     queryHandler.postDelayed(this, 10000);
                 }
@@ -211,6 +297,16 @@ public class HomeFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Server bisa berubah dari tempat lain (Settings, atau dialog yang
+        // ditutup tanpa callback). Sinkronkan kartu sebelum query berikutnya.
+        if (getContext() != null) {
+            servers.clear();
+            servers.addAll(com.sampmobile.xyvern.launcher.data.ServerStore.load(requireContext()));
+            selectedServer = servers.get(
+                    com.sampmobile.xyvern.launcher.data.ServerStore.currentIndex(
+                            requireContext(), servers));
+            bindServerCard();
+        }
         if (!isDownloading) {
             runVerification();
         }

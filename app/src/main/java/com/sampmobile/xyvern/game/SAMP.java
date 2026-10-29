@@ -236,9 +236,35 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
             Log.e(TAG, "Failed to initialize SA:MP Mobile CEF", e);
         }
 
-        // 1. Static Server: Eastside Stories
-        String ip = "163.52.135.25";
+        // Server is chosen in the launcher (multi-server). Fall back to the
+        // stored selection so a direct game launch still works.
+        String ip = null;
         int port = 7777;
+        try {
+            android.content.Intent it = getIntent();
+            if (it != null) {
+                String extraIp = it.getStringExtra("ip");
+                int extraPort = it.getIntExtra("port", 0);
+                if (extraIp != null && !extraIp.trim().isEmpty()) {
+                    ip = extraIp.trim();
+                    if (extraPort > 0 && extraPort <= 65535) port = extraPort;
+                }
+            }
+            if (ip == null) {
+                com.sampmobile.xyvern.launcher.data.ServerEntry cur =
+                        com.sampmobile.xyvern.launcher.data.ServerStore.current(this);
+                if (cur != null) {
+                    ip = cur.host;
+                    port = cur.port;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to resolve target server", e);
+        }
+        if (ip == null || ip.isEmpty()) {
+            ip = com.sampmobile.xyvern.launcher.data.ServerStore.DEFAULT_HOST;
+            port = com.sampmobile.xyvern.launcher.data.ServerStore.DEFAULT_PORT;
+        }
 
         try {
             initAssetManager(getAssets());
