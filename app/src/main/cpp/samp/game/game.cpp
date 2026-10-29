@@ -79,6 +79,24 @@ void CGame::StartGame()
 
 	GameAimSyncInit();
 	InitScripting();
+
+	// Build the on-screen touch controls.
+	// The engine never runs this on its own here: CTouchInterface::CreateAll()
+	// (which constructs the joystick, fire, punch, sprint, vehicle and chat
+	// widgets) is only reachable through CTouchInterface::DebugReload() =
+	// LoadTouchControls() + CreateAll(). Nothing in the client called it, so
+	// m_pWidgets stayed all-null and CTouchInterface::DrawAll() drew nothing -
+	// the screen had no controls at all.
+	{
+		static bool s_touchInited = false;
+		if (!s_touchInited) {
+			s_touchInited = true;
+			// Resolve by mangled name so the same call works on arm64 and armv7
+			// without hardcoding a second offset.
+			CHook::CallFunction<void>("_ZN15CTouchInterface11DebugReloadEv");
+			FLog("CTouchInterface::DebugReload() -> touch controls created");
+		}
+	}
 }
 
 void InstallSAMPHooks();
