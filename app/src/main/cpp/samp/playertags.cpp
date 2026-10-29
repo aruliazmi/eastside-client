@@ -45,35 +45,19 @@ void CPlayerTags::Render(ImGuiRenderer* renderer)
 				{
 					CPlayerPed* pPlayerPed = pRemotePlayer->GetPlayerPed();
 
-					if (pPlayerPed && pPlayerPed->m_pPed->GetDistanceFromCamera() <= pNetGame->m_pNetSet->fNameTagDrawDistance)
+					if (pPlayerPed && pPlayerPed->m_pPed->GetDistanceFromCamera() <= 20.0f)
 					{
-						/*if (pRemotePlayer->GetState() == PLAYER_STATE_DRIVER &&
-							pRemotePlayer->m_pCurrentVehicle &&
-							pRemotePlayer->m_pCurrentVehicle->IsRCVehicle())
-						{
-							pRemotePlayer->m_pCurrentVehicle->GetMatrix(&matPlayer);
-							vecPos.x = matPlayer.pos.x;
-							vecPos.y = matPlayer.pos.y;
-							vecPos.z = matPlayer.pos.z;
-						}
-						else
-						{*/
-							if (!pPlayerPed->m_pPed->IsAdded()) continue;
-							vecPos.x = 0.0f;
-							vecPos.y = 0.0f;
-							vecPos.z = 0.0f;
-							pPlayerPed->GetBonePosition(8, &vecPos);
-						//}
+						if (!pPlayerPed->m_pPed->IsAdded()) continue;
+						vecPos.x = 0.0f;
+						vecPos.y = 0.0f;
+						vecPos.z = 0.0f;
+						pPlayerPed->GetBonePosition(8, &vecPos);
 
-						CAMERA_AIM* pCam = GameGetInternalAim();
-						dwHitEntity = 0;
+						// Pengecekan Line of Sight (Anti-Wallhack)
+						// Kita buat lebih toleran agar tidak hilang saat di dalam kendaraan
+						dwHitEntity = CWorld::GetIsLineOfSightClear(vecPos, TheCamera.GetPosition(), true, false, false, true, false, false, false);
 
-						if (pNetGame->m_pNetSet->bNameTagLOS)
-						{
-							dwHitEntity = CWorld::GetIsLineOfSightClear(vecPos, TheCamera.GetPosition(), true, false, false, true, false, false, false);
-						}
-
-						if (!pNetGame->m_pNetSet->bNameTagLOS || dwHitEntity && !pRemotePlayer->IsNPC())
+						if (dwHitEntity && !pRemotePlayer->IsNPC())
 						{
 							sprintf(szNickBuf, "%s (%d)", pPlayerPool->GetPlayerName(playerId), playerId);
 							this->Draw(renderer,&vecPos, szNickBuf,

@@ -39,7 +39,7 @@ struct CAttachedPlayerObject
 };
 
 #pragma pack(push, 1)
-struct ATTACHED_OBJECT_INFO
+typedef struct ATTACHED_OBJECT_INFO
 {
     uint32_t 	dwModelId;
     uint32_t 	dwBoneId_MP;
@@ -47,7 +47,7 @@ struct ATTACHED_OBJECT_INFO
     CVector 	vecRotation;
     CVector 	vecScale;
     uint32_t 	dwColor[2];
-};
+} ATTACHED_OBJECT_INFO;
 #pragma pack(pop)
 VALIDATE_SIZE(ATTACHED_OBJECT_INFO, 52);
 
@@ -84,6 +84,7 @@ public:
 	uint8_t GetCurrentWeapon();
 	void SetInitialState();
 	void SetModelIndex(uint uiModel);
+	void ClearAllWeapons();
 	void ClearWeapons();
 	void ResetDamageEntity();
 	void GiveWeapon(int iWeaponId, int iAmmo);
@@ -92,6 +93,7 @@ public:
 	void SetImmunities(int BP, int FP, int EP, int CP, int MP);
 	void ShowMarker(int nIndex);
 	void SetFightingStyle(int iStyle);
+	void ForceTargetRotation(float fRotation) const;
 	void SetRotation(float fRotation);
 	void DestroyFollowPedTask();
 	void GetBonePosition(int iBoneID, CVector* vecOut);
@@ -111,9 +113,9 @@ public:
 	void SetStateFlags(uint32_t dwState);
 	bool IsOnGround();
 
-	// 0.3.7
+	
 	bool IsCuffed() { return m_iCuffedState; };
-	// 0.3.7
+	
 	bool IsCarry() { return m_iCarryState; }
 
 	void SetCuffedOrCarry(int cuff, int carry)
@@ -154,7 +156,8 @@ public:
     CEntityGTA* GetEntityUnderPlayer();
 
 	CVehicle* GetCurrentVehicle();
-
+	VEHICLEID GetCurrentSampVehicleID();
+	
 	bool IsCrouching();
 	void ApplyCrouch();
 	void ResetCrouch();
@@ -194,7 +197,7 @@ public:
 
 	bool IsPerformingCustomAnim();
 
-	uint8_t IsEnteringVehicle();
+	bool IsEnteringVehicle();
 	bool IsExitingVehicle();
 	bool IsJumpTask();
 	bool IsTakeDamageFallTask();
@@ -254,7 +257,7 @@ private:
 		RtQuat* quat;
 	} sCarryData[21];
 	
-
+	
 public:
 	CPedGTA*	m_pPed;
 	uint8_t		m_bytePlayerNumber;

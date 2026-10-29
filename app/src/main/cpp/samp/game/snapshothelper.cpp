@@ -6,7 +6,6 @@
 #include "VisibilityPlugins.h"
 #include "game/Models/ModelInfo.h"
 #include "game/Plugins/RpAnimBlendPlugin/RpAnimBlend.h"
-#include "CRenderTarget.h"
 #include <GLES2/gl2.h>
 
 extern CGame* pGame;
@@ -53,244 +52,221 @@ void CSnapShotHelper::SetUpScene()
     RpWorldAddCamera(Scene.m_pRpWorld, m_camera);
 }
 
-// 0.3.7
+
 RwTexture* CSnapShotHelper::CreateObjectSnapShot(int iModel, uint32_t dwColor, CVector* vecRot, float fZoom)
 {
-    if (iModel > 20000) {
-        FLog("Snapshot: model %d too big, abort", iModel);
-        return nullptr;
-    }
-
-    FLog("Snapshot: START model=%d rot=(%.2f, %.2f, %.2f) zoom=%.2f",
-         iModel, vecRot->x, vecRot->y, vecRot->z, fZoom);
-
-    // --- загрузка модели ---
-    if (!CStreaming::TryLoadModel(iModel)) {
-        FLog("SNAPSHOT Model not loaded");
-        return nullptr;
-    }
+    if(iModel > 20000) return nullptr;
+    FLog("CreateObjectSnapShot: %d, %f, %f, %f", iModel, vecRot->x, vecRot->y, vecRot->z);
+    CStreaming::TryLoadModel(iModel);
 
     auto pRwObject = ModelInfoCreateInstance(iModel);
-    if (!pRwObject) {
-        FLog("Snapshot: ModelInfoCreateInstance FAILED for model %d", iModel);
+    if (pRwObject == nullptr) {
+        FLog("pRwObject no rw object");
         return nullptr;
     }
 
-    // --- создание растров ---
-    RwRaster* raster = RwRasterCreate(256, 256, 32, rwRASTERFORMAT8888 | rwRASTERTYPECAMERATEXTURE);
-    if (!raster) {
-        DestroyAtomicOrClump(reinterpret_cast<uintptr_t>(pRwObject));
-        return nullptr;
-    }
+	RwRaster* raster = RwRasterCreate(256, 256, 32, rwRASTERFORMAT8888 | rwRASTERTYPECAMERATEXTURE);
+	// RwTextureCreate
+	RwTexture* bufferTexture = RwTextureCreate(raster);
 
-    RwTexture* bufferTexture = RwTextureCreate(raster);
-    if (!bufferTexture) {
-        DestroyAtomicOrClump(reinterpret_cast<uintptr_t>(pRwObject));
-        return nullptr;
-    }
-    auto pModelInfo = CModelInfo::GetModelInfo(iModel);
-    float fRadius = pModelInfo->m_pColModel->GetBoundRadius();
-    CVector vecCenter = pModelInfo->m_pColModel->GetBoundCenter();
+	if (!raster || !bufferTexture) return nullptr;
 
-    RwFrame* parent = static_cast<RwFrame*>(pRwObject->parent);
-    if (!parent) {
-        DestroyAtomicOrClump(reinterpret_cast<uintptr_t>(pRwObject));
-        return nullptr;
-    }
+	CVector vec;
+	vec.x = 0.0f;
+	vec.y = 0.0f;
+	vec.z = 0.0f;
 
-    float fCameraDist = (-0.1f - fRadius * 2.25f) * fZoom;
-    RwV3d v = {
-            -vecCenter.x,
-            fCameraDist,
-            50.0f - vecCenter.z
-    };
-    RwFrameTranslate(parent, &v, rwCOMBINEPRECONCAT);
-
-    // --- вращение ---
-    if (iModel == 18631) {
-        RwV3d vec = {0.0f, 0.0f, 0.0f};
-        RwFrameRotate(parent, &vec, 180.0f, rwCOMBINEPRECONCAT);
-    } else {
-        if (vecRot->x != 0.0f) {
-            RwV3d axis = {1.0f, 0.0f, 0.0f};
-            RwFrameRotate(parent, &axis, vecRot->x, rwCOMBINEPRECONCAT);
-        }
-        if (vecRot->y != 0.0f) {
-            RwV3d axis = {0.0f, 1.0f, 0.0f};
-            RwFrameRotate(parent, &axis, vecRot->y, rwCOMBINEPRECONCAT);
-        }
-        if (vecRot->z != 0.0f) {
-            RwV3d axis = {0.0f, 0.0f, 1.0f};
-            RwFrameRotate(parent, &axis, vecRot->z, rwCOMBINEPRECONCAT);
-        }
-    }
-
+    float fRadius = CModelInfo::GetModelInfo(iModel)->m_pColModel->GetBoundRadius();
+    CVector vecCenter = CModelInfo::GetModelInfo(iModel)->m_pColModel->GetBoundCenter();
+	RwFrame* parent = static_cast<RwFrame *>(pRwObject->parent);
+    if(!parent) return nullptr;
+    fZoom = (-0.1f - fRadius * 2.25f) * fZoom;
+	if (parent)
+	{
+        RwV3d v = {
+                -vecCenter.x + vecRot->x,
+                fZoom + vecRot->y,
+                50.0f - vecCenter.z - vecRot->z
+        };
+        RwFrameTranslate(parent, &v, rwCOMBINEPRECONCAT);
+		if (iModel == 18631) {
+			RwFrameRotate(parent, &vec, 180.0f,rwCOMBINEPRECONCAT);
+		}
+		else
+		{
+			if (vecRot->x != 0.0f) {
+				RwFrameRotate(parent, &vec, vecRot->x,rwCOMBINEPRECONCAT);
+			}
+			if (vecRot->y != 0.0f) {
+				RwFrameRotate(parent, &vec, vecRot->y,rwCOMBINEPRECONCAT);
+			}
+			if (vecRot->z != 0.0f) {
+				RwFrameRotate(parent, &vec, vecRot->z,rwCOMBINEPRECONCAT);
+			}
+		}
+	}
     m_camera->frameBuffer = raster;
     CVisibilityPlugins::SetRenderWareCamera(m_camera);
-
-    RwCameraClear(m_camera, reinterpret_cast<RwRGBA*>(&dwColor), 3);
-
-    RwCameraBeginUpdate(m_camera);
-
-    RpWorldAddLight(Scene.m_pRpWorld, m_light);
-
-    RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
-    RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)true);
-    RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
-    RwRenderStateSet(rwRENDERSTATEALPHATESTFUNCTIONREF, (void*)0);
-    RwRenderStateSet(rwRENDERSTATECULLMODE, (void*)rwCULLMODENACULLMODE);
-    RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
-
-    DefinedState();
-    RenderClumpOrAtomic(reinterpret_cast<uintptr_t>(pRwObject));
-
-    RwCameraEndUpdate(m_camera);
-
-    RpWorldRemoveLight(Scene.m_pRpWorld, m_light);
-
-    DestroyAtomicOrClump(reinterpret_cast<uintptr_t>(pRwObject));
-    return bufferTexture;
+    RwCameraClear(m_camera, reinterpret_cast<RwRGBA *>(&dwColor), 3);
+	RwCameraBeginUpdate((RwCamera*)m_camera);
+	RpWorldAddLight(Scene.m_pRpWorld, m_light);
+	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
+	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)true);
+	RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
+	RwRenderStateSet(rwRENDERSTATEALPHATESTFUNCTIONREF, (void*)0);
+	RwRenderStateSet(rwRENDERSTATECULLMODE, (void*)rwCULLMODENACULLMODE);
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
+	// DefinedState
+	DefinedState();
+	RenderClumpOrAtomic((uintptr_t)pRwObject);
+	RwCameraEndUpdate(m_camera);
+	RpWorldRemoveLight(Scene.m_pRpWorld, m_light);
+	DestroyAtomicOrClump(reinterpret_cast<uintptr_t>(pRwObject));
+	return bufferTexture;
 }
-// 0.3.7
+
 RwTexture* CSnapShotHelper::CreatePedSnapShot(int iModel, uint32_t dwColor, CVector* vecRot, float fZoom)
 {
-    FLog("Ped snapshot: %d", iModel);
+	FLog("Ped snapshot: %d", iModel);
 
-    CPlayerPed* pPed = new CPlayerPed(208, 0, 0.0f, 0.0f, 0.0f, 0.0f);
-    if (!pPed) return nullptr;
+	RwRaster* raster = RwRasterCreate(256, 256, 32, rwRASTERFORMAT8888 | rwRASTERTYPECAMERATEXTURE);
+	// RwTextureCreate
+	RwTexture* bufferTexture = RwTextureCreate(raster);
 
-    float posZ = iModel == 162 ? 50.15f : 50.05f;
-    float posY = fZoom * -2.25f;
+	CPlayerPed* pPed = new CPlayerPed(208, 0, 0.0f, 0.0f, 0.0f, 0.0f);
 
-    pPed->m_pPed->SetPosn(0.0f, posY, posZ);
-    pPed->SetModelIndex(iModel);
-    pPed->m_pPed->SetCollisionChecking(false);
+	if (!raster || !bufferTexture || !pPed) return 0;
 
-    RwMatrix mat = pPed->m_pPed->GetMatrix().ToRwMatrix();
+	float posZ = iModel == 162 ? 50.15f : 50.05f;
+	float posY = fZoom * -2.25f;
+	pPed->m_pPed->SetPosn(0.0f, posY, posZ);
+	pPed->SetModelIndex(iModel);
+	//pPed->m_pPed->SetGravityProcessing(false);
+	pPed->m_pPed->SetCollisionChecking(false);
+
+	RwMatrix mat = pPed->m_pPed->GetMatrix().ToRwMatrix();
+
     CVector axis { 1.0f, 0.0f, 0.0f };
+    if (vecRot->x != 0.0f)
+    {
+        RwMatrixRotate(&mat, &axis, vecRot->x);
+    }
+    axis.Set( 0.0f, 1.0f, 0.0f );
+    if (vecRot->y != 0.0f)
+    {
+        RwMatrixRotate(&mat, &axis, vecRot->y);
+    }
+    axis.Set( 0.0f, 0.0f, 1.0f );
+    if (vecRot->z != 0.0f)
+    {
+        RwMatrixRotate(&mat, &axis, vecRot->z);
+    }
 
-    if (vecRot->x != 0.0f) RwMatrixRotate(&mat, &axis, vecRot->x);
-    axis.Set(0.0f, 1.0f, 0.0f);
-    if (vecRot->y != 0.0f) RwMatrixRotate(&mat, &axis, vecRot->y);
-    axis.Set(0.0f, 0.0f, 1.0f);
-    if (vecRot->z != 0.0f) RwMatrixRotate(&mat, &axis, vecRot->z);
+	pPed->m_pPed->SetMatrix((CMatrix&)mat);
 
-    pPed->m_pPed->SetMatrix((CMatrix&)mat);
+	// set camera frame buffer //
+    m_camera->frameBuffer = raster;
+	// CVisibilityPlugins::SetRenderWareCamera
+    CVisibilityPlugins::SetRenderWareCamera(m_camera);
 
-    CRenderTarget::Begin(256, 256, (RwRGBA*)&dwColor, false);
+    RwCameraClear(m_camera, reinterpret_cast<RwRGBA *>(&dwColor), 3);
+	RwCameraBeginUpdate((RwCamera*)m_camera);
+	RpWorldAddLight(Scene.m_pRpWorld, m_light);
 
-        RwRaster* raster = RwRasterCreate(256, 256, 32, rwRASTERFORMAT8888 | rwRASTERTYPECAMERATEXTURE);
-        RwTexture* bufferTexture = RwTextureCreate(raster);
+	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
+	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)true);
+	RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
 
-        if (!raster) {
-            delete pPed;
-            return nullptr;
-        }
+    DefinedState();
 
-        if(!bufferTexture)
-        {
-            bufferTexture = RwTextureCreate(raster);
-            FLog("ped take the texture");
-        }
+	pPed->m_pPed->Add();
 
-        m_camera->frameBuffer = raster;
-        CVisibilityPlugins::SetRenderWareCamera(m_camera);
-        RwCameraClear(m_camera, reinterpret_cast<RwRGBA *>(&dwColor), 3);
-        RwCameraBeginUpdate((RwCamera*)m_camera);
+	RpAnimBlendClumpUpdateAnimations(pPed->m_pPed->m_pRwClump, 100.0f, 1);
+    RenderEntity(pPed->m_pPed);
 
-        RpWorldAddLight(Scene.m_pRpWorld, m_light);
-        RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
-        RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)true);
-        RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
-        RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
-        DefinedState();
+	RwCameraEndUpdate((RwCamera*)m_camera);
 
-        pPed->m_pPed->Add();
-        RpAnimBlendClumpUpdateAnimations(pPed->m_pPed->m_pRwClump, 100.0f, 1);
-        RenderEntity(pPed->m_pPed);
-        pPed->m_pPed->Remove();
+	RpWorldRemoveLight(Scene.m_pRpWorld, m_light);
 
-        RwCameraEndUpdate((RwCamera*)m_camera);
-        RpWorldRemoveLight(Scene.m_pRpWorld, m_light);
+	pPed->m_pPed->Remove();
 
-        delete pPed;
-        CStreaming::RemoveModelIfNoRefs(iModel);
+	delete pPed;
 
-        return bufferTexture;
+    CStreaming::RemoveModelIfNoRefs(iModel);
+
+	return bufferTexture;
 }
 
 RwTexture* CSnapShotHelper::CreateVehicleSnapShot(int iModel, uint32_t dwColor, CVector* vecRot, float fZoom, uint32_t dwColor1, uint32_t dwColor2)
 {
-    if (iModel == 570) iModel = 538;
-    else if (iModel == 569) iModel = 537;
+	RwRaster* raster = RwRasterCreate(256, 256, 32, rwRASTERFORMAT8888 | rwRASTERTYPECAMERATEXTURE);
+	// RwTextureCreate
+	RwTexture* bufferTexture = RwTextureCreate(raster);
 
-    CVehicle* pVehicle = new CVehicle(iModel, 0.0f, 0.0f, 50.0f, 0.0f, false, false);
-    if (!pVehicle || !pVehicle->m_pVehicle) {
-        FLog("Failed to create vehicle");
-        return nullptr;
+	if (iModel == 570) {
+		iModel = 538;
+	}
+	else if (iModel == 569) {
+		iModel = 537;
+	}
+
+	CVehicle* pVehicle = new CVehicle(iModel, 0.0f, 0.0f, 50.0f, 0.0f, false, false);
+
+	if (!raster || !bufferTexture || !pVehicle || !pVehicle->m_pVehicle) {
+        FLog("somethign went wrong in snapshot");
+        return 0;
     }
 
-    pVehicle->m_pVehicle->SetCollisionChecking(false);
+	//pVehicle->m_pVehicle->SetGravityProcessing(false);
+	pVehicle->m_pVehicle->SetCollisionChecking(false);
+	float radius = CModelInfo::GetModelInfo(iModel)->m_pColModel->GetBoundRadius();
+	float posY = (-1.0f - (radius + radius)) * fZoom;
+	if (pVehicle->GetVehicleSubtype() == VEHICLE_SUBTYPE_BOAT) {
+		posY = -5.5f - radius * 2.5f;
+	}
+	pVehicle->m_pVehicle->SetPosn(0.0f, posY, 50.0f);
+	if (dwColor1 != 0xFFFFFFFF && dwColor2 != 0xFFFFFFFF) {
+		pVehicle->SetColor(dwColor1, dwColor2);
+	}
+	RwMatrix mat = pVehicle->m_pVehicle->GetMatrix().ToRwMatrix();
 
-    float radius = CModelInfo::GetModelInfo(iModel)->m_pColModel->GetBoundRadius();
-    float posY = (-1.0f - (radius + radius)) * fZoom;
-
-    if (pVehicle->GetVehicleSubtype() == VEHICLE_SUBTYPE_BOAT) {
-        posY = -5.5f - radius * 2.5f;
-    }
-
-    pVehicle->m_pVehicle->SetPosn(0.0f, posY, 50.0f);
-
-    if (dwColor1 != 0xFFFFFFFF && dwColor2 != 0xFFFFFFFF) {
-        pVehicle->SetColor(dwColor1, dwColor2);
-    }
-
-    RwMatrix mat = pVehicle->m_pVehicle->GetMatrix().ToRwMatrix();
     CVector axis { 1.0f, 0.0f, 0.0f };
+    if (vecRot->x != 0.0f)
+    {
+        RwMatrixRotate(&mat, &axis, vecRot->x);
+    }
+    axis.Set( 0.0f, 1.0f, 0.0f );
+    if (vecRot->y != 0.0f)
+    {
+        RwMatrixRotate(&mat, &axis, vecRot->y);
+    }
+    axis.Set( 0.0f, 0.0f, 1.0f );
+    if (vecRot->z != 0.0f)
+    {
+        RwMatrixRotate(&mat, &axis, vecRot->z);
+    }
 
-    if (vecRot->x != 0.0f) RwMatrixRotate(&mat, &axis, vecRot->x);
-    axis.Set(0.0f, 1.0f, 0.0f);
-    if (vecRot->y != 0.0f) RwMatrixRotate(&mat, &axis, vecRot->y);
-    axis.Set(0.0f, 0.0f, 1.0f);
-    if (vecRot->z != 0.0f) RwMatrixRotate(&mat, &axis, vecRot->z);
-
-    pVehicle->m_pVehicle->SetMatrix((CMatrix&)mat);
+	pVehicle->m_pVehicle->SetMatrix((CMatrix&)mat);
     pVehicle->m_pVehicle->UpdateRW();
+    m_camera->frameBuffer = raster;
+    CVisibilityPlugins::SetRenderWareCamera(m_camera);
+    RwCameraClear(m_camera, reinterpret_cast<RwRGBA *>(&dwColor), 3);
+	RwCameraBeginUpdate((RwCamera*)m_camera);
+	RpWorldAddLight(Scene.m_pRpWorld, m_light);
+	RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
+	RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)true);
+	RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
+	RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
 
-        CRenderTarget::Begin(256, 256, (RwRGBA*)&dwColor, false);
-        RwRaster* raster = RwRasterCreate(256, 256, 32, rwRASTERFORMAT8888 | rwRASTERTYPECAMERATEXTURE);
-        RwTexture* bufferTexture = RwTextureCreate(raster);
+	DefinedState();
+	pVehicle->m_pVehicle->Add();
 
-        if (!raster) {
-            delete pVehicle;
-            return nullptr;
-        }
+    RenderEntity(pVehicle->m_pVehicle);
+	RwCameraEndUpdate((RwCamera*)m_camera);
+	RpWorldRemoveLight(Scene.m_pRpWorld, m_light);
+	pVehicle->m_pVehicle->Remove();
+	delete pVehicle;
 
-        if(!bufferTexture)
-        {
-            bufferTexture = RwTextureCreate(raster);
-            FLog("veh take the texture");
-        }
-
-        m_camera->frameBuffer = raster;
-        CVisibilityPlugins::SetRenderWareCamera(m_camera);
-        RwCameraClear(m_camera, reinterpret_cast<RwRGBA *>(&dwColor), 3);
-        RwCameraBeginUpdate((RwCamera*)m_camera);
-
-        RpWorldAddLight(Scene.m_pRpWorld, m_light);
-        RwRenderStateSet(rwRENDERSTATEZTESTENABLE, (void*)true);
-        RwRenderStateSet(rwRENDERSTATEZWRITEENABLE, (void*)true);
-        RwRenderStateSet(rwRENDERSTATESHADEMODE, (void*)rwSHADEMODEGOURAUD);
-        RwRenderStateSet(rwRENDERSTATEFOGENABLE, (void*)false);
-        DefinedState();
-
-        pVehicle->m_pVehicle->Add();
-        RenderEntity(pVehicle->m_pVehicle);
-        pVehicle->m_pVehicle->Remove();
-
-        RwCameraEndUpdate((RwCamera*)m_camera);
-        RpWorldRemoveLight(Scene.m_pRpWorld, m_light);
-
-        delete pVehicle;
-        return bufferTexture;
+	return bufferTexture;
 }

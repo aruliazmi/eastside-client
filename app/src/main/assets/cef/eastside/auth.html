@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Eastside Stories - Authentication</title>
+    <!-- Genesis Design System Fonts: General Sans (Display) + DM Sans (Body) + JetBrains Mono (Code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+    <style>
+html, body, #app {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+/* Genesis Design System Tokens */
+
+:root {
+  /* Colors */
+  --genesis-primary: #6366F1;
+  --genesis-primary-hover: #4F46E5;
+  --genesis-secondary: #20970B;
+  --genesis-neutral: #9C9C9C;
+  --genesis-bg-light: #FAFAFA;
+  --genesis-surface-light: #FFFFFF;
+  --genesis-text-primary-light: #0A0A0A;
+  --genesis-text-secondary-light: #6B6B6B;
+  
+  /* In-Game Dark Surface Variants (Transparent Overlay) */
+  --genesis-bg-dark: rgba(10, 12, 20, 0.85);
+  --genesis-surface-dark: rgba(18, 22, 36, 0.94);
+  --genesis-surface-card: rgba(26, 32, 52, 0.85);
+  --genesis-text-primary: #F8FAFC;
+  --genesis-text-secondary: #94A3B8;
+  --genesis-text-muted: #64748B;
+  --genesis-border: rgba(232, 232, 236, 0.14);
+  --genesis-border-focus: #6366F1;
+
+  /* Semantic State Colors */
+  --genesis-success: #10B981;
+  --genesis-success-hover: #059669;
+  --genesis-warning: #F59E0B;
+  --genesis-error: #EF4444;
+  --genesis-error-hover: #DC2626;
+
+  /* Typography */
+  --font-display: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+
+  /* Border Radius */
+  --radius-xs: 4px;   /* Tags, chips, badges, inline code */
+  --radius-sm: 6px;   /* Buttons, inputs, selects */
+  --radius-md: 8px;   /* Metadata cards, dropdowns, panels */
+  --radius-lg: 12px;  /* Cards, modals, search bar, preview panels */
+  --radius-full: 9999px; /* Avatars, status dots, pills */
+
+  /* Spacing Scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Elevation & Shadows */
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-primary-glow: 0 4px 14px rgba(99, 102, 241, 0.4);
+  --ring-focus: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  --ring-error: 0 0 0 3px rgba(239, 68, 68, 0.25);
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+input, textarea, select {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+}
+
+html, body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;      /* the scrolling happens on #app, not here */
+    background: transparent;
+    font-family: var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+}
+
+#app {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(10, 12, 16, 0.75);
+    z-index: 100;
+    /* The panel can be taller than the viewport on a phone in portrait, so the
+       root has to scroll. `position: fixed` combined with `overflow: hidden`
+       on html/body clipped it with no way to reach the rest. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+}
+
+/* Authentication Container - Guaranteed Screen Center */
+.auth-container {
+    /* Was a hard 420px, wider than a phone viewport, which is what made the
+       form overflow and get clipped. Cap it to the viewport instead. */
+    width: min(420px, 100%);
+    background: rgba(18, 20, 26, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 8px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+    padding: 32px 28px;
+    color: #ffffff;
+    margin: auto;
+    transition: width 0.25s ease;
+}
+
+.auth-container.wide {
+    width: min(540px, 100%);
+}
+
+/* Server Brand Header */
+.server-header {
+    text-align: center;
+    margin-bottom: 22px;
+}
+
+.server-logo {
+    width: 76px;
+    height: auto;
+    margin: 0 auto 10px auto;
+    display: block;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.8));
+}
+
+.logo-title {
+    font-family: var(--font-display, inherit);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.logo-azure {
+    color: #38bdf8;
+}
+
+.logo-white {
+    color: #ffffff;
+}
+
+.subtitle {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* Alert Error Banner */
+.alert-error {
+    display: none;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: 6px;
+    padding: 10px 14px;
+    color: #ef4444;
+    font-size: 12.5px;
+    margin-bottom: 16px;
+    text-align: center;
+    font-weight: 600;
+}
+
+/* User Tag Pill */
+.user-tag {
+    background: rgba(28, 32, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 9px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.tag-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.tag-val {
+    font-family: var(--font-code, monospace);
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.form-input {
+    width: 100%;
+    padding: 11px 14px;
+    background: rgba(10, 12, 16, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.form-hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 5px;
+    line-height: 1.3;
+}
+
+/* Buttons */
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: #ffffff;
+    border: none;
+    border-radius: 6px;
+    color: #0f1117;
+    font-size: 13px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: background-color 0.15s ease;
+}
+
+.btn-primary:hover {
+    background: #e2e8f0;
+}
+
+.btn-secondary {
+    padding: 11px 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 12.5px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+/* Multi-step Panels */
+.step-panel {
+    display: none;
+}
+
+.step-panel.active {
+    display: block;
+}
+
+/* Download Loader */
+.download-box {
+    padding: 10px 2px;
+}
+
+.download-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.download-file-label {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+}
+
+.download-percent-val {
+    font-size: 14px;
+    font-weight: 800;
+    color: #38bdf8;
+    font-family: var(--font-code, monospace);
+    font-variant-numeric: tabular-nums;
+}
+
+.download-track {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.download-fill {
+    height: 100%;
+    width: 0%;
+    background: #38bdf8;
+    border-radius: 3px;
+    transition: width 0.12s linear;
+}
+
+.download-subtext {
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 14px;
+}
+
+/* Character Selector Cards (Authentic FiveM List) */
+.char-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+    max-height: min(290px, 38vh);
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.char-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.char-grid::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.char-card {
+    background: rgba(28, 32, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.char-card:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(36, 42, 54, 0.95);
+}
+
+.char-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.char-name {
+    font-family: var(--font-display, inherit);
+    font-size: 14.5px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.char-meta {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.5);
+    display: flex;
+    gap: 8px;
+}
+
+.char-badge-lvl {
+    color: #fbbf24;
+    font-weight: 700;
+}
+
+.char-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-play {
+    background: #10b981;
+    border: none;
+    border-radius: 4px;
+    padding: 7px 16px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    transition: background-color 0.15s ease;
+}
+
+.btn-play:hover {
+    background: #059669;
+}
+
+.btn-del {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 4px;
+    padding: 7px 11px;
+    color: #ef4444;
+    font-size: 11.5px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-del:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.btn-new-char {
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    background: transparent;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-new-char:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* Gender Selector */
+.gender-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.gender-btn {
+    flex: 1;
+    padding: 10px;
+    background: rgba(10, 12, 16, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.gender-btn.selected {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: #38bdf8;
+    color: #ffffff;
+}
+
+.footer-credit {
+    text-align: center;
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 18px;
+}
+
+/* ====================================================================
+   Responsive: phone viewports.
+
+   The Android CEF surface is a WebView whose CSS viewport is the device
+   width in CSS px (a 1080x2400 phone reports ~360-412 px wide), so the
+   desktop-tuned 420/540 px panel and its 13 px body text were both too big
+   and too wide at the same time. PC (omp-cef) runs at 1280+ px and is
+   unaffected by everything below.
+   ==================================================================== */
+
+/* Narrow phones: shrink the panel, tighten padding and type. */
+@media (max-width: 480px), (max-height: 640px) {
+    #app {
+        padding: 10px;
+        align-items: flex-start;   /* let tall forms scroll from the top */
+    }
+
+    .auth-container {
+        width: 100%;
+        padding: 20px 16px;
+        border-radius: 6px;
+    }
+
+    .auth-container.wide {
+        width: 100%;
+    }
+
+    .server-logo {
+        width: 56px;
+    }
+
+    .logo-title {
+        font-size: 17px;
+    }
+
+    .form-input {
+        font-size: 15px;          /* >=16px avoids WebView focus zoom */
+        padding: 11px 12px;
+    }
+
+    .form-label,
+    .form-hint,
+    .footer-credit {
+        font-size: 11px;
+    }
+
+    .char-grid {
+        max-height: min(240px, 34vh);
+    }
+}
+
+/* Very short viewports (landscape phone): the form must still be reachable. */
+@media (max-height: 480px) {
+    #app {
+        align-items: flex-start;
+        padding: 8px;
+    }
+
+    .auth-container {
+        padding: 14px 14px;
+    }
+
+    .server-header {
+        margin-bottom: 12px;
+    }
+}
+
+/* Tablet / large phone: keep the desktop widths but never exceed the viewport. */
+@media (min-width: 481px) and (max-width: 1024px) {
+    .auth-container {
+        width: min(460px, 100%);
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+"use strict";(()=>{var K="",p=!0,I=1,b=[],H=!1,u=null,c=null,l=null,d=null,k=null,w=null,h=null,L=null,g=null;function N(){let e=document.getElementById("app")||document.body;e.innerHTML=`
+    <div class="auth-container" id="mainContainer">
+        <!-- Brand Header -->
+        <div class="server-header">
+            <img src="logo.png" alt="Eastside Stories Logo" class="server-logo">
+            <div class="logo-title">
+                <span class="logo-azure">EASTSIDE</span> <span class="logo-white">STORIES</span>
+            </div>
+            <div class="subtitle" id="panelSubtitle">Menyiapkan Koneksi & Aset...</div>
+        </div>
+
+        <!-- Alert Error Message -->
+        <div class="alert-error" id="errorBanner">Terjadi kesalahan!</div>
+
+        <!-- ================= PANEL 0: ASSET DOWNLOAD LOADER ================= -->
+        <div class="step-panel active" id="panelDownload">
+            <div class="download-box">
+                <div class="download-info">
+                    <span class="download-file-label" id="dlStatusText">Memeriksa cache lokal GTA...</span>
+                    <span class="download-percent-val" id="dlPercentText">0%</span>
+                </div>
+                <div class="download-track">
+                    <div class="download-fill" id="dlFillBar" style="width: 0%;"></div>
+                </div>
+                <div class="download-subtext">Mengunduh aset UI & texture sekali saja untuk di-cache di client</div>
+            </div>
+        </div>
+
+        <!-- ================= PANEL 1: VERIFICATION PIN ================= -->
+        <div class="step-panel" id="panelPin">
+            <div class="user-tag">
+                <span class="tag-label">Akun UCP</span>
+                <span class="tag-val" id="pinUcpName">Player</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Kode Verifikasi PIN</label>
+                <input type="text" id="pinInput" class="form-input" placeholder="Masukkan 4-6 digit PIN dari Bot Discord..." maxlength="10">
+                <div class="form-hint">Cek Direct Message (PM) Discord kamu dari Bot Eastside Stories.</div>
+            </div>
+
+            <button class="btn-primary" onclick="submitPin()">VERIFIKASI PIN</button>
+        </div>
+
+        <!-- ================= PANEL 2: LOGIN / REGISTER PASSWORD ================= -->
+        <div class="step-panel" id="panelAuth">
+            <div class="user-tag">
+                <span class="tag-label">Nama Akun UCP</span>
+                <span class="tag-val" id="authUcpName">Memuat...</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" id="authPwLabel">Password Akun</label>
+                <input type="password" id="authPwInput" class="form-input" placeholder="Masukkan password..." autocomplete="off">
+                <div class="form-hint" id="authPwHint">Gunakan password yang aman dan mudah diingat.</div>
+            </div>
+
+            <button class="btn-primary" id="authSubmitBtn" onclick="submitPassword()">MASUK SERVER</button>
+        </div>
+
+        <!-- ================= PANEL 3: CHARACTER SELECTION ================= -->
+        <div class="step-panel" id="panelCharSelect">
+            <div class="user-tag">
+                <span class="tag-label">Pilih Karakter untuk Bermain</span>
+                <span class="tag-val" id="selectUcpName">UCP</span>
+            </div>
+
+            <div class="char-grid" id="charListContainer"></div>
+
+            <button type="button" class="btn-new-char" id="newCharBtn" onclick="openCharCreate()">+ BUAT KARAKTER BARU</button>
+
+            <div class="btn-row">
+                <button type="button" class="btn-secondary" id="quitGameBtn" style="width: 100%;" onclick="quitGame()">KELUAR GAME</button>
+            </div>
+        </div>
+
+        <!-- ================= PANEL 4: CHARACTER CREATION ================= -->
+        <div class="step-panel" id="panelCharCreate">
+            <div class="user-tag">
+                <span class="tag-label">Form Pembuatan Karakter</span>
+                <span class="tag-val">Slot Baru</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Nama Karakter (Format: First_Last)</label>
+                <input type="text" id="newCharName" class="form-input" placeholder="Contoh: Marcus_Vance" maxlength="24">
+                <div class="form-hint">Harus nama roleplay realistis dengan underscore (_).</div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Jenis Kelamin (Gender)</label>
+                <div class="gender-selector">
+                    <button type="button" class="gender-btn selected" id="genderMale" onclick="selectGender(1)">LAKI-LAKI (MALE)</button>
+                    <button type="button" class="gender-btn" id="genderFemale" onclick="selectGender(2)">PEREMPUAN (FEMALE)</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Asal Karakter (Origin)</label>
+                <input type="text" id="newCharOrigin" class="form-input" placeholder="Contoh: United States / Indonesia" maxlength="32">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Tanggal Lahir (DD/MM/YYYY)</label>
+                <input type="text" id="newCharBirth" class="form-input" placeholder="Contoh: 15/08/1998" maxlength="10">
+            </div>
+
+            <div class="btn-row">
+                <button type="button" class="btn-secondary" id="backToSelectBtn" style="flex: 1;" onclick="backToCharSelect()">KEMBALI</button>
+                <button type="button" class="btn-primary" id="submitNewCharBtn" style="flex: 2;" onclick="submitNewCharacter()">BUAT KARAKTER</button>
+            </div>
+        </div>
+
+        <div class="footer-credit">Eastside Stories Roleplay &bull; Built with TypeScript</div>
+    </div>
+  `,c=document.getElementById("mainContainer"),l=document.getElementById("panelSubtitle"),d=document.getElementById("errorBanner"),k=document.getElementById("panelDownload"),w=document.getElementById("panelPin"),h=document.getElementById("panelAuth"),L=document.getElementById("panelCharSelect"),g=document.getElementById("panelCharCreate")}function s(e){d&&(d.innerText=e,d.style.display="block",setTimeout(()=>{d&&(d.style.display="none")},5e3))}function v(e){d&&(d.style.display="none"),k?.classList.remove("active"),w?.classList.remove("active"),h?.classList.remove("active"),L?.classList.remove("active"),g?.classList.remove("active"),e==="download"?(c?.classList.remove("wide"),k?.classList.add("active"),l&&(l.innerText="Sinkronisasi & Mengunduh Aset...")):e==="pin"?(c?.classList.remove("wide"),w?.classList.add("active"),l&&(l.innerText="Verifikasi PIN Akun")):e==="auth"?(c?.classList.remove("wide"),h?.classList.add("active"),l&&(l.innerText=p?"Masuk ke Akun Kamu":"Pendaftaran Akun Baru")):e==="select"?(c?.classList.add("wide"),L?.classList.add("active"),l&&(l.innerText="Pilih Karakter untuk Masuk Kota")):e==="create"&&(c?.classList.add("wide"),g?.classList.add("active"),l&&(l.innerText="Buat Karakter Baru"))}function U(){let e=()=>typeof window<"u"&&window.cef?(window.cef.emit("auth:ready"),!0):!1;if(e())setTimeout(()=>{u||e()},2500);else{let t=0,n=setInterval(()=>{if(t++,u||t>50){clearInterval(n);return}e()&&clearInterval(n)},100)}}function G(e){H=!0,e()}function D(){if(!u)return;let{username:e,isRegistered:t,needPin:n}=u;K=e,p=t===1;let a=document.getElementById("pinUcpName"),i=document.getElementById("authUcpName"),o=document.getElementById("selectUcpName");if(a&&(a.innerText=e),i&&(i.innerText=e),o&&(o.innerText=e),n===1)v("pin");else{let m=document.getElementById("authPwLabel"),r=document.getElementById("authSubmitBtn");m&&(m.innerText=p?"Password Login":"Buat Password Baru (7-32 karakter)"),r&&(r.innerText=p?"MASUK SERVER":"DAFTAR AKUN"),v("auth")}}function A(){let t=document.getElementById("pinInput")?.value.trim()||"";if(t.length<3)return s("PIN verifikasi harus diisi!");typeof window<"u"&&window.cef&&window.cef.emit("auth:pin",t)}var f=null;function T(){f!==null&&(window.clearTimeout(f),f=null)}function F(){T(),f=window.setTimeout(()=>{f=null;let e=document.getElementById("authSubmitBtn");e&&e.innerText.indexOf("MEMVERIFIKASI")!==-1&&(e.innerText="MASUK SERVER",e.disabled=!1,e.style.opacity="1",s("Server tidak merespons. Periksa koneksi lalu coba lagi."))},12e3)}function M(){let t=document.getElementById("authPwInput")?.value||"";if(p){if(t.length<1)return s("Password tidak boleh kosong!")}else if(t.length<7||t.length>32)return s("Password baru harus 7 sampai 32 karakter!");let n=document.getElementById("authSubmitBtn");n&&(n.innerText="MEMVERIFIKASI...",n.disabled=!0,n.style.opacity="0.7"),C(),F(),typeof window<"u"&&window.cef?window.cef.emit("auth:submit",t):(n&&(n.innerText="MASUK SERVER",n.disabled=!1,n.style.opacity="1"),s("Koneksi browser CEF ke server belum siap. Silakan tunggu beberapa detik."))}function y(e){I=e;let t=document.getElementById("genderMale"),n=document.getElementById("genderFemale");e===1?(t?.classList.add("selected"),n?.classList.remove("selected")):(n?.classList.add("selected"),t?.classList.remove("selected"))}function S(){if(b.length>=3)return s("Slot karakter sudah penuh (Maksimal 3)!");v("create")}function x(){v("select")}function B(e){console.log("[Auth] selectCharacter executing for index:",e);let t=document.querySelector(`button[data-action="play"][data-index="${e}"]`);t&&(t.innerText="MEMASUKI KOTA...",t.disabled=!0,t.style.opacity="0.7"),typeof window<"u"&&window.cef?window.cef.emit("char:select",e):s("Koneksi CEF terputus!")}function R(e,t){let n=document.querySelector(`button[data-action="delete"][data-index="${e}"]`);if(n&&n.dataset.armed!=="1"){n.dataset.armed="1",n.innerText="YAKIN?",n.style.background="rgba(231, 76, 60, 0.6)",n.style.color="#ffffff",s(`Klik "YAKIN?" sekali lagi untuk menghapus "${t}".`),setTimeout(()=>{n.dataset.armed==="1"&&(n.dataset.armed="0",n.innerText="HAPUS",n.style.background="",n.style.color="")},5e3);return}n&&(n.dataset.armed="0",n.innerText="HAPUS",n.style.background="",n.style.color=""),typeof window<"u"&&window.cef&&window.cef.emit("char:delete",e,t)}function E(){let e=document.getElementById("newCharName"),t=document.getElementById("newCharOrigin"),n=document.getElementById("newCharBirth"),a=e?.value.trim()||"",i=t?.value.trim()||"",o=n?.value.trim()||"";if(!a.includes("_")||a.length<4)return s("Nama karakter harus format Roleplay (Contoh: Marcus_Vance)!");if(i.length<2)return s("Harap isi asal negara/kota karakter!");if(o.length<6)return s("Harap isi tanggal lahir (DD/MM/YYYY)!");let m=I===1?26:91;typeof window<"u"&&window.cef&&window.cef.emit("char:create",a,I,i,o,m)}function P(){typeof window<"u"&&window.cef&&window.cef.emit("auth:exit")}function O(e){b=e||[];let t=document.getElementById("charListContainer");if(!t)return;t.innerHTML="",b.forEach(a=>{let i=document.createElement("div");i.className="char-card",i.style.cursor="pointer",i.setAttribute("data-index",String(a.index)),i.innerHTML=`
+      <div class="char-info">
+        <div class="char-name">${a.name}</div>
+        <div class="char-meta">
+          <span>Level: <span class="char-badge-lvl">${a.level}</span></span>
+          <span>Terakhir Main: ${a.lastPlay||"Hari ini"}</span>
+        </div>
+      </div>
+      <div class="char-actions">
+        <button type="button" class="btn-play" data-action="play" data-index="${a.index}" onclick="selectCharacter(${a.index})">MAIN</button>
+        <button type="button" class="btn-del" data-action="delete" data-index="${a.index}" data-name="${a.name}" onclick="deleteCharacter(${a.index}, '${a.name}')">HAPUS</button>
+      </div>
+    `,i.addEventListener("click",r=>{r.target.closest('button[data-action="delete"]')||B(a.index)}),i.querySelector('button[data-action="play"]')?.addEventListener("click",r=>{r.stopPropagation(),B(a.index)}),i.querySelector('button[data-action="delete"]')?.addEventListener("click",r=>{r.stopPropagation(),R(a.index,a.name)}),t.appendChild(i)});let n=document.getElementById("newCharBtn");n&&(n.style.display=b.length>=3?"none":"flex")}if(typeof window<"u"){window.submitPin=A,window.submitPassword=M,window.selectGender=y,window.openCharCreate=S,window.backToCharSelect=x,window.selectCharacter=B,window.deleteCharacter=R,window.submitNewCharacter=E,window.quitGame=P;let e=()=>{N(),document.getElementById("newCharBtn")?.addEventListener("click",t=>{t.preventDefault(),S()}),document.getElementById("quitGameBtn")?.addEventListener("click",t=>{t.preventDefault(),P()}),document.getElementById("backToSelectBtn")?.addEventListener("click",t=>{t.preventDefault(),x()}),document.getElementById("submitNewCharBtn")?.addEventListener("click",t=>{t.preventDefault(),E()}),document.getElementById("genderMale")?.addEventListener("click",()=>y(1)),document.getElementById("genderFemale")?.addEventListener("click",()=>y(2)),G(()=>{if(u)D();else{let t=document.getElementById("dlStatusText"),n=document.getElementById("dlPercentText"),a=document.getElementById("dlFillBar");t&&(t.innerText="Aset lengkap, menunggu server..."),n&&(n.innerText="100%"),a&&(a.style.width="100%"),l&&(l.innerText="Menunggu respon server..."),U()}})};if(document.readyState==="loading"?window.addEventListener("DOMContentLoaded",e):e(),document.addEventListener("keydown",t=>{t.key==="Enter"&&(w?.classList.contains("active")?A():h?.classList.contains("active")?M():g?.classList.contains("active")&&E())}),!C()){let t=setInterval(()=>{C()&&clearInterval(t)},100)}}function C(){return typeof window>"u"||!window.cef?!1:(window.__cef_auth_listeners_attached||(window.__cef_auth_listeners_attached=!0,window.cef.on("auth:init",(e,t,n)=>{u={username:e,isRegistered:t,needPin:n},H&&D()}),window.cef.on("auth:error",e=>{T();let t=document.getElementById("authSubmitBtn");t&&(t.innerText="MASUK SERVER",t.disabled=!1,t.style.opacity="1"),s(e)}),window.cef.on("char:list_data",e=>{T();let t=document.getElementById("authSubmitBtn");t&&(t.innerText="MASUK SERVER",t.disabled=!1,t.style.opacity="1");try{let n;if(Array.isArray(e))n=e.flat();else if(typeof e=="string"){let a=JSON.parse(e);n=Array.isArray(a)?a.flat():[a]}else e&&typeof e=="object"?n=[e]:n=[];O(n),v("select")}catch(n){console.error("Failed to parse characters JSON:",n),s("Gagal memuat daftar karakter!")}})),!0)}})();
+
+    </script>
+</body>
+</html>

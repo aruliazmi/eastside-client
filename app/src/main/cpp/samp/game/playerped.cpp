@@ -1,13 +1,14 @@
 #include "../main.h"
 #include "game.h"
 #include "../net/netgame.h"
-#include "../vendor/armhook/patch.h"
+#include "../vendor/shadowhook/patch.h"
 #include <cmath>
-// 0.3.7
+
 #include "Entity/CPedGTA.h"
 #include "Streaming.h"
 #include "World.h"
 #include "game/Models/ModelInfo.h"
+#include "Timer.h"
 
 extern CGame* pGame;
 extern CNetGame* pNetGame;
@@ -110,6 +111,7 @@ CPlayerPed::CPlayerPed(int iNum, int iSkin, float fX, float fY, float fZ, float 
 	iSpecialAction = 0;
 
 	SetModelIndex(iSkin);
+	ForceTargetRotation(fRotation);
 
 
 	// GameResetPlayerKeys
@@ -183,14 +185,14 @@ bool CPlayerPed::IsInVehicle()
 
 	return m_pPed->IsInVehicle();
 }
-// 0.3.7
+
 bool CPlayerPed::IsAPassenger()
 {
     if (!m_pPed) return false;
 
     return m_pPed->IsAPassenger();
 }
-// 0.3.7
+
 void CPlayerPed::RemoveFromVehicleAndPutAt(float fX, float fY, float fZ)
 {
     if(!m_pPed || !m_pPed->pVehicle) return;
@@ -201,9 +203,9 @@ void CPlayerPed::RemoveFromVehicleAndPutAt(float fX, float fY, float fZ)
     m_pPed->SetPosn(p);
 
     m_pPed->UpdateRW();
-    m_pPed->UpdateRwFrame();//? ���� ��
+    m_pPed->UpdateRwFrame();//?  
 }
-// 0.3.7
+
 uint8_t CPlayerPed::GetActionTrigger()
 {
     return (uint8_t)m_pPed->m_nPedState;
@@ -236,14 +238,14 @@ void CPlayerPed::SetDead()
     ScriptCommand(&kill_actor, m_dwGTAId);
     CWorld::PlayerInFocus = 0;
 }
-// 0.3.7
+
 bool CPlayerPed::IsDead()
 {
     if(!m_pPed) return false;
 
     return m_pPed->m_fHealth <= 0.0f || m_pPed->m_nPedState == PEDSTATE_DIE || m_pPed->m_nPedState == PEDSTATE_DEAD;
 }
-// 0.3.7
+
 void CPlayerPed::TogglePlayerControllable(bool bControllable)
 {
     FLog("TogglePlayerControllable");
@@ -269,32 +271,32 @@ void CPlayerPed::TogglePlayerControllable(bool bControllable)
         ScriptCommand(&lock_actor, m_dwGTAId, 0);
     }
 }
-// 0.3.7
+
 float CPlayerPed::GetHealth()
 {
 	if (!m_pPed) return 0.0f;
 	return m_pPed->m_fHealth;
 }
-// 0.3.7
+
 void CPlayerPed::SetHealth(float fHealth)
 {
 	if (m_pPed) {
 		m_pPed->m_fHealth = fHealth;
 	}
 }
-// 0.3.7
+
 float CPlayerPed::GetArmour()
 {
 	if (!m_pPed) return 0.0f;
 	return m_pPed->m_fArmour;
 }
-// 0.3.7
+
 void CPlayerPed::SetArmour(float fArmour)
 {
 	if (!m_pPed) return;
 	m_pPed->m_fArmour = fArmour;
 }
-// 0.3.7
+
 CVehicleGTA* CPlayerPed::GetGtaVehicle()
 {
     return (CVehicleGTA*)m_pPed->pVehicle;
@@ -482,12 +484,12 @@ void CPlayerPed::PlayAnimationFromIndex(int iIndex, float fDelta)
 	ApplyAnimation(&pszAnim[0], &pszBlock[0], fDelta, 0, 1, 1, 0, 0);
 }
 
-// 0.3.7
+
 uint8_t CPlayerPed::GetCurrentWeapon()
 {
     return GetCurrentWeaponSlot()->dwType;
 }
-// 0.3.7
+
 void CPlayerPed::RemoveWeaponWhenEnteringVehicle()
 {
 	if (m_pPed) {
@@ -495,13 +497,13 @@ void CPlayerPed::RemoveWeaponWhenEnteringVehicle()
 		//((void(*)(CPedGTA*, int))(g_libGTASA + 0x4A52FC + 1))(m_pPed, 0);
 	}
 }
-// 0.3.7
+
 void CPlayerPed::SetInitialState()
 {
 	// CPlayerPed::SetInitialState
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x004C37B4 + 1 : 0x5C0D50), m_pPed);
 }
-// 0.3.7
+
 void CPlayerPed::RestartIfWastedAt(CVector *vecRestart, float fRotation)
 {
 	ScriptCommand(&restart_if_wasted_at, vecRestart->x, vecRestart->y, vecRestart->z, fRotation, 0);
@@ -509,16 +511,9 @@ void CPlayerPed::RestartIfWastedAt(CVector *vecRestart, float fRotation)
 
 bool IsPedModel(unsigned int iModelID)
 {
-    if(iModelID < 0 || iModelID > 20000) return false;
-    auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
-
-    uintptr_t ModelInfo = reinterpret_cast<uintptr_t>(dwModelArray[iModelID]);
-    if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x82F310))
-        return true;
-
-    return false;
+    return IsValidPedModel(iModelID);
 }
-// 0.3.7
+
 void CPlayerPed::SetModelIndex(uint uiModel)
 {
     if(!GamePool_Ped_GetAt(m_dwGTAId)) return;
@@ -529,8 +524,11 @@ void CPlayerPed::SetModelIndex(uint uiModel)
     {
         auto oldModelId = m_pPed->m_nModelIndex;
 
-        if (!CStreaming::TryLoadModel(uiModel))
-            return;
+        if (!CStreaming::TryLoadModel(uiModel)) {
+            uiModel = 0;
+            if (!CStreaming::TryLoadModel(0))
+                return;
+        }
 
         // CEntity::DeleteRwObject();
         m_pPed->m_nModelIndex = uiModel;
@@ -539,6 +537,17 @@ void CPlayerPed::SetModelIndex(uint uiModel)
 
         CStreaming::RemoveModelIfNoRefs(oldModelId);
     }
+}
+
+void CPlayerPed::ClearAllWeapons()
+{
+	uintptr_t dwPedPtr = (uintptr_t)m_pPed;
+	uint8_t old = CWorld::PlayerInFocus;
+	CWorld::PlayerInFocus = m_bytePlayerNumber;
+
+	((uint32_t(*)(uintptr_t, int, int, int))(g_libGTASA + (VER_x32 ? 0x0049F836 + 1 : 0x595604)))(dwPedPtr, 1, 1, 1); // CPed::ClearWeapons(void)
+
+	CWorld::PlayerInFocus = old;
 }
 
 void CPlayerPed::ClearWeapons()
@@ -566,7 +575,7 @@ void CPlayerPed::GiveWeapon(int iWeaponId, int iAmmo)
 void CPlayerPed::SetArmedWeapon(uint8_t weapon, bool unk)
 {
 }
-// 0.3.7
+
 void CPlayerPed::SetTargetRotation(float fRotation)
 {
 	if (m_pPed && GamePool_Ped_GetAt(m_dwGTAId))
@@ -576,7 +585,7 @@ void CPlayerPed::SetTargetRotation(float fRotation)
 		ScriptCommand(&set_actor_z_angle, m_dwGTAId, fRotation);
 	}
 }
-// 0.3.7
+
 void CPlayerPed::SetImmunities(int BP, int FP, int EP, int CP, int MP)
 {
 	if (m_pPed) {
@@ -585,7 +594,7 @@ void CPlayerPed::SetImmunities(int BP, int FP, int EP, int CP, int MP)
 		}
 	}
 }
-// 0.3.7
+
 void CPlayerPed::ShowMarker(int nIndex)
 {
 	if (m_dwArrow) {
@@ -738,15 +747,31 @@ uint16_t CPlayerPed::GetKeys(uint16_t *lrAnalog, uint16_t *udAnalog, bool clear)
 	return wRet;
 }
 
-// 0.3.7
+
 void CPlayerPed::SetFightingStyle(int iStyle)
 {
 	if (m_pPed) {
 		ScriptCommand(&set_fighting_style, m_dwGTAId, iStyle, 6);
+		// Ensure melee stays enabled whenever fighting style changes
+		// (called on spawn + when server sends fighting style RPC)
+		m_pPed->m_nAllowedAttackMoves = (char)0xFF;
 	}
 }
 
-// 0.3.7
+void CPlayerPed::ForceTargetRotation(float fRotation) const
+{
+	if(!m_pPed)
+        return;
+
+	if(!GamePool_Ped_GetAt(m_dwGTAId))
+        return;
+
+	m_pPed->m_fCurrentRotation = DegToRad(fRotation);
+	m_pPed->m_fAimingRotation = DegToRad(fRotation);
+
+	ScriptCommand(&set_actor_z_angle, m_dwGTAId, fRotation);
+}
+
 void CPlayerPed::SetRotation(float fRotation)
 {
 	if (m_pPed)
@@ -764,12 +789,12 @@ void CPlayerPed::DestroyFollowPedTask()
 
 }
 
-// 0.3.7
+
 void CPlayerPed::GetBonePosition(int iBoneID, CVector* vecOut)
 {
 	m_pPed->GetBonePosition(vecOut, iBoneID, 0);
 }
-// 0.3.7
+
 void CPlayerPed::GetTransformedBonePosition(int iBoneID, CVector* vecOut)
 {
 	if (!m_pPed) return;
@@ -797,7 +822,7 @@ void CPlayerPed::ApplyAnimation(const char* szAnimName, const char* szAnimLib, f
 	ScriptCommand(&apply_animation, m_dwGTAId, szAnimName, szAnimLib, fT, opt1, opt2, opt3, opt4, iTime);
 }
 
-// 0.3.7
+
 void CPlayerPed::SetInterior(uint8_t byteInteriorId, bool bRefresh)
 {
 	if (m_pPed && m_bytePlayerNumber != 0) {
@@ -816,17 +841,17 @@ void CPlayerPed::SetInterior(uint8_t byteInteriorId, bool bRefresh)
 	}
 }
 
-// 0.3.7
+
 CAMERA_AIM* CPlayerPed::GetCurrentAim()
 {
 	return GameGetInternalAim();
 }
-// 0.3.7
+
 void CPlayerPed::SetCurrentAim(CAMERA_AIM* pAim)
 {
 	GameStoreRemotePlayerAim(m_bytePlayerNumber, pAim);
 }
-//0.3.7
+
 uint8_t CPlayerPed::GetCameraMode()
 {
 	if (m_bytePlayerNumber == 0) {
@@ -836,7 +861,7 @@ uint8_t CPlayerPed::GetCameraMode()
 		return GameGetPlayerCameraMode(m_bytePlayerNumber);
 	}
 }
-// 0.3.7
+
 float CPlayerPed::GetAimZ()
 {
     if (!m_pPed)
@@ -845,7 +870,7 @@ float CPlayerPed::GetAimZ()
     }
     return m_pPed->m_pPlayerData->m_fLookPitch;
 }
-// 0.3.7
+
 void CPlayerPed::SetAimZ(float fAimZ)
 {
     if (!m_pPed)
@@ -854,7 +879,7 @@ void CPlayerPed::SetAimZ(float fAimZ)
     }
     m_pPed->m_pPlayerData->m_fLookPitch = fAimZ;
 }
-// 0.3.7
+
 CWeapon* CPlayerPed::GetCurrentWeaponSlot()
 {
     if (m_pPed)
@@ -863,17 +888,17 @@ CWeapon* CPlayerPed::GetCurrentWeaponSlot()
     }
     return NULL;
 }
-// 0.3.7
+
 void CPlayerPed::SetCameraMode(uint8_t byteCameraMode)
 {
 	GameSetPlayerCameraMode(byteCameraMode, m_bytePlayerNumber);
 }
-// 0.3.7
+
 void CPlayerPed::SetCameraZoomAndAspect(float fExtZoom, float fAspectRatio)
 {
 	GameSetPlayerCameraExtZoomAndAspect(m_bytePlayerNumber, fExtZoom, fAspectRatio);
 }
-// 0.3.7
+
 void CPlayerPed::CheckVehicleParachute()
 {
 	if (m_dwParachuteObject)
@@ -888,7 +913,7 @@ void CPlayerPed::ProcessVehicleHorn()
 {
 
 }
-// 0.3.7
+
 void CPlayerPed::PutDirectlyInVehicle(uint32_t dwVehicleGTAId, uint8_t byteSeatID)
 {
 	if (!m_pPed || !m_dwGTAId || !dwVehicleGTAId) return;
@@ -956,7 +981,7 @@ void CPlayerPed::PutDirectlyInVehicle(uint32_t dwVehicleGTAId, uint8_t byteSeatI
 		}
 	}
 }
-// 0.3.7
+
 void CPlayerPed::EnterVehicle(uint32_t dwVehicleGTAId, bool bPassenger)
 {
 	if (!m_pPed) return;
@@ -991,7 +1016,7 @@ void CPlayerPed::EnterVehicle(uint32_t dwVehicleGTAId, bool bPassenger)
         }
     }
 }
-// 0.3.7
+
 const SCRIPT_COMMAND TASK_LEAVE_ANY_CAR = { 0x0633, "i" };
 void CPlayerPed::ExitCurrentVehicle()
 {
@@ -1011,7 +1036,21 @@ void CPlayerPed::ExitCurrentVehicle()
 
     }
 }
-// 0.3.7
+
+VEHICLEID CPlayerPed::GetCurrentSampVehicleID()
+{
+	if(!m_pPed)
+        return INVALID_VEHICLE_ID;
+
+	if(!pNetGame)
+        return INVALID_VEHICLE_ID;
+
+	if(!m_pPed->pVehicle)
+        return INVALID_VEHICLE_ID;
+
+	return pNetGame->GetVehiclePool()->FindIDFromGtaPtr(m_pPed->pVehicle);
+}
+
 int CPlayerPed::GetCurrentVehicleID()
 {
 	if(!m_pPed) {
@@ -1025,7 +1064,7 @@ void CPlayerPed::SetSkillLevel(int iSkillID, int iLevel)
 {
 
 }
-// 0.3.7
+
 void CPlayerPed::SetAmmo(uint8_t byteWeapon, uint16_t wAmmo)
 {
 	if (m_pPed)
@@ -1036,7 +1075,7 @@ void CPlayerPed::SetAmmo(uint8_t byteWeapon, uint16_t wAmmo)
 		}
 	}
 }
-// 0.3.7
+
 CWeapon* CPlayerPed::FindWeaponSlot(uint8_t byteWeapon)
 {
 	if (!m_pPed) return nullptr;
@@ -1050,7 +1089,7 @@ CWeapon* CPlayerPed::FindWeaponSlot(uint8_t byteWeapon)
 
 	return nullptr;
 }
-// 0.3.7
+
 int CPlayerPed::GetVehicleSeatID()
 {
     if(!m_pPed->pVehicle)
@@ -1069,7 +1108,7 @@ int CPlayerPed::GetVehicleSeatID()
     return (-1);
 }
 
-// 0.3.7
+
 void CPlayerPed::GetBoneMatrix(RwMatrix* matOut, int iBoneID)
 {
 	if (m_pPed && IsValidGamePed(m_pPed))
@@ -1087,7 +1126,7 @@ void CPlayerPed::GetBoneMatrix(RwMatrix* matOut, int iBoneID)
 		}
 	}
 }
-// 0.3.7
+
 void CPlayerPed::ClumpUpdateAnimations(float step, int flag)
 {
 	uintptr_t pRwObj;
@@ -1171,7 +1210,7 @@ void CPlayerPed::FireInstant()
 		//GameSetLocalPlayerSkills();
 	}
 }
-// 0.3.7
+
 void CPlayerPed::GetWeaponInfoForFire(bool bLeftWrist, CVector* vecBonePos, CVector* vecOut)
 {
     if (!IsValidGamePed(m_pPed) || !GamePool_Ped_GetAt(m_dwGTAId)) {
@@ -1203,7 +1242,7 @@ uintptr_t GetWeaponInfo(int iWeapon, int iSkill)
     // CWeaponInfo::GetWeaponInfo
     return ((uintptr_t(*)(int, int))(g_libGTASA + (VER_x32 ? 0x005E42E8 + 1 : 0x709BA8)))(iWeapon, iSkill);
 }
-// 0.3.7
+
 CVector* CPlayerPed::GetCurrentWeaponFireOffset()
 {
     if (!IsValidGamePed(m_pPed) || !GamePool_Ped_GetAt(m_dwGTAId)) {
@@ -1216,7 +1255,7 @@ CVector* CPlayerPed::GetCurrentWeaponFireOffset()
     }
     return nullptr;
 }
-// 0.3.7
+
 void CPlayerPed::ProcessBulletData(BULLET_DATA *btData)
 {
 	if (btData == nullptr)
@@ -1336,7 +1375,7 @@ void CPlayerPed::ProcessBulletData(BULLET_DATA *btData)
 	}
 }
 
-// 0.3.7
+
 uint8_t CPlayerPed::FindDeathReasonAndResponsiblePlayer(uint16_t *nPlayer)
 {
     if(m_pPed)
@@ -1436,19 +1475,19 @@ uint8_t CPlayerPed::FindDeathReasonAndResponsiblePlayer(uint16_t *nPlayer)
     return 255;
 }
 
-// 0.3.7
+
 void CPlayerPed::SetStateFlags(uint32_t dwState)
 {
 	if (!m_pPed) return;
 	//m_pPed->dwStateFlags = dwState;
 }
-// 0.3.7
+
 uint32_t CPlayerPed::GetStateFlags()
 {
 	if (!m_pPed) return 0;
 	return 0;
 }
-// 0.3.7
+
 bool CPlayerPed::IsOnGround()
 {
 	if (m_pPed) {
@@ -1540,49 +1579,47 @@ void CPlayerPed::ResetCrouch()
 
 bool CPlayerPed::IsInJetpackMode()
 {
-	/*if(m_pPed && IsAdded() && !IsInVehicle() && m_pPed->Tasks &&
-	   m_pPed->Tasks->pdwJumpJetPack)
-	{
-		return GetTaskTypeFromTask(m_pPed->Tasks->pdwJumpJetPack) == 1303;
-	}*/
+    /*if(m_pPed && IsAdded() && !IsInVehicle() && m_pPed->Tasks &&
+       m_pPed->Tasks->pdwJumpJetPack)
+    {
+        return GetTaskTypeFromTask(m_pPed->Tasks->pdwJumpJetPack) == 1303;
+    }*/
 
-    if(m_pPed && m_pPed->IsAdded() && !IsInVehicle()) {
-        return m_pPed->GetIntelligence()->GetTaskJetPack();
-    }
-    return false;
+    return ScriptCommand(&is_actor_using_jetpack, m_bytePlayerNumber);
 }
 
 void CPlayerPed::StartJetpack()
 {
-	if(!m_pPed || !GamePool_Ped_GetAt(m_dwGTAId) || IsInVehicle() || !m_pPed->IsAdded())
-		return;
+    if(!m_pPed || !GamePool_Ped_GetAt(m_dwGTAId) || IsInVehicle() || !m_pPed->IsAdded())
+        return;
 
-	CWorld::PlayerInFocus = m_bytePlayerNumber;
+    CWorld::PlayerInFocus = m_bytePlayerNumber;
 
-	// reset CTasks so the CJetPack task priority can be enforced
-	m_pPed->SetPosn(m_pPed->m_matrix->m_pos.x, m_pPed->m_matrix->m_pos.y, m_pPed->m_matrix->m_pos.z);
+    // reset CTasks so the CJetPack task priority can be enforced
+    m_pPed->SetPosn(m_pPed->m_matrix->m_pos.x, m_pPed->m_matrix->m_pos.y, m_pPed->m_matrix->m_pos.z);
 
-	// CCheat::JetpackCheat
-	(( void (*)())(g_libGTASA+(VER_x32 ? 0x2FE258+1:0x3C2A40)))();
+    // CCheat::JetpackCheat
+    (( void (*)())(g_libGTASA+(VER_x32 ? 0x2FE258+1:0x3C2A40)))();
 
-	CWorld::PlayerInFocus = 0;
+    CWorld::PlayerInFocus = 0;
 }
 
 void CPlayerPed::StopJetpack()
 {
-	if(!m_pPed || !GamePool_Ped_GetAt(m_dwGTAId) || !m_pPed->IsAdded())
-		return;
+    if(!m_pPed || !GamePool_Ped_GetAt(m_dwGTAId) || !m_pPed->IsAdded())
+        return;
 
-	if(IsInJetpackMode())
-	{
-		/*uintptr_t dwJetPackTask = reinterpret_cast<uintptr_t>(m_pPed->Tasks->pdwJumpJetPack);
+    if(IsInJetpackMode())
+    {
+        /*uintptr_t dwJetPackTask = reinterpret_cast<uintptr_t>(m_pPed->Tasks->pdwJumpJetPack);
 
-		// CTaskSimpleJetPack::~CTaskSimpleJetPack
-		(( void (*)(uintptr_t))(g_libGTASA+0x530C8C+1))(dwJetPackTask); // CTaskSimpleJetPack::~CTaskSimpleJetPack
+        // CTaskSimpleJetPack::~CTaskSimpleJetPack
+        (( void (*)(uintptr_t))(g_libGTASA+0x530C8C+1))(dwJetPackTask); // CTaskSimpleJetPack::~CTaskSimpleJetPack
 
-		m_pPed->Tasks->pdwJumpJetPack = 0;*/
-	}
+        m_pPed->Tasks->pdwJumpJetPack = 0;*/
+    }
 }
+
 
 int CPlayerPed::HasHandsUp()
 {
@@ -1933,7 +1970,7 @@ void CPlayerPed::ProcessDrunk()
                 CVehicleGTA *_pVehicle = GetGtaVehicle();
 				if(_pVehicle)
 				{
-					if(!m_stuffData.dwLastUpdateTick || (GetTickCount() - m_stuffData.dwLastUpdateTick) > 200)
+					if(!m_stuffData.dwLastUpdateTick || (CTimer::m_snTimeInMillisecondsNonClipped - m_stuffData.dwLastUpdateTick) > 200)
 					{
 						int iRandNumber = rand() % 40;
 						float fRotation = 0.0;
@@ -1955,7 +1992,7 @@ void CPlayerPed::ProcessDrunk()
 							_pVehicle->GetTurnSpeed().z = fRotation + _pVehicle->GetTurnSpeed().z;
 						}
 
-						m_stuffData.dwLastUpdateTick = GetTickCount();
+						m_stuffData.dwLastUpdateTick = CTimer::m_snTimeInMillisecondsNonClipped;
 					}
 				}
 			}
@@ -1998,25 +2035,23 @@ bool CPlayerPed::IsTakeDamageFallTask()
 	return false;
 }
 
-uint8_t CPlayerPed::IsEnteringVehicle()
+bool CPlayerPed::IsEnteringVehicle()
 {
-	/*if(m_pPed && m_pPed->Tasks && m_pPed->Tasks->pdwJumpJetPack)
-	{
-		int iType = GetTaskTypeFromTask(m_pPed->Tasks->pdwJumpJetPack);
-		if(iType == 700 || iType == 712)
-			return 2;
-		if(iType == 701 || iType == 713)
-			return 1;
-	}*/
-	return m_pPed->IsEnteringCar();
+    if (!m_pPed) return false;
+
+    if ( m_pPed->GetTaskManager().FindActiveTaskByType(TASK_COMPLEX_ENTER_CAR_AS_DRIVER) )
+        return true;
+
+    return m_pPed->GetTaskManager().FindActiveTaskByType(TASK_COMPLEX_ENTER_CAR_AS_PASSENGER) != nullptr;
 }
 
-bool CPlayerPed::IsExitingVehicle()
-{
-	//if(m_pPed && m_pPed->Tasks && m_pPed->Tasks->pdwJumpJetPack)
-		//return GetTaskTypeFromTask(m_pPed->Tasks->pdwJumpJetPack) == 704;
+bool CPlayerPed::IsExitingVehicle() {
+    if (!m_pPed) return false;
 
-	return m_pPed->IsExitingVehicle();
+    if ( m_pPed->GetTaskManager().FindActiveTaskByType(TASK_COMPLEX_LEAVE_CAR) )
+        return true;
+
+    return false;
 }
 
 bool CPlayerPed::IsSitTask()
@@ -2239,27 +2274,80 @@ void CPlayerPed::SetWeaponSkill(uint32_t iWeaponType, uint16_t byteSkill)
 
 int GetInternalBoneIDFromSampID(int sampid);
 
-void CPlayerPed::AttachObject(ATTACHED_OBJECT_INFO* pInfo, int iSlot)
+// FIXED LỖI XẢY RA Ở DÒNG NÀY: Thêm từ khóa struct vào trước ATTACHED_OBJECT_INFO
+void CPlayerPed::AttachObject(struct ATTACHED_OBJECT_INFO* pInfo, int iSlot)
 {
+    FLog("===== AttachObject =====");
+
     if (GetAttachedObject(iSlot))
     {
+        FLog("Slot %d already occupied, detaching...", iSlot);
         DeattachObject(iSlot);
     }
+
     auto& attach = m_aAttachedObject[iSlot] = CAttachedPlayerObject();
 
-    attach.vecRotation  = pInfo->vecRotation;
-    attach.vecOffset    = pInfo->vecOffset;
-    attach.dwModelId    = pInfo->dwModelId;
-    attach.vecScale     = pInfo->vecScale;
-    attach.dwColor[0]   = pInfo->dwColor[0];
-    attach.dwColor[1]   = pInfo->dwColor[1];
-    attach.dwSampBone   = pInfo->dwBoneId_MP;
-    attach.dwBone = GetInternalBoneIDFromSampID(attach.dwSampBone);
+    attach.vecRotation = pInfo->vecRotation;
+    attach.vecOffset   = pInfo->vecOffset;
+    attach.dwModelId   = pInfo->dwModelId;
+    attach.vecScale    = pInfo->vecScale;
+    attach.dwColor[0]  = pInfo->dwColor[0];
+    attach.dwColor[1]  = pInfo->dwColor[1];
+    attach.dwSampBone  = pInfo->dwBoneId_MP;
+    attach.dwBone      = GetInternalBoneIDFromSampID(attach.dwSampBone);
+
+    FLog("ModelID: %d", attach.dwModelId);
+    FLog("Slot: %d", iSlot);
+    FLog("SAMP Bone: %d", attach.dwSampBone);
+    FLog("Internal Bone: %d", attach.dwBone);
+
+    FLog("Offset: %.3f %.3f %.3f",
+        attach.vecOffset.x,
+        attach.vecOffset.y,
+        attach.vecOffset.z);
+
+    FLog("Rotation: %.3f %.3f %.3f",
+        attach.vecRotation.x,
+        attach.vecRotation.y,
+        attach.vecRotation.z);
+
+    FLog("Scale: %.3f %.3f %.3f",
+        attach.vecScale.x,
+        attach.vecScale.y,
+        attach.vecScale.z);
 
     CVector vecPos = m_pPed->GetPosition();
-    CVector vecRot{ 0.0f, 0.0f, 0.0f };
-    attach.pObject = new CObject(pInfo->dwModelId, vecPos, vecRot, 200.0f, 1);
+    CVector vecRot{0.0f, 0.0f, 0.0f};
+
+    FLog("Player Pos: %.3f %.3f %.3f",
+        vecPos.x,
+        vecPos.y,
+        vecPos.z);
+
+    attach.pObject = new CObject(
+        attach.dwModelId,
+        vecPos,
+        vecRot,
+        200.0f,
+        1);
+
+    if (!attach.pObject)
+    {
+        FLog("ERROR: new CObject failed!");
+        return;
+    }
+
+    if (!attach.pObject->m_pEntity)
+    {
+        FLog("ERROR: m_pEntity == nullptr");
+        return;
+    }
+
+    FLog("Object created! GTA ID: %d", attach.pObject->m_dwGTAId);
+
     attach.pObject->m_pEntity->m_bUsesCollision = false;
+
+    FLog("===== AttachObject DONE =====");
 }
 
 void CPlayerPed::SetAttachOffset(int iSlot, CVector pos, CVector rot)
@@ -2304,10 +2392,10 @@ void CPlayerPed::FlushAttach()
 
 void CPlayerPed::ProcessAttach()
 {
-    if(!m_pPed) return;
-    bool needRender = true;
+    if (!m_pPed) return;
 
-    if(m_pPed->IsInVehicle() && m_pPed->pVehicle->IsRCVehicleModelID())
+    bool needRender = true;
+    if (m_pPed->IsInVehicle() && m_pPed->pVehicle->IsRCVehicleModelID())
         needRender = false;
 
     m_pPed->UpdateRpHAnim();
@@ -2316,79 +2404,100 @@ void CPlayerPed::ProcessAttach()
     {
         ProcessHeadMatrix();
     }
-    for (auto iter : m_aAttachedObject)
+
+    for (auto& iter : m_aAttachedObject)
     {
-        auto attach = iter.second;
-
+        auto& attach = iter.second;
         CObject* pObject = attach.pObject;
-        if (pObject && pObject->m_pEntity && m_pPed->IsAdded() && m_pPed->m_pRwClump)
+
+        if (!pObject || !pObject->m_pEntity)
         {
-            auto hierarchy = GetAnimHierarchyFromSkinClump(m_pPed->m_pRwClump);
-
-            int iID;
-            if (hierarchy)
-            {
-
-                iID = RpHAnimIDGetIndex(hierarchy, attach.dwBone);
-            }
-            else
-            {
-                continue;
-            }
-            if (iID == -1)
-            {
-                continue;
-            }
-            pObject->m_pEntity->Remove();
-
-            if(!needRender)
-                continue;
-
-            RwMatrix outMat;
-            memcpy(&outMat, &hierarchy->pMatrixArray[iID], sizeof(RwMatrix));
-
-            CVector vecOut;
-            ProjectMatrix(&vecOut, (CMatrix*)&outMat, &attach.vecOffset);
-
-            outMat.pos = vecOut;
-
-            CVector axis { 1.0f, 0.0f, 0.0f };
-            if (attach.vecRotation.x != 0.0f)
-            {
-                RwMatrixRotate(&outMat, &axis, attach.vecRotation.x);
-            }
-            axis.Set( 0.0f, 1.0f, 0.0f );
-            if (attach.vecRotation.y != 0.0f)
-            {
-                RwMatrixRotate(&outMat, &axis, attach.vecRotation.y);
-            }
-            axis.Set( 0.0f, 0.0f, 1.0f );
-            if (attach.vecRotation.z != 0.0f)
-            {
-                RwMatrixRotate(&outMat, &axis, attach.vecRotation.z);
-            }
-
-            RwMatrixScale(&outMat, &attach.vecScale);
-
-            constexpr float boundaryLimit = 10000.0f;
-            if (std::abs(outMat.pos.x) >= boundaryLimit ||
-                std::abs(outMat.pos.y) >= boundaryLimit ||
-                std::abs(outMat.pos.z) >= boundaryLimit)
-            {
-                continue;
-            }
-
-            pObject->m_pEntity->SetMatrix((CMatrix&)outMat); // copy to CMatrix
-
-            pObject->m_pEntity->UpdateRW();
-            pObject->m_pEntity->UpdateRwFrame();
-
-            pObject->m_pEntity->Add();
+            continue;
         }
-        else
+
+        pObject->m_pEntity->Remove();
+
+        if (!m_pPed->IsAdded() || !m_pPed->m_pRwClump || !needRender)
         {
-            pObject->m_pEntity->SetPosn(0.0f, 0.0f, 0.0f);
+            continue;
         }
+
+        auto hierarchy = GetAnimHierarchyFromSkinClump(m_pPed->m_pRwClump);
+        if (!hierarchy)
+        {
+            continue;
+        }
+
+        int iID = RpHAnimIDGetIndex(hierarchy, attach.dwBone);
+        if (iID == -1)
+        {
+            continue;
+        }
+
+        // 1. Get the bone's world matrix
+        RwMatrix* boneMatrix = &hierarchy->pMatrixArray[iID];
+
+        // 2. Create the final matrix, starting with the bone's matrix
+        RwMatrix finalMatrix;
+        memcpy(&finalMatrix, boneMatrix, sizeof(RwMatrix));
+
+        // 3. Manually calculate the final position.
+        // This replaces ProjectMatrix to isolate the problem.
+        // It transforms the local offset by the bone's orientation and adds it to the bone's position.
+        CVector rotated_offset;
+        rotated_offset.x = boneMatrix->right.x * attach.vecOffset.x + boneMatrix->up.x * attach.vecOffset.y + boneMatrix->at.x * attach.vecOffset.z;
+        rotated_offset.y = boneMatrix->right.y * attach.vecOffset.x + boneMatrix->up.y * attach.vecOffset.y + boneMatrix->at.y * attach.vecOffset.z;
+        rotated_offset.z = boneMatrix->right.z * attach.vecOffset.x + boneMatrix->up.z * attach.vecOffset.y + boneMatrix->at.z * attach.vecOffset.z;
+        CVector finalPos;
+        finalPos.x = boneMatrix->pos.x + rotated_offset.x;
+        finalPos.y = boneMatrix->pos.y + rotated_offset.y;
+        finalPos.z = boneMatrix->pos.z + rotated_offset.z;
+
+        // 4. Apply local rotation to the bone's orientation.
+        CVector axis;
+        axis.Set(1.0f, 0.0f, 0.0f);
+        if (attach.vecRotation.x != 0.0f)
+            RwMatrixRotate(&finalMatrix, &axis, attach.vecRotation.x);
+
+        axis.Set(0.0f, 1.0f, 0.0f);
+        if (attach.vecRotation.y != 0.0f)
+            RwMatrixRotate(&finalMatrix, &axis, attach.vecRotation.y);
+
+        axis.Set(0.0f, 0.0f, 1.0f);
+        if (attach.vecRotation.z != 0.0f)
+            RwMatrixRotate(&finalMatrix, &axis, attach.vecRotation.z);
+
+        // 5. Set the correct final position calculated in step 3.
+        finalMatrix.pos = finalPos;
+
+        // 6. Apply scale manually to the basis vectors.
+        finalMatrix.right.x *= attach.vecScale.x;
+        finalMatrix.right.y *= attach.vecScale.x;
+        finalMatrix.right.z *= attach.vecScale.x;
+
+        finalMatrix.up.x *= attach.vecScale.y;
+        finalMatrix.up.y *= attach.vecScale.y;
+        finalMatrix.up.z *= attach.vecScale.y;
+
+        finalMatrix.at.x *= attach.vecScale.z;
+        finalMatrix.at.y *= attach.vecScale.z;
+        finalMatrix.at.z *= attach.vecScale.z;
+
+        // Boundary check
+        constexpr float boundaryLimit = 20000.0f;
+        if (std::abs(finalMatrix.pos.x) >= boundaryLimit ||
+            std::abs(finalMatrix.pos.y) >= boundaryLimit ||
+            std::abs(finalMatrix.pos.z) >= boundaryLimit)
+        {
+            FLog("AttachObject: model %d skipped due to boundary limit", attach.dwModelId);
+            continue;
+        }
+
+        // 7. Apply the final matrix to the object and render it
+        pObject->m_pEntity->SetMatrix((CMatrix&)finalMatrix);
+        pObject->m_pEntity->UpdateRW();
+        pObject->m_pEntity->UpdateRwFrame();
+        pObject->m_pEntity->Add();
     }
 }
 

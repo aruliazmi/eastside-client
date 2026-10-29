@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# Bump version, build, sign, publish a GitHub release.
+#
+#   ./release.sh 1.6.6 "catatan rilis singkat"
+#
+# versionCode is derived from the semver so it always increases:
+#   1.6.6 -> 1*10000 + 6*100 + 6 = 10606
 set -euo pipefail
 VER="${1:?usage: ./release.sh <version> [notes]}"
 NOTES="${2:-Rilis Eastside Stories Client v$VER}"
@@ -8,11 +14,7 @@ REPO="aruliazmi/eastside-client"
 IFS='.' read -r MAJ MIN PAT <<< "$VER"
 CODE=$(( MAJ * 10000 + MIN * 100 + PAT ))
 
-if [ -f "$ROOT/app/build.gradle.kts" ]; then
-  sed -i -E "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]*\"/versionName = \"$VER\"/" "$ROOT/app/build.gradle.kts"
-else
-  sed -i -E "s/versionCode [0-9]+/versionCode $CODE/; s/versionName \"[^\"]*\"/versionName \"$VER\"/" "$ROOT/app/build.gradle"
-fi
+sed -i -E "s/versionCode = [0-9]+/versionCode = $CODE/; s/versionName = \"[^\"]*\"/versionName = \"$VER\"/" "$ROOT/app/build.gradle.kts"
 echo "bumped -> $VER ($CODE)"
 
 export ANDROID_HOME="${ANDROID_HOME:-/opt/android-sdk}"

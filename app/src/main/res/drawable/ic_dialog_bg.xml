@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:aapt="http://schemas.android.com/aapt">
+<!-- Bingkai dialog in-game: permukaan aspal, garis tipis.
+     Dimensi dipertahankan; hanya warna yang mengikuti token baru,
+     supaya tidak menggeser tuning DialogManager. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape>
-            <corners
-                android:radius="12.0dip" />
-            <gradient
-                android:startColor="#99000000"
-                android:endColor="#FF0037"
-                android:angle="45.0"
-                android:type="linear"
-                android:centerX="79.99999%"
-                android:centerColor="#bb000000" />
+            <corners android:radius="10dp" />
+            <solid android:color="@color/es_surface_raised" />
+            <stroke
+                android:width="1.2dp"
+                android:color="@color/es_rule_strong" />
         </shape>
     </item>
 </layer-list>

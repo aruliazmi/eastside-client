@@ -1,6 +1,8 @@
 ﻿#include <jni.h>
 #include <pthread.h>
 #include <syscall.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 
 #include "main.h"
 #include "game/game.h"
@@ -9,24 +11,42 @@
 #include "playertags.h"
 #include "audiostream.h"
 #include "java/jniutil.h"
+#include "net/dl/dlmanager.h"
 #include <dlfcn.h>
 #include "StackTrace.h"
 
 // voice
 #include "voice_new/Plugin.h"
+#include "voice_new/PluginConfig.h"
 
-#include "vendor/armhook/patch.h"
+#include "vendor/shadowhook/patch.h"
 #include "vendor/str_obfuscator/str_obfuscator.hpp"
 
 #include "settings.h"
 
 #include "crashlytics.h"
-
+#include "cef/SAMPMobileCef.h"
 /*
 Peerapol Unarak
 */
 
 JavaVM* javaVM;
+
+extern AAssetManager* g_pAssetManager; // Defined down below or use global
+// Or just define it here if it was rejected before?
+// Actually I replaced line 30 with just variable.
+// I will just insert the function now.
+
+std::vector<char> LoadAsset(const char* name) {
+     if (!g_pAssetManager) return {};
+     AAsset* asset = AAssetManager_open(g_pAssetManager, name, AASSET_MODE_BUFFER);
+     if (!asset) return {};
+     size_t size = AAsset_getLength(asset);
+     std::vector<char> buffer(size);
+     AAsset_read(asset, buffer.data(), size);
+     AAsset_close(asset);
+     return buffer;
+ }
 
 char* g_pszStorage = nullptr;
 
@@ -50,7 +70,7 @@ bool bNetworkInited = false;
 uintptr_t g_libGTASA = 0x00;
 uintptr_t g_libSAMP = 0x00;
 
-void ApplyGlobalPatches();
+void ApplyPatches();
 void ApplyPatches_level0();
 void ApplyMultiTouchPatches();
 void InstallGlobalHooks();
@@ -63,23 +83,6 @@ int work = 0;
 
 void ReadSettingFile()
 {
-	/*char path[255] = { 0 };
-	//sprintf(path, "%ssamp.set", g_pszStorage);
-	sprintf(path, "%sNickName.ini", g_pszStorage);
-
-	FILE* fp = fopen(path, "r");
-	if (fp == NULL) return;
-
-	char buf[1024];
-
-	// nickname
-	if (fgets(buf, 1024, fp) != NULL) {
-		buf[strcspn(buf, "\n\r")] = 0;
-		strcpy(g_nick, buf);
-	}
-
-	fclose(fp);*/
-
 	pSettings = new CSettings();
 
 	firebase::crashlytics::SetUserId(pSettings->Get().szNickName);
@@ -139,6 +142,11 @@ void handler(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	// Returning from a SIGSEGV handler re-runs the faulting instruction, which
+	// loops or double-faults mid-log. Re-raise so the system traps a real
+	// tombstone and Crashlytics records the native stack.
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
@@ -160,6 +168,8 @@ void handler1(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
@@ -181,6 +191,8 @@ void handler2(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
 }
 
@@ -202,29 +214,51 @@ void handler3(int signum, siginfo_t *info, void* contextPtr)
 		CStackTrace::printBacktrace();
 	}
 
+	signal(signum, SIG_DFL);
+	raise(signum);
 	return;
+}
+
+
+void ClearModelCache()
+{
+	if(g_pszStorage)
+	{
+		char path[0xFF];
+		sprintf(path, "%smodels/MINFO.BIN", g_pszStorage);
+		std::remove(path);
+		sprintf(path, "%sCINFO.BIN", g_pszStorage);
+		std::remove(path);
+	}
 }
 
 void DoInitStuff()
 {
 	if (bGameInited == false)
 	{
+		ClearModelCache();
+
 		pPlayerTags = new CPlayerTags();
 		pSnapShotHelper = new CSnapShotHelper();
 		pMaterialTextGenerator = new MaterialTextGenerator();
 		pAudioStream = new CAudioStream();
 		pAudioStream->Initialize();
 
-		pUI->splashscreen()->setVisible(false);
-		pUI->chat()->setVisible(true);
-		pUI->buttonpanel()->setVisible(true);
+		// pUI is null when the font failed to load (InitGui disabled the UI).
+		// Everything below that touches it must be skipped, not dereferenced.
+		if (pUI)
+		{
+			pUI->splashscreen()->setVisible(false);
+			pUI->chat()->setVisible(true);
+			pUI->buttonpanel()->setVisible(true);
+		}
 
 		pGame->Initialize();
 		pGame->SetMaxStats();
 		pGame->ToggleThePassingOfTime(false);
 
 		// voice
-		/*LogVoice("[dbg:samp:load] : module loading...");
+		LogVoice("[dbg:samp:load] : module loading...");
 
 		for (const auto& loadCallback : Samp::loadCallbacks) {
 			if (loadCallback != nullptr) {
@@ -232,7 +266,7 @@ void DoInitStuff()
 			}
 		}
 
-		Samp::loadStatus = true;*/
+		Samp::loadStatus = true;
 
 		LogVoice("[dbg:samp:load] : module loaded");
 
@@ -252,9 +286,9 @@ void DoInitStuff()
 
 	if (!bNetworkInited && !bDebug)
 	{
-		//ReadSettingFile();
+		ReadSettingFile();
 
-		pNetGame = new CNetGame("94.23.168.153", 2305, pSettings->Get().szNickName, pSettings->Get().szPassword);
+		pNetGame = new CNetGame(pSettings->Get().szHost, pSettings->Get().iPort, pSettings->Get().szNickName, pSettings->Get().szPassword/*g_pass*/);/*cryptor::create("H0ND4").decrypt()*//*""*/
 		bNetworkInited = true;
 
         FLog("DoInitStuff end");
@@ -262,19 +296,27 @@ void DoInitStuff()
 }
 
 extern "C" {
-	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP_initializeSAMP(JNIEnv *pEnv, jobject thiz)
+	JNIEXPORT void JNICALL Java_com_sampmobile_xyvern_game_SAMP_initializeSAMP(JNIEnv *pEnv, jobject thiz, jstring path)
 	{
+		const char *str = pEnv->GetStringUTFChars(path, NULL);
+		if (str != NULL) {
+			if (g_pszStorage == NULL) {
+				g_pszStorage = strdup(str);
+			}
+			pEnv->ReleaseStringUTFChars(path, str);
+		}
+
 		pJavaWrapper = new CJavaWrapper(pEnv, thiz);
 
 	}
-	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP_onInputEnd(JNIEnv *pEnv, jobject thiz, jbyteArray str)
+	JNIEXPORT void JNICALL Java_com_sampmobile_xyvern_game_SAMP_onInputEnd(JNIEnv *pEnv, jobject thiz, jbyteArray str)
 	{
 		if(pUI)
 		{
 			pUI->keyboard()->sendForGB(pEnv, thiz, str);
 		}
 	}
-	JNIEXPORT void JNICALL Java_com_samp_mobile_game_SAMP_onEventBackPressed(JNIEnv *pEnv, jobject thiz)
+	JNIEXPORT void JNICALL Java_com_sampmobile_xyvern_game_SAMP_onEventBackPressed(JNIEnv *pEnv, jobject thiz)
 	{
 		if(pSettings)
 		{
@@ -282,7 +324,7 @@ extern "C" {
 				pJavaWrapper->HideKeyboard();
 		}
 	}
-	JNIEXPORT void JNICALL Java_com_samp_mobile_game_ui_dialog_DialogManager_sendDialogResponse(JNIEnv* pEnv, jobject thiz, jint i3, jint i, jint i2, jbyteArray str)
+	JNIEXPORT void JNICALL Java_com_sampmobile_xyvern_game_ui_dialog_DialogManager_sendDialogResponse(JNIEnv* pEnv, jobject thiz, jint i3, jint i, jint i2, jbyteArray str)
 	{
 		jboolean isCopy = true;
 
@@ -297,6 +339,53 @@ extern "C" {
 		}
 
 		pEnv->ReleaseByteArrayElements(str, pMsg, JNI_ABORT);
+	}
+	JNIEXPORT void JNICALL
+	Java_com_sampmobile_xyvern_cef_CefClientManager_nativeOnBrowserInit(
+			JNIEnv* env,
+			jobject thiz,
+			jboolean isSuccess,
+			jint errorCode)
+	{
+		cef::log(
+			"nativeOnBrowserInit: success=%d errorCode=%d",
+			isSuccess ? 1 : 0,
+			(int)errorCode
+		);
+		cef::sendBrowserInit(isSuccess != JNI_FALSE, (int)errorCode);
+	}
+
+	JNIEXPORT void JNICALL
+	Java_com_sampmobile_xyvern_cef_CefClientManager_nativeSendClientEvent(
+			JNIEnv* env,
+			jobject thiz,
+			jstring eventName,
+			jstring eventDataJson)
+	{
+		if (eventName == nullptr || eventDataJson == nullptr)
+			return;
+
+		const char* name = env->GetStringUTFChars(eventName, nullptr);
+		const char* data = env->GetStringUTFChars(eventDataJson, nullptr);
+
+		if (name && data)
+		{
+			cef::sendClientEvent(name, data);
+		}
+
+		if (name)
+			env->ReleaseStringUTFChars(eventName, name);
+
+		if (data)
+			env->ReleaseStringUTFChars(eventDataJson, data);
+	}
+	JNIEXPORT void JNICALL
+	Java_com_sampmobile_xyvern_cef_CefClientManager_nativeSetJavaManager(
+			JNIEnv* env,
+			jobject thiz,
+			jobject javaManager)
+	{
+		cef::setJavaManager(env, javaManager);
 	}
 }
 
@@ -323,23 +412,55 @@ void MainLoop()
 void InitGui()
 {
 	// new voice
+	if (pSettings)
+	{
+		PluginConfig::SetMicroEnable(pSettings->Get().bVoiceChatEnable);
+		PluginConfig::SetSoundEnable(pSettings->Get().bVoiceChatEnable);
+	}
+
 	Plugin::OnPluginLoad();
 	Plugin::OnSampLoad();
 
-	std::string font_path = string_format("%sSAMP/fonts/%s", g_pszStorage, FONT_NAME);
-	pUI = new UI(ImVec2(RsGlobal->maximumWidth, RsGlobal->maximumHeight), font_path.c_str());
-	pUI->initialize();
+    std::string font_path = string_format("Textures/fonts/%s", FONT_NAME);
+    std::vector<char> fontData = LoadAsset(font_path.c_str());
+
+    if (!fontData.empty()) {
+        pUI = new UI(ImVec2(RsGlobal->maximumWidth, RsGlobal->maximumHeight), fontData);
+        LOGI("Loaded font from assets: %s (size: %zu)", font_path.c_str(), fontData.size());
+    } else {
+        // Fallback to file (should probably not happen if assets are correct, but safe to keep)
+	    std::string file_path = string_format("%sfonts/%s", g_pszStorage ? g_pszStorage : "", FONT_NAME);
+	    pUI = new UI(ImVec2(RsGlobal->maximumWidth, RsGlobal->maximumHeight), file_path.c_str());
+        LOGI("Loaded font from file: %s", file_path.c_str());
+    }
+    if (!pUI->initialize()) {
+        // No font atlas = every ImGui draw derefs a null font. Killing the UI
+        // pointers turns a native crash into a visible log line.
+        FLog("UI init failed: font '%s' not in assets or on disk - disabling UI", FONT_NAME);
+        delete pUI;
+        pUI = nullptr;
+        return;
+    }
 	pUI->performLayout();
 }
 
 #include "game/multitouch.h"
-#include "armhook/patch.h"
+#include "shadowhook/patch.h"
 #include "util/CUtil.h"
-void SetUpGLHooks();
+
 jint JNI_OnLoad(JavaVM* vm, void* reserved)
 {
 	javaVM = vm;
 	LOGI("SA-MP library loaded! Build time: " __DATE__ " " __TIME__);
+
+	// Cache JNI refs for the 0.3.DL HTTPS downloader while we still have the
+	// app class loader context. Worker threads must never FindClass themselves.
+	{
+		JNIEnv* env = nullptr;
+		if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK && env) {
+			DLManager_InitJniCache(env);
+		}
+	}
 
 	g_libGTASA = CUtil::FindLib("libGTASA.so");
 	if (g_libGTASA == 0x00) {
@@ -377,7 +498,6 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 	CHook::InitHookStuff();
 	InstallSpecialHooks();
 	ApplyPatches_level0();
-    //SetUpGLHooks();
     InitRenderWareFunctions();
     MultiTouch::initialize();
 
@@ -419,23 +539,46 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved)
 uint32_t GetTickCount()
 {
     return CTimer::m_snTimeInMillisecondsNonClipped;
-}	
+}
 
 void FLog(const char* fmt, ...)
 {
-	char buffer[0xFF];
+	char buffer[1024];
 	static FILE* flLog = nullptr;
 	const char* pszStorage = g_pszStorage;
 
+	if (flLog == nullptr && pszStorage != nullptr)
+	{
+		char path[512];
+		snprintf(path, sizeof(path), "%s/samp_log.txt", pszStorage);
+		flLog = fopen(path, "a");
+	}
+
+	va_list arg;
+	va_start(arg, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, arg);
+	va_end(arg);
+
+	LOGI("%s", buffer);
+
+	if (flLog != nullptr) {
+		fprintf(flLog, "%s\n", buffer);
+		fflush(flLog);
+	}
+}
+
+void crashlyticsLog(const char* fmt, ...)
+{
+	char buffer[1024];
+	static FILE* flLog = nullptr;
+	const char* pszStorage = g_pszStorage;
 
 	if (flLog == nullptr && pszStorage != nullptr)
 	{
-		sprintf(buffer, "%s/samp_log.txt", pszStorage);
-		//LOGI("buffer: %s", buffer);
-		flLog = fopen(buffer, "a");
+		char path[512];
+		snprintf(path, sizeof(path), "%s/crashlytics_log.txt", pszStorage);
+		flLog = fopen(path, "a");
 	}
-
-	memset(buffer, 0, sizeof(buffer));
 
 	va_list arg;
 	va_start(arg, fmt);
@@ -445,38 +588,34 @@ void FLog(const char* fmt, ...)
 	LOGI("%s", buffer);
 	firebase::crashlytics::Log(buffer);
 
-	if (flLog == nullptr) return;
-	fprintf(flLog, "%s\n", buffer);
-	fflush(flLog);
-
-	return;
+	if (flLog != nullptr) {
+		fprintf(flLog, "%s\n", buffer);
+		fflush(flLog);
+	}
 }
 
 void ChatLog(const char* fmt, ...)
 {
-	char buffer[0xFF];
+	char buffer[1024];
 	static FILE* flLog = nullptr;
 	const char* pszStorage = g_pszStorage;
 
-
 	if (flLog == nullptr && pszStorage != nullptr)
 	{
-		sprintf(buffer, "%s/chat_log.txt", pszStorage);
-		flLog = fopen(buffer, "a");
+		char path[512];
+		snprintf(path, sizeof(path), "%s/chat_log.txt", pszStorage);
+		flLog = fopen(path, "a");
 	}
-
-	memset(buffer, 0, sizeof(buffer));
 
 	va_list arg;
 	va_start(arg, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, arg);
 	va_end(arg);
 
-	if (flLog == nullptr) return;
-	fprintf(flLog, "%s\n", buffer);
-	fflush(flLog);
-
-	return;
+	if (flLog != nullptr) {
+		fprintf(flLog, "%s\n", buffer);
+		fflush(flLog);
+	}
 }
 
 void MyLog(const char* fmt, ...)
@@ -562,4 +701,12 @@ void LogVoice(const char* fmt, ...)
 	fflush(flLog);
 
 	return;
+}
+
+AAssetManager* g_pAssetManager = nullptr;
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_sampmobile_xyvern_game_SAMP_initAssetManager(JNIEnv *env, jobject thiz, jobject assetManager) {
+    g_pAssetManager = AAssetManager_fromJava(env, assetManager);
 }

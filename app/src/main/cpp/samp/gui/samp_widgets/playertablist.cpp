@@ -1,4 +1,4 @@
-﻿#include "../gui.h"
+#include "../gui.h"
 #include "../../game/game.h"
 #include "../../net/netgame.h"
 #include "../../main.h"
@@ -24,10 +24,11 @@ void PlayerTabList::show()
 
 	pNetGame->UpdatePlayerScoresAndPings();
 
-	m_lServerName = new Label("", ImColor(1.0f, 1.0f, 1.0f), false, UISettings::fontSize() / 2);
+	// PC SA-MP: hostname merah (255,0,0)
+	m_lServerName = new Label("", ImColor(1.0f, 0.0f, 0.0f), false, UISettings::fontSize() / 1.7f);
 	this->addChild(m_lServerName);
 
-	m_lTotalPlayers = new Label("", ImColor(1.0f, 1.0f, 1.0f), false, UISettings::fontSize() / 2);
+	m_lTotalPlayers = new Label("", ImColor(0.7f, 0.7f, 0.7f), false, UISettings::fontSize() / 2.2f);
 	this->addChild(m_lTotalPlayers);
 
 	m_tabList = new TabListWidget();
@@ -74,16 +75,18 @@ void PlayerTabList::assemble()
 	CPlayerPool* pPlayerPool = pNetGame->GetPlayerPool();
 	CLocalPlayer* pLocalPlayer = pPlayerPool->GetLocalPlayer();
 
+	// PC SA-MP: "Players: X-Y of Z" abu-abu (150,150,150), rata kanan
+	int totalPlayers = pPlayerPool->GetTotalPlayers();
 	std::stringstream ss;
-	ss << "Players: " << pPlayerPool->GetTotalPlayers();
+	ss << "Players: 1-" << totalPlayers << " of " << totalPlayers;
 
 	/*  */
 	m_lServerName->setText(Encoding::cp2utf(pNetGame->m_szHostName));
 	m_lTotalPlayers->setText(ss.str());
 
 	std::stringstream data;
-	/* head */
-	data << "ID\tNickname\tScore\tPing\n";
+	/* head - PC SA-MP: "id", "name", "score", "ping" biru muda (100,150,200) */
+	data << "{6496C8}id\t{6496C8}name\t{6496C8}score\t{6496C8}ping\n";
 
 	/* local player */
 	ImColor lc = UI::fixcolor(pLocalPlayer->GetPlayerColorAsRGBA());
@@ -161,6 +164,9 @@ void PlayerTabList::draw(ImGuiRenderer* renderer)
 {
 	renderer->pushClipRect(absolutePosition(), absolutePosition() + size(), true);
 	renderer->drawRect(absolutePosition(), absolutePosition() + size(), UISettings::dialogBackgroundColor(), true);
+	// PC SA-MP: area header (hostname) hitam solid, body semi-transparan
+	float header_height = UISettings::padding() + UISettings::fontSize() + UISettings::padding();
+	renderer->drawRect(absolutePosition(), absolutePosition() + ImVec2(size().x, header_height), ImColor(0.0f, 0.0f, 0.0f, 1.0f), true);
 	Widget::draw(renderer);
 	renderer->popClipRect();
 }

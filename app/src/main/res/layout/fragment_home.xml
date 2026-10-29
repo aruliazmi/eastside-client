@@ -381,7 +381,7 @@
                 android:layout_marginTop="24dp"
                 android:fontFamily="@font/plex_mono_medium"
                 android:lineSpacingMultiplier="1.45"
-                android:text="/Android/data/com.sampmobile.xyvern/files"
+                android:text="/Android/data/com.eastside.samp/files"
                 android:textColor="@color/es_ink_ghost"
                 android:textSize="9.5sp" />
 

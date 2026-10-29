@@ -3,7 +3,7 @@
 //
 
 #include "Streaming.h"
-#include "../vendor/armhook/patch.h"
+#include "../vendor/shadowhook/patch.h"
 #include "StreamingInfo.h"
 #include "game/Models/ModelInfo.h"
 #include "game/Animation/AnimManager.h"
@@ -22,26 +22,23 @@
 extern UI *pUI;
 
 bool CStreaming::TryLoadModel(int modelId) {
-    FLog("TryLoadModel %d", modelId);
+    if (modelId < 0 || modelId >= RESOURCE_ID_TOTAL) return false;
     if(!CStreaming::GetInfo(modelId).IsLoaded()) {
-        FLog("TryLoadModel 1");
         CStreaming::RequestModel(modelId, STREAMING_GAME_REQUIRED | STREAMING_KEEP_IN_MEMORY);
-        FLog("TryLoadModel 11");
         CStreaming::LoadAllRequestedModels(false);
-        FLog("TryLoadModel 2");
         uint32 count = 0;
         while (!CStreaming::GetInfo(modelId).IsLoaded()) {
             count++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-            if (count > 30) {
-                pUI->chat()->addDebugMessage("{ff0000} Error loading model %d", modelId);
+            if (count > 25) {
+                if (pUI && pUI->chat()) {
+                    pUI->chat()->addDebugMessage("{ff0000} Error loading model %d", modelId);
+                }
                 return false;
             }
         }
-        FLog("TryLoadModel 3");
     }
-    FLog("TryLoadModel 4");
     return true;
 }
 
@@ -61,16 +58,19 @@ void CStreaming::ClearFlagForAll(uint32 streamingFlag) {
 bool CStreaming::AreAnimsUsedByRequestedModels(int32 animModelId) {
     for (auto info = ms_pStartRequestedList->GetNext(); info != ms_pEndRequestedList; info = info->GetNext()) {
         const auto modelId = GetModelFromInfo(info);
-        if (IsModelDFF(modelId) && CModelInfo::GetModelInfo(modelId)->GetAnimFileIndex() == animModelId)
-            return true;
+        if (IsModelDFF(modelId)) {
+            auto* mi = CModelInfo::GetModelInfo(modelId);
+            if (mi && mi->GetAnimFileIndex() == animModelId)
+                return true;
+        }
     }
 
     for (auto & channel : ms_channel) {
         for (const auto& modelId : channel.modelIds) {
-            if (modelId != MODEL_INVALID && IsModelDFF(modelId) &&
-                CModelInfo::GetModelInfo(modelId)->GetAnimFileIndex() == animModelId
-                    ) {
-                return true;
+            if (modelId != MODEL_INVALID && IsModelDFF(modelId)) {
+                auto* mi = CModelInfo::GetModelInfo(modelId);
+                if (mi && mi->GetAnimFileIndex() == animModelId)
+                    return true;
             }
         }
     }
@@ -84,7 +84,8 @@ void CStreaming::RemoveTxdModel(int32 modelId) {
 
 void CStreaming::RemoveModelIfNoRefs(int32 modelId) {
     CStreamingInfo& streamingInfo = GetInfo(modelId);
-    if(streamingInfo.IsLoaded() && !CModelInfo::GetModelInfo(modelId)->m_nRefCount) {
+    auto* mi = CModelInfo::GetModelInfo(modelId);
+    if(streamingInfo.IsLoaded() && mi && !mi->m_nRefCount) {
         RemoveModel(modelId);
 
         streamingInfo.ClearAllFlags();
@@ -107,7 +108,7 @@ void CStreaming::RemoveModel(int32 modelId) {
         switch (GetModelType(modelId)) {
             case eModelType::DFF: {
                 CBaseModelInfo* modelInfo = CModelInfo::GetModelInfo(modelId);
-                modelInfo->DeleteRwObject();
+                if (modelInfo) modelInfo->DeleteRwObject();
                 break;
             }
             case eModelType::TXD: {
@@ -238,11 +239,16 @@ int CStreaming::AddImageToList(char const* pFileName, bool bNotPlayerImg) {
     }
 
     if (fileIndex >= TOTAL_IMG_ARCHIVES) {
-        assert("AddImageToList");
+        // No free slot: return -1 instead of writing out of bounds.
+        // (The old code had assert() here, which is a no-op in release builds,
+        //  leading to heap corruption via ms_files[fileIndex].)
+        // Callers MUST check for < 0.
+        return -1;
     }
 
     // free slot found, load the IMG file
-    strcpy(ms_files[fileIndex].m_szName, pFileName);
+    strncpy(ms_files[fileIndex].m_szName, pFileName, sizeof(ms_files[fileIndex].m_szName) - 1);
+    ms_files[fileIndex].m_szName[sizeof(ms_files[fileIndex].m_szName) - 1] = '\0';
     ms_files[fileIndex].m_StreamHandle = CdStreamOpen(pFileName);
     ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
     return fileIndex;
@@ -301,10 +307,13 @@ void CStreaming::RequestModel(int32 modelId, int32 streamingFlags) {
             if (info.InList()) {
                 info.RemoveFromList();
                 if (IsModelDFF(modelId)) {
-                    switch (CModelInfo::GetModelInfo(modelId)->GetModelType()) {
-                        case MODEL_INFO_PED:
-                        case MODEL_INFO_VEHICLE: {
-                            return;
+                    CBaseModelInfo* mi = CModelInfo::GetModelInfo(modelId);
+                    if (mi) {
+                        switch (mi->GetModelType()) {
+                            case MODEL_INFO_PED:
+                            case MODEL_INFO_VEHICLE: {
+                                return;
+                            }
                         }
                     }
                 }
@@ -329,9 +338,11 @@ void CStreaming::RequestModel(int32 modelId, int32 streamingFlags) {
                     CBaseModelInfo* modelInfo = CModelInfo::GetModelInfo(modelId);
                   //  RequestTxdModel(modelInfo->m_nTxdIndex, streamingFlags);
 
-                    const int32 animFileIndex = modelInfo->GetAnimFileIndex();
-                    if (animFileIndex != -1)
-                        RequestModel(IFPToModelId(animFileIndex), STREAMING_KEEP_IN_MEMORY);
+                    if (modelInfo) {
+                        const int32 animFileIndex = modelInfo->GetAnimFileIndex();
+                        if (animFileIndex != -1)
+                            RequestModel(IFPToModelId(animFileIndex), STREAMING_KEEP_IN_MEMORY);
+                    }
                     break;
                 }
             }
@@ -678,19 +689,12 @@ void CStreaming::RequestModelStream(int32 chIdx) {
             break; // There are priority requests, but this isn't one of them
 
         CBaseModelInfo* mi = CModelInfo::GetModelInfo(modelId);
-        if (IsModelDFF(modelId)) {
+        if (IsModelDFF(modelId) && mi) {
             if (isPreviousModelPed && mi->GetModelType() == MODEL_INFO_PED)
                 break; // Don't load two peds after each other
 
             if (isPreviousLargeishBigOrVeh && mi->GetModelType() == MODEL_INFO_VEHICLE)
                 break; // Don't load two vehicles / big model + vehicle after each other
-
-            // Check if TXD and/or IFP is loaded for this model.
-            // If not we can't load the model yet.
-
-            // Check TXD
-//            if (!GetInfo(TXDToModelId(mi->m_nTxdIndex)).IsLoadedOrBeingRead())
-//                break;
 
             // Check IFP (if any)
             const int32 animFileIndex = mi->GetAnimFileIndex();
@@ -821,6 +825,7 @@ bool CStreaming::ProcessLoadingChannel(int32 chIdx) {
             CStreamingInfo& info = GetInfo(modelId);
 
             if (!IsModelDFF(modelId)
+                || !baseModelInfo
                 || baseModelInfo->GetModelType() != MODEL_INFO_VEHICLE /* It's a DFF, check if its a vehicle */
               //  || ms_vehiclesLoaded.CountMembers() < desiredNumVehiclesLoaded /* It's a vehicle, so lets check if we can load more */
               //  || RemoveLoadedVehicle() /* no, so try to remove one, and load this in its place */
@@ -917,7 +922,8 @@ bool CStreaming::RemoveLeastUsedModel(int32 streamingFlags) {
         if (!streamingInfo->AreAnyFlagsSetOutOf(streamingFlags)) {
             switch (GetModelType(modelId)) {
                 case eModelType::DFF: {
-                    if (!CModelInfo::GetModelInfo(modelId)->m_nRefCount) {
+                    auto* mi = CModelInfo::GetModelInfo(modelId);
+                    if (mi && !mi->m_nRefCount) {
                         RemoveModel(modelId);
                         return true;
                     }

@@ -2,8 +2,9 @@
 #include "game.h"
 #include "../net/netgame.h"
 #include "../gui/gui.h"
-#include "../vendor/armhook/patch.h"
+#include "../vendor/shadowhook/patch.h"
 #include "World.h"
+#include "Timer.h"
 
 extern UI* pUI;
 extern CGame* pGame;
@@ -105,7 +106,7 @@ uint32_t CPad__GetJump_hook(uintptr_t thiz)
 	}
 	else
 	{
-		LocalPlayerKeys.bKeys[ePadKeys::KEY_JUMP] = CPad__JumpJustDown(thiz);
+		LocalPlayerKeys.bKeys[ePadKeys::KEY_JUMP] = CPad__GetJump(thiz);  // FIXED
 		return LocalPlayerKeys.bKeys[ePadKeys::KEY_JUMP];
 	}
 }
@@ -229,7 +230,7 @@ uint32_t CPad__GetBlock_hook(uintptr_t thiz)
 	}
 	else
 	{
-		return CPad__GetBlock(thiz);
+		return LocalPlayerKeys.bKeys[ePadKeys::KEY_BLOCK] || CPad__GetBlock(thiz);
 	}
 }
 
@@ -400,9 +401,9 @@ uint32_t CPad__ExitVehicleJustDown_hook(uintptr_t thiz, int a2, uintptr_t vehicl
 uint32_t(*CPad__ExitVehicleJustDown)(uintptr_t thiz, int a2, uintptr_t vehicle, int a4, uintptr_t vec);
 uint32_t CPad__ExitVehicleJustDown_hook(uintptr_t thiz, int a2, uintptr_t vehicle, int a4, uintptr_t vec)
 {
-	static uint32_t dwPassengerEnterExit = GetTickCount();
+	static uint32_t dwPassengerEnterExit = CTimer::m_snTimeInMillisecondsNonClipped;
 
-	if (GetTickCount() - dwPassengerEnterExit < 1000)
+	if (CTimer::m_snTimeInMillisecondsNonClipped - dwPassengerEnterExit < 1000)
 		return 0;
 
 	if (pNetGame)
@@ -414,7 +415,7 @@ uint32_t CPad__ExitVehicleJustDown_hook(uintptr_t thiz, int a2, uintptr_t vehicl
 			if (pLocalPlayer) {
 				if (pLocalPlayer->HandlePassengerEntry())
 				{
-					dwPassengerEnterExit = GetTickCount();
+					dwPassengerEnterExit = CTimer::m_snTimeInMillisecondsNonClipped;
 					return 0;
 				}
 			}

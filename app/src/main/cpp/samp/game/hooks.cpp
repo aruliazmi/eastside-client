@@ -1,7 +1,6 @@
 #include <GLES2/gl2.h>
-#include <EGL/egl.h>
 #include "../main.h"
-#include "../vendor/armhook/patch.h"
+#include "../vendor/shadowhook/patch.h"
 #include "game.h"
 #include "../net/netgame.h"
 #include "../gui/gui.h"
@@ -19,6 +18,7 @@
 #include "game/Collision/Collision.h"
 #include "TxdStore.h"
 #include "util/CUtil.h"
+#include "game/BuildingRemoval.h"
 #include "Coronas.h"
 #include "multitouch.h"
 #include "Streaming.h"
@@ -29,17 +29,7 @@
 #include "Renderer.h"
 #include "CrossHair.h"
 #include "World.h"
-#include "Widgets/TouchInterface.h"
-#include "CFPSFix.h"
-#include "ES2VertexBuffer.h"
-#include "RQ_Commands.h"
-#include "Pickups.h"
-#include "TimeCycle.h"
-#include "game/Pipelines/CustomCar/CustomCarEnvMapPipeline.h"
-#include "game/Pipelines/CustomBuilding/CustomBuildingDNPipeline.h"
-#include "COcclusion.h"
-#include "RealTimeShadowManager.h"
-#include "game/Widgets/WidgetGta.h"
+#include "CFileMgr.h"
 
 extern UI* pUI;
 extern CGame* pGame;
@@ -54,7 +44,7 @@ extern "C" uintptr_t get_lib()
 {
 	return g_libGTASA;
 }
-// 0.3.7
+
 PLAYERID FindPlayerIDFromGtaPtr(CEntityGTA* pEntity)
 {
 	if (pEntity == nullptr) return INVALID_PLAYER_ID;
@@ -79,7 +69,7 @@ PLAYERID FindPlayerIDFromGtaPtr(CEntityGTA* pEntity)
 
 	return INVALID_PLAYER_ID;
 }
-// 0.3.7
+
 PLAYERID FindActorIDFromGtaPtr(CPedGTA* pPed)
 {
 	if (pPed) {
@@ -214,82 +204,6 @@ void CRadar_DrawRadarGangOverlay_hook(uint32_t unk)
 
 /* =============================================================================== */
 
-typedef struct {
-    CVector     vecPosObject;
-    CQuaternion m_qRotation;
-    int32       wModelIndex;
-    union {
-        struct { // CFileObjectInstanceType
-            uint32 m_nAreaCode : 8;
-            uint32 m_bRedundantStream : 1;
-            uint32 m_bDontStream : 1; // Merely assumed, no countercheck possible.
-            uint32 m_bUnderwater : 1;
-            uint32 m_bTunnel : 1;
-            uint32 m_bTunnelTransition : 1;
-            uint32 m_nReserved : 19;
-        };
-        uint32 m_nInstanceType;
-    };
-    int32 m_nLodInstanceIndex; // -1 - without LOD model
-} stLoadObjectInstance;
-VALIDATE_SIZE(stLoadObjectInstance, (VER_x32 ? 0x28 : 0x28));
-
-extern int iBuildingToRemoveCount;
-extern REMOVEBUILDING_DATA BuildingToRemove[1000];
-
-int (*CFileLoader__LoadObjectInstance)(stLoadObjectInstance *thiz);
-int CFileLoader__LoadObjectInstance_hook(stLoadObjectInstance *thiz) {
-	if (thiz) {
-		if (iBuildingToRemoveCount >= 1) {
-			for (int i = 0; i < iBuildingToRemoveCount; i++)
-			{
-				float fDistance = GetDistance(BuildingToRemove[i].vecPos, thiz->vecPosObject);
-				if (fDistance <= BuildingToRemove[i].fRange) {
-					if (BuildingToRemove[i].dwModel == -1 || thiz->wModelIndex == (uint16_t) BuildingToRemove[i].dwModel) {
-						thiz->wModelIndex = 19300;
-                        //thiz->vecPosObject = 0.0f;
-						break;
-					}
-				}
-			}
-		}
-	}
-
-	return CFileLoader__LoadObjectInstance(thiz);
-}
-
-extern std::list<REMOVE_BUILDING_DATA> RemoveBuildingData;
-void (*CEntity_Render)(CEntityGTA* pEntity);
-int g_iLastRenderedObject;
-void CEntity_Render_hook(CEntityGTA* pEntity)
-{
-    if(iBuildingToRemoveCount > 1)
-    {
-        if(pEntity && *(uintptr_t*)pEntity != g_libGTASA+(VER_x32 ? 0x667D18:0x8300A0) && !pNetGame->GetObjectPool()->GetObjectFromGtaPtr(pEntity))
-        {
-            for (auto &entry : RemoveBuildingData)
-            {
-                float fDistance = GetDistance(entry.vecPos, pEntity->GetMatrix().m_pos);
-                if(fDistance <= entry.fRange)
-                {
-                    if(pEntity->GetModelId() == entry.usModelIndex)
-                    {
-                        pEntity->m_bUsesCollision = 0;
-                        pEntity->m_bCollisionProcessed = 0;
-                        return;
-                    }
-                }
-            }
-        }
-    }
-    g_iLastRenderedObject = pEntity->GetModelId();
-    CEntity_Render(pEntity);
-}
-
-/* =============================================================================== */
-
-/* =============================================================================== */
-
 void (*CObject_Render)(CObjectGta* thiz);
 void CObject_Render_hook(CObjectGta* thiz)
 {
@@ -403,10 +317,12 @@ void CTaskComplexLeaveCar_hook(uintptr_t** thiz, CVehicleGTA* pVehicle, int iTar
 	{
 		if (pNetGame)
 		{
-			if ((CVehicleGTA*)GamePool_FindPlayerPed()->pVehicle == pVehicle)
+			// GamePool_FindPlayerPed() can be null (player ped not yet created/destroyed).
+			CPedGTA* pPlayerPedGTA = GamePool_FindPlayerPed();
+			if (pPlayerPedGTA && (CVehicleGTA*)pPlayerPedGTA->pVehicle == pVehicle)
 			{
 				CVehiclePool* pVehiclePool = pNetGame->GetVehiclePool();
-				VEHICLEID VehicleID = pVehiclePool->FindIDFromGtaPtr((CVehicleGTA*)GamePool_FindPlayerPed()->pVehicle);
+				VEHICLEID VehicleID = pVehiclePool->FindIDFromGtaPtr((CVehicleGTA*)pPlayerPedGTA->pVehicle);
 				if (VehicleID != INVALID_VEHICLE_ID)
 				{
 					CVehicle* pVehicle = pVehiclePool->GetAt(VehicleID);
@@ -463,6 +379,8 @@ void AND_TouchEvent_hook(int type, int num, int posX, int posY)
 
 	if (pUI != nullptr)
 	{
+        pUI->HandleDefenseTouchEvent(type, num, posX, posY);
+
 		switch (type)
 		{
 			case 2: // push
@@ -588,13 +506,18 @@ void SendBulletSync(CVector* vecOrigin, CVector* a2, CColPoint *colPoint, CEntit
 }
 
 extern bool g_customFire;
-/* 0.3.7 */
+
 uint32_t(*CWeapon__FireInstantHit)(CWeapon* thiz, CPedGTA* pFiringEntity, CVector* vecOrigin, CVector* muzzlePosn, CEntityGTA* targetEntity,
 								  CVector* target, CVector* originForDriveBy, bool arg6, bool muzzle);
 uint32_t CWeapon__FireInstantHit_hook(CWeapon* thiz, CPedGTA* pFiringEntity, CVector* vecOrigin, CVector* muzzlePosn, CEntityGTA* targetEntity,
 									 CVector* target, CVector* originForDriveBy, bool arg6, bool muzzle)
 {
-	if (pNetGame && pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed()->m_pPed)		// CWeapon::Fire
+	// Null-guard the full chain: GetPlayerPool/GetLocalPlayer/GetPlayerPed can all
+	// be null during spawn/death/disconnect transition windows.
+	CPlayerPool* pPool = pNetGame ? pNetGame->GetPlayerPool() : nullptr;
+	CLocalPlayer* pLocal = pPool ? pPool->GetLocalPlayer() : nullptr;
+	CPlayerPed* pPed = pLocal ? pLocal->GetPlayerPed() : nullptr;
+	if (pPed && pPed->m_pPed)		// CWeapon::Fire
     {
        	if(pFiringEntity != GamePool_FindPlayerPed())
 			return muzzle;
@@ -730,7 +653,7 @@ uint32_t CWorld__ProcessLineOfSight_hook(CVector* vecOrigin, CVector* vecEnd, CC
 
 	return CWorld__ProcessLineOfSight(vecOrigin, vecEnd, colPoint, ppEntity, b1, b2, b3, b4, b5, b6, b7, b8);
 }
-// 0.3.7
+
 uint32_t(*CWeapon__FireSniper)(CWeapon* thiz, CPedGTA* pFiringEntity, CEntityGTA* victim, CVector* target);
 uint32_t CWeapon__FireSniper_hook(CWeapon* thiz, CPedGTA* pFiringEntity, CEntityGTA* victim, CVector* target)
 {
@@ -747,7 +670,7 @@ uint32_t CWeapon__FireSniper_hook(CWeapon* thiz, CPedGTA* pFiringEntity, CEntity
 
 	return true;
 }
-// 0.3.7
+
 bool(*CBulletInfo_AddBullet)(CEntityGTA* creator, int weaponType, CVector pos, CVector velocity);
 bool CBulletInfo_AddBullet_hook(CEntityGTA* creator, int weaponType, CVector pos, CVector velocity)
 {
@@ -771,7 +694,7 @@ struct CPedDamageResponseCalculator
 	int m_weaponType;
 };
 #pragma pack(pop)
-// 0.3.7
+
 bool ComputeDamageResponse(CPedDamageResponseCalculator* calculator, CPedGTA* pPed)
 {
     CPedGTA* pGamePed = GamePool_FindPlayerPed();
@@ -791,7 +714,9 @@ bool ComputeDamageResponse(CPedDamageResponseCalculator* calculator, CPedGTA* pP
 	}
 
 	CPlayerPool* pPlayerPool = pNetGame->GetPlayerPool();
+	if (!pPlayerPool) return false;
 	CLocalPlayer* pLocalPlayer = pPlayerPool->GetLocalPlayer();
+	if (!pLocalPlayer) return false;
 	PLAYERID PlayerID;
 
 	if (isLocalPed)
@@ -811,17 +736,18 @@ bool ComputeDamageResponse(CPedDamageResponseCalculator* calculator, CPedGTA* pP
 											  calculator->m_fDamageFactor,
 											  calculator->m_weaponType,
 											  calculator->m_pedPieceType);
-			if (pPlayerPool->GetAt(PlayerID)->IsNPC())
+			CRemotePlayer* pDamagedPlayer = pPlayerPool->GetAt(PlayerID);
+			if (pDamagedPlayer && pDamagedPlayer->IsNPC())
 				return true;
 		}
 		else
 		{
 			PLAYERID ActorID = FindActorIDFromGtaPtr(pPed);
 			if (ActorID != INVALID_PLAYER_ID) {
-				pLocalPlayer->SendGiveDamageEvent(ActorID,
-												  calculator->m_fDamageFactor,
-												  calculator->m_weaponType,
-												  calculator->m_pedPieceType);
+                pLocalPlayer->SendGiveDamageActorEvent(ActorID,
+                                                     calculator->m_fDamageFactor,
+                                                     calculator->m_weaponType,
+                                                     calculator->m_pedPieceType);
 				return true;
 			}
 		}
@@ -831,17 +757,24 @@ bool ComputeDamageResponse(CPedDamageResponseCalculator* calculator, CPedGTA* pP
 	// :check_friendly_fire
 	if (!pNetGame->m_pNetSet->bFriendlyFire)
 		return false;
-	uint8_t byteTeam = pPlayerPool->GetLocalPlayer()->m_byteTeam;
-	if (byteTeam == NO_TEAM ||
-		PlayerID == INVALID_PLAYER_ID ||
-		pPlayerPool->GetAt(PlayerID)->m_byteTeam != byteTeam) {
+	// INVALID_PLAYER_ID must be checked BEFORE GetAt (GetAt would return null).
+	if (PlayerID == INVALID_PLAYER_ID)
+		return false;
+	// pLocalPlayer was null-checked at function entry; re-fetch defensively.
+	CLocalPlayer* pLocal = pPlayerPool->GetLocalPlayer();
+	if (!pLocal) return false;
+	uint8_t byteTeam = pLocal->m_byteTeam;
+	if (byteTeam == NO_TEAM)
+		return false;
+	CRemotePlayer* pTargetPlayer = pPlayerPool->GetAt(PlayerID);
+	if (!pTargetPlayer || pTargetPlayer->m_byteTeam != byteTeam) {
 		return false;
 	}
 
 	return true;
 }
 
-// 0.3.7
+
 void (*CPedDamageResponseCalculator__ComputeDamageResponse)(CPedDamageResponseCalculator* thiz, CPedGTA* pPed, uintptr_t* a3, uint32_t a4);
 void CPedDamageResponseCalculator__ComputeDamageResponse_hook(CPedDamageResponseCalculator* thiz, CPedGTA* pPed, uintptr_t *a3, uint32_t a4)
 {
@@ -874,6 +807,18 @@ void CRenderer_RenderEverythingBarRoads_hook() {
 		}
 	}
 }
+
+#include "CFPSFix.h"
+#include "ES2VertexBuffer.h"
+#include "RQ_Commands.h"
+#include "Pickups.h"
+#include "TimeCycle.h"
+#include "game/Pipelines/CustomCar/CustomCarEnvMapPipeline.h"
+#include "game/Pipelines/CustomBuilding/CustomBuildingDNPipeline.h"
+#include "COcclusion.h"
+#include "RealTimeShadowManager.h"
+#include "game/Widgets/WidgetGta.h"
+#include "BuildingRemoval.h"
 
 CFPSFix g_fps;
 
@@ -967,11 +912,28 @@ int CTextureDatabaseRuntime__GetEntry_hook(uintptr_t thiz, const char* a2, bool*
 uintptr_t (*CTxdStore__TxdStoreFindCB)(const char *a1);
 uintptr_t CTxdStore__TxdStoreFindCB_hook(const char *a1)
 {
-	static char* texdbs[] = { "samp", "gta_int", "gta3" };
+	// This hook only made sense when the `samp` texture database was loaded:
+	// it walks samp/gta_int/gta3 by name and Register+GetTexture on whatever
+	// the engine's GetDatabase() returns. With `samp` removed from
+	// InitialiseRenderWare's load set (a0508fc) GetDatabase("samp") returns a
+	// half-initialised handle and every fallback path here ends up streaming
+	// from it - SIGSEGV 0x110 in _rwStreamReadChunkHeader (tombstone_02/03/05).
+	//
+	// The engine's own TxdStore::Find callback already searches the loaded
+	// databases; this hook adds nothing but that crash. Disable it outright.
+	(void)a1;
+	return 0;
+}
+
+#if 0 // original hook, kept for reference - do not re-enable without loading `samp` again
+uintptr_t CTxdStore__TxdStoreFindCB_orig_hook(const char *a1)
+{
+	static char* texdbs[] = { "gta_int", "gta3" };
 	for(auto &texdb : texdbs)
 	{
 		// TextureDatabaseRuntime::GetDatabase
 		uintptr_t db_handle = ((uintptr_t (*)(const char *))(g_libGTASA+0x1EAC8C+1))(texdb);
+		if(!db_handle) continue; // db never loaded -> skip, do not Register it
 
 		// TextureDatabaseRuntime::registered
 		uint32_t unk_61B8D4 = *(uint32_t*)(g_libGTASA+0x6BD174+4);
@@ -1021,6 +983,7 @@ uintptr_t CTxdStore__TxdStoreFindCB_hook(const char *a1)
 
 	return 0;
 }
+#endif
 
 int (*CCustomRoadsignMgr_RenderRoadsignAtomic)(int a1, int a2);
 int CCustomRoadsignMgr_RenderRoadsignAtomic_hook(int a1, int a2)
@@ -1064,11 +1027,13 @@ extern CJavaWrapper* pJavaWrapper;
 void (*MainMenuScreen__OnExit)();
 void MainMenuScreen__OnExit_hook()
 {
+	if (!pGame || !pNetGame) return; // quitting before network init
+
 	pGame->bIsGameExiting = true;
 
 	pNetGame->GetRakClient()->Disconnect(0);
 
-	pJavaWrapper->exitGame();
+	if (pJavaWrapper) pJavaWrapper->exitGame();
 }
 
 void (*rqVertexBufferSelect)(unsigned int **result);
@@ -1206,109 +1171,8 @@ void CRadar_ClearBlip_hook(uint32_t a2)
 
 /* =============================================================================== */
 
-void InstallHuaweiCrashFixHooks()
-{
-	CHook::InstallPLT(g_libGTASA + 0x677498, (uintptr_t)rqVertexBufferSelect_hook, (uintptr_t*)&rqVertexBufferSelect);
-	CHook::InstallPLT(g_libGTASA + 0x679B14, (uintptr_t)rqVertexBufferDelete_hook, (uintptr_t*)&rqVertexBufferDelete);
-	//CHook::InstallPLT(g_libGTASA + 0x677B6C, (uintptr_t)rqSetAlphaTest_hook, (uintptr_t*)&rqSetAlphaTest);
-}
-
-void InstallCrashFixHooks()
-{
-	// some crashfixes
-	CHook::InstallPLT(g_libGTASA + 0x66F5AC, (uintptr_t)CCustomRoadsignMgr_RenderRoadsignAtomic_hook, (uintptr_t*)&CCustomRoadsignMgr_RenderRoadsignAtomic);
-	CHook::InstallPLT(g_libGTASA + 0x67332C, (uintptr_t)_RwTextureDestroy_hook, (uintptr_t*)&_RwTextureDestroy);
-	CHook::InstallPLT(g_libGTASA + 0x671458, (uintptr_t)CPed_UpdatePosition_hook, (uintptr_t*)&CPed_UpdatePosition);
-	CHook::InstallPLT(g_libGTASA + 0x675490, (uintptr_t)RwFrameAddChild_hook, (uintptr_t*)&RwFrameAddChild);
-	CHook::InstallPLT(g_libGTASA + 0x672D14, (uintptr_t)CTextureDatabaseRuntime__GetEntry_hook, (uintptr_t*)&CTextureDatabaseRuntime__GetEntry);
-	//CHook::InstallPLT(g_libGTASA + 0x66FBD0, (uintptr_t)RpClumpForAllAtomics_hook, (uintptr_t*)&RpClumpForAllAtomics);
-	CHook::InstallPLT(g_libGTASA + 0x6730F0, (uintptr_t)rpMaterialListDeinitialize_hook, (uintptr_t*)&rpMaterialListDeinitialize);
-	//CHook::InstallPLT(g_libGTASA + 0x6778B0, (uintptr_t)rxOpenGLDefaultAllInOneRenderCB_hook, (uintptr_t*)&rxOpenGLDefaultAllInOneRenderCB);
-	//CHook::InstallPLT(g_libGTASA + 0x677CB4, (uintptr_t)CCustomBuildingDNPipeline__CustomPipeRenderCB_hook, (uintptr_t*)&CCustomBuildingDNPipeline__CustomPipeRenderCB);
-	//CHook::InstallPLT(g_libGTASA + 0x66F9E8, (uintptr_t)EmuShader_Select_hook, (uintptr_t*)&EmuShader_Select);
-	CHook::InstallPLT(g_libGTASA + 0x6750D4, (uintptr_t)CAnimManager_UncompressAnimation_hook, (uintptr_t*)&CAnimManager_UncompressAnimation);
-	//CHook::InstallPLT(g_libGTASA + 0x670E1C, (uintptr_t)CStreaming__MakeSpaceFor_hook, (uintptr_t*)&CStreaming__MakeSpaceFor);
-}
-
-void InstallWeaponFireHooks()
-{
-	//CHook::InstallPLT(g_libGTASA + 0x6716D0, (uintptr_t)CWeapon_FireInstantHit_hook, (uintptr_t*)&CWeapon_FireInstantHit);
-	//CHook::InstallPLT(g_libGTASA + 0x671F10, (uintptr_t)CWorld_ProcessLineOfSight_hook, (uintptr_t*)&CWorld_ProcessLineOfSight);
-	//CHook::InstallPLT(g_libGTASA + 0x670A10, (uintptr_t)CWeapon_FireSniper_hook, (uintptr_t*)&CWeapon_FireSniper);
-	//CHook::InstallPLT(g_libGTASA + 0x66EAC4, (uintptr_t)CBulletInfo_AddBullet_hook, (uintptr_t*)&CBulletInfo_AddBullet);
-}
-
-void InstallSAMPHooks()
-{
-	//CHook::InstallPLT(g_libGTASA + 0x677EA0, (uintptr_t)MainMenuScreen__OnExit_hook, (uintptr_t*)&MainMenuScreen__OnExit);
-	// samp main loop
-	//CHook::InstallPLT(g_libGTASA + 0x67589C, (uintptr_t)Render2dStuff_hook, (uintptr_t*)&Render2dStuff);
-	// imgui
-	//CHook::InstallPLT(g_libGTASA + 0x6710C4, (uintptr_t)Idle_hook, (uintptr_t*)&Idle);
-	//CHook::InstallPLT(g_libGTASA + 0x675DE4, (uintptr_t)AND_TouchEvent_hook, (uintptr_t*)&AND_TouchEvent);
-	// splashscreen
-	//ARMHook::installHook(g_libGTASA + 0x43AF28, (uintptr_t)DisplayScreen_hook, (uintptr_t*)&DisplayScreen);
-	// gangzones
-	//CHook::InstallPLT(g_libGTASA + 0x67196C, (uintptr_t)CRadar_DrawRadarGangOverlay_hook, (uintptr_t*)&CRadar_DrawRadarGangOverlay);
-	// radar
-	//CHook::InstallPLT(g_libGTASA+0x675914, (uintptr_t)CRadar__SetCoordBlip_hook, (uintptr_t*)&CRadar__SetCoordBlip);
-	// removebuilding
-	//CHook::InstallPLT(g_libGTASA + 0x675E6C, (uintptr_t)CFileLoader__LoadObjectInstance_hook, (uintptr_t*)&CFileLoader__LoadObjectInstance);
-	// obj material
-	//ARMHook::installHook(g_libGTASA + 0x454EF0, (uintptr_t)CObject_Render_hook, (uintptr_t*)& CObject_Render);
-	// textdraw models
-	//CHook::InstallPLT(g_libGTASA + 0x66FE58, (uintptr_t)CGame_Process_hook, (uintptr_t*)& CGame_Process);
-	// enter vehicle as driver
-	//ARMHook::codeInject(g_libGTASA + 0x40AC28, (uintptr_t)TaskEnterVehicle_hook, 0);
-    //CHook::InstallPLT(g_libGTASA+0x6733F0, (uintptr_t)TaskEnterVehicle_hook, (uintptr_t*)&TaskEnterVehicle);
-	// radar color
-	//CHook::InstallPLT(g_libGTASA + 0x673950, (uintptr_t)CHudColours__GetIntColour_hook, (uintptr_t*)& CHudColours__GetIntColour);
-	// exit vehicle
-	CHook::InstallPLT(g_libGTASA + 0x671984, (uintptr_t)CTaskComplexLeaveCar_hook, (uintptr_t*)& CTaskComplexLeaveCar);
-    CHook::InstallPLT(g_libGTASA + 0x675320, (uintptr_t)CTaskComplexLeaveCar_hook, (uintptr_t*)& CTaskComplexLeaveCar);
-    // attach obj to ped
-	//CHook::InstallPLT(g_libGTASA + 0x675C68, (uintptr_t)CWorld_ProcessPedsAfterPreRender_Hook, (uintptr_t*)&CWorld_ProcessPedsAfterPreRender);
-	// game pause
-	//CHook::InstallPLT(g_libGTASA + 0x672644, (uintptr_t)CTimer_StartUserPause_hook, (uintptr_t*)&CTimer_StartUserPause);
-	//CHook::InstallPLT(g_libGTASA + 0x67056C, (uintptr_t)CTimer_EndUserPause_hook, (uintptr_t*)&CTimer_EndUserPause);
-	// aim
-	// Crosshair Fix
-	//ms_fAspectRatio = (float*)(g_libGTASA+(VER_x32 ? 0xA26A90:0xCC7F00));
-	//CHook::InstallPLT(g_libGTASA + 0x672880, (uintptr_t)DrawCrosshair_hook, (uintptr_t*)&DrawCrosshair);
-
-	// fix radar in passenger
-	CHook::InstallPLT(g_libGTASA+0x671BBC, (uintptr_t)FindPlayerSpeed_hook, (uintptr_t*)&FindPlayerSpeed);
-
-	// fix texture loading
-	CHook::InstallPLT(g_libGTASA + 0x676034, (uintptr_t)CTxdStore__TxdStoreFindCB_hook, (uintptr_t*)&CTxdStore__TxdStoreFindCB);
-
-	// interpolate camera fix
-	CHook::InstallPLT(g_libGTASA + 0x6717BC, (uintptr_t)CCamera__Process_hook, (uintptr_t*)&CCamera__Process);
-
-	// for surfing
-	//CHook::InstallPLT(g_libGTASA + 0x66EAE8, (uintptr_t)CWorld_ProcessAttachedEntities_Hook, (uintptr_t*)&CWorld_ProcessAttachedEntities);
-
-	//CHook::InstallPLT(g_libGTASA + 0x67193C, (uintptr_t)player_control_zelda_hook, (uintptr_t*)&player_control_zelda);
-
-	//ARMHook::installHook(g_libGTASA + 0x4DD5E8, (uintptr_t)CTaskSimpleUseGun__SetMoveAnim_hook, (uintptr_t*)&CTaskSimpleUseGun__SetMoveAnim);
-
-    // hueta ne rabotaet no pust budet (tipo ne kak v 1.08)
-	CHook::InstallPLT(g_libGTASA + 0x674280, (uintptr_t) CVehicleModelInfo__SetupCommonData_hook, (uintptr_t*)&CVehicleModelInfo__SetupCommonData);
-	CHook::InstallPLT(g_libGTASA + 0x06D008, (uintptr_t) CAEVehicleAudioEntity__GetVehicleAudioSettings_hook, (uintptr_t*)&CAEVehicleAudioEntity__GetVehicleAudioSettings);
-
-	CHook::InstallPLT(g_libGTASA + 0x66FF0C, (uintptr_t)CRadar_ClearBlip_hook, (uintptr_t*)&CRadar_ClearBlip);
-
-	// skills
-	CHook::InstallPLT(g_libGTASA + 0x6749D0, (uintptr_t)CPed__GetWeaponSkill_hook, (uintptr_t*)&CPed__GetWeaponSkill);
-
-    //InstallHuaweiCrashFixHooks();
-	InstallCrashFixHooks();
-	InstallWeaponFireHooks();
-	HookCPad();
-}
-
 void ReadSettingFile();
-void ApplyFPSPatch(uint8_t fps);
+void ApplyFPSPatch();
 void (*NvUtilInit)();
 void NvUtilInit_hook()
 {
@@ -1320,7 +1184,7 @@ void NvUtilInit_hook()
 
     ReadSettingFile();
 
-    ApplyFPSPatch(120);
+    ApplyFPSPatch();
 }
 
 struct stFile
@@ -1335,76 +1199,94 @@ stFile* NvFOpen(const char* r0, const char* r1, int r2, int r3)
 {
     strcpy(lastFile, r1);
 
-    static char path[255]{};
-    memset(path, 0, sizeof(path));
+    char rel[255]{};
+    memset(rel, 0, sizeof(rel));
+    const char* useRel = r1;
 
-    sprintf(path, "%s%s", g_pszStorage, r1);
-
-    // ----------------------------
     if(!strncmp(r1+12, "mainV1.scm", 10))
     {
-        sprintf(path, "%sSAMP/main.scm", g_pszStorage);
-        FLog("Loading %s", path);
+        sprintf(rel, "SAMP/main.scm");
+        useRel = rel;
+        FLog("Loading %s", rel);
     }
-    // ----------------------------
-    if(!strncmp(r1+12, "SCRIPTV1.IMG", 12))
+    else if(!strncmp(r1+12, "SCRIPTV1.IMG", 12))
     {
-        sprintf(path, "%sSAMP/script.img", g_pszStorage);
+        sprintf(rel, "SAMP/script.img");
+        useRel = rel;
         FLog("Loading script.img..");
     }
-    // ----------------------------
-    if(!strncmp(r1, "DATA/PEDS.IDE", 13))
+    else if(!strncmp(r1, "DATA/PEDS.IDE", 13))
     {
-        sprintf(path, "%sSAMP/peds.ide", g_pszStorage);
+        sprintf(rel, "SAMP/peds.ide");
+        useRel = rel;
         FLog("Loading peds.ide..");
     }
-    // ----------------------------
-    if(!strncmp(r1, "DATA/VEHICLES.IDE", 17))
+    else if (strstr(r1, "samp.dxt.tmb"))
     {
-        sprintf(path, "%sSAMP/vehicles.ide", g_pszStorage);
+        // The engine loads the samp texdb itself inside Initialise3D and picks
+        // the variant from the GL extension list. On Android 15+ ANGLE
+        // advertises S3TC, so it asks for samp.dxt.* even though only the ETC
+        // files are on disk. A missing .tmb makes Load() return a
+        // half-initialised database and SortEntries/GetTexture deref it ->
+        // SIGSEGV 0x110 (tombstone_02/03/05). Serve the ETC files instead;
+        // ETC1 is mandatory in GLES so they exist on every device.
+        sprintf(rel, "texdb/samp/samp.etc.tmb");
+        useRel = rel;
+        FLog("samp.dxt.tmb -> samp.etc.tmb");
+    }
+    else if (strstr(r1, "samp.dxt.dat"))
+    {
+        sprintf(rel, "texdb/samp/samp.etc.dat");
+        useRel = rel;
+    }
+    else if (strstr(r1, "samp.dxt.toc"))
+    {
+        sprintf(rel, "texdb/samp/samp.etc.toc");
+        useRel = rel;
+    }
+    else if(!strncmp(r1, "DATA/VEHICLES.IDE", 17))
+    {
+        sprintf(rel, "SAMP/vehicles.ide");
+        useRel = rel;
         FLog("Loading vehicles.ide..");
     }
-
-    if (!strncmp(r1, "DATA/GTA.DAT", 12))
+    else if (!strncmp(r1, "DATA/GTA.DAT", 12))
     {
-        sprintf(path, "%sSAMP/gta.dat", g_pszStorage);
+        sprintf(rel, "SAMP/gta.dat");
+        useRel = rel;
         FLog("Loading gta.dat..");
     }
-
-    if (!strncmp(r1, "DATA/HANDLING.CFG", 17))
+    else if (!strncmp(r1, "DATA/HANDLING.CFG", 17))
     {
-        sprintf(path, "%sSAMP/handling.cfg", g_pszStorage);
+        sprintf(rel, "SAMP/handling.cfg");
+        useRel = rel;
         FLog("Loading handling.cfg..");
     }
-
-    if (!strncmp(r1, "DATA/WEAPON.DAT", 15))
+    else if (!strncmp(r1, "DATA/WEAPON.DAT", 15))
     {
-        sprintf(path, "%sSAMP/weapon.dat", g_pszStorage);
+        sprintf(rel, "SAMP/weapon.dat");
+        useRel = rel;
         FLog("Loading weapon.dat..");
     }
-
-    if (!strncmp(r1, "DATA/FONTS.DAT", 15))
+    else if (!strncmp(r1, "DATA/FONTS.DAT", 15))
     {
-        sprintf(path, "%sdata/fonts.dat", g_pszStorage);
-        FLog("Loading fonts.dat..");
+        sprintf(rel, "data/fonts.dat");
+        useRel = rel;
     }
-
-    if (!strncmp(r1, "DATA/PEDSTATS.DAT", 15))
+    else if (!strncmp(r1, "DATA/PEDSTATS.DAT", 15))
     {
-        sprintf(path, "%sdata/pedstats.dat", g_pszStorage);
-        FLog("Loading pedstats.dat..");
+        sprintf(rel, "data/pedstats.dat");
+        useRel = rel;
     }
-
-    if (!strncmp(r1, "DATA/TIMECYC.DAT", 15))
+    else if (!strncmp(r1, "DATA/TIMECYC.DAT", 15))
     {
-        sprintf(path, "%sdata/timecyc.dat", g_pszStorage);
-        FLog("Loading timecyc.dat..");
+        sprintf(rel, "data/timecyc.dat");
+        useRel = rel;
     }
-
-    if (!strncmp(r1, "DATA/POPCYCLE.DAT", 15))
+    else if (!strncmp(r1, "DATA/POPCYCLE.DAT", 15))
     {
-        sprintf(path, "%sdata/popcycle.dat", g_pszStorage);
-        FLog("Loading popcycle.dat..");
+        sprintf(rel, "data/popcycle.dat");
+        useRel = rel;
     }
 
 #if VER_x32
@@ -1414,7 +1296,7 @@ stFile* NvFOpen(const char* r0, const char* r1, int r2, int r3)
 #endif
     st->isFileExist = false;
 
-    FILE *f  = fopen(path, "rb");
+    FILE *f  = CFileMgr::OpenFile(useRel, "rb");
 
     if(f)
     {
@@ -1424,7 +1306,11 @@ stFile* NvFOpen(const char* r0, const char* r1, int r2, int r3)
     }
     else
     {
-        FLog("NVFOpen hook | Error: file not found (%s)", path);
+        char absPath[512]{};
+        sprintf(absPath, "%s%s", g_pszStorage, useRel);
+        if (!strstr(absPath, ".idx") && !strstr(absPath, "gta_sa.set") && !strstr(absPath, "gtasatelem.set") && !strstr(absPath, "gta3.ini") && !strstr(absPath, "CINFO.BIN") && !strstr(absPath, "MINFO.BIN") && !strstr(absPath, "GTASAsf") && !strstr(absPath, "Adjustable.cfg")) {
+            FLog("NVFOpen hook | Error: file not found (%s)", absPath);
+        }
         free(st);
         return nullptr;
     }
@@ -1600,61 +1486,88 @@ bool RwResourcesFreeResEntry_hook(void* entry)
     return result;
 }
 
-static uint32_t dwRLEDecompressSourceSize = 0;
+extern "C" int OS_FileRead(void* file, void* buf, int len);
+__attribute__((weak)) int OS_FileRead(void* file, void* buf, int len) { return 0; }
 
-size_t (*OS_FileRead)(OSFile a1, void *buffer, size_t numBytes);
-size_t OS_FileRead_hook(OSFile a1, void *buffer, size_t numBytes)
+static int (*orig_OS_FileRead)(void*, void*, int) = nullptr;
+
+uint32_t dwRLEDecompressSourceSize = 0;
+
+// Hook
+int OS_FileRead_hook(void* a1, void* a2, int a3)
 {
-    dwRLEDecompressSourceSize = numBytes;
+    int ret = orig_OS_FileRead ? orig_OS_FileRead(a1, a2, a3) : 0;
 
-    return OS_FileRead(a1, buffer, numBytes);
+    if (a3 >= 4)
+    {
+        uintptr_t caller = (uintptr_t)__builtin_return_address(0) - g_libGTASA;
+
+#ifdef VER_x32
+        if (caller == 0x1E91AC)  // 0.3.7 / x32
+#else
+        if (caller == 0x2858B8 || caller == 0x2858C0)  // 2.10 มี 2 จุดเรียกใกล้ ๆ กัน
+#endif
+        {
+            dwRLEDecompressSourceSize = *(uint32_t*)a2;
+        }
+    }
+
+    return ret;
 }
 
-void (*RLEDecompress)(uint8_t* pDest, size_t uiDestSize, uint8_t const* pSrc, size_t uiSegSize, uint32_t uiEscape);
-void RLEDecompress_hook(uint8_t* pDest, size_t uiDestSize, const uint8_t* pSrc, size_t uiSegSize, uint32_t uiEscape) {
-
-    if (!pDest || !pSrc || uiDestSize == 0 || uiSegSize == 0) {
-        // Обработка некорректных входных данных или размеров
-        // Здесь можно сгенерировать исключение или вернуть код ошибки
+// Original RLE function pointer
+void (*orig_RLEDecompress)(uint8_t* dest, size_t destSize, const uint8_t* src, size_t segSize, uint32_t escape) = nullptr;
+void RLEDecompress_hook(uint8_t* dest, size_t destSize, const uint8_t* src, size_t segSize, uint32_t escape)
+{
+    // ตรวจสอบพอยน์เตอร์และค่าพื้นฐานก่อน
+    if (!dest || !src || destSize == 0 || segSize == 0 || dwRLEDecompressSourceSize == 0 || !orig_RLEDecompress)
+    {
+        orig_RLEDecompress(dest, destSize, src, segSize, escape);
         return;
     }
 
-    const uint8_t* pTempSrc = pSrc;
-    const uint8_t* const pEndOfDest = pDest + uiDestSize;
-    const uint8_t* const pEndOfSrc = pSrc + dwRLEDecompressSourceSize; // Предполагается, что dwRLEDecompressSourceSize определено правильно
+    uint8_t* out = dest;
+    const uint8_t* in = src;
+    const uint8_t* in_end  = src + dwRLEDecompressSourceSize;
+    const uint8_t* out_end = dest + destSize;
 
-    try {
-        while (pDest < pEndOfDest && pTempSrc < pEndOfSrc) {
-            if (*pTempSrc == uiEscape) {
-                if (pTempSrc + 1 >= pEndOfSrc || pTempSrc[1] == 0 || pTempSrc + 2 + uiSegSize > pEndOfSrc) {
-                    // Обработка ошибки, неверное значение ucCurSeg или недостаточно данных в исходном буфере
-                    throw std::runtime_error("rled error 1");
-                }
+    while (out < out_end && in < in_end)
+    {
+        if (*in == escape)
+        {
+            if (in + 2 >= in_end) break;                    // ไม่มี count หรือ segment
+            uint8_t count = in[1];
+            if (count == 0) { in += 2; continue; }          // escape literal
 
-                uint8_t ucCurSeg = pTempSrc[1];
-                while (ucCurSeg--) {
-                    if (pDest + uiSegSize > pEndOfDest) {
-                        // Обработка ошибки, недостаточно места в целевом буфере
-                        throw std::runtime_error("rled error 2");
-                    }
-                    memcpy(pDest, pTempSrc + 2, uiSegSize);
-                    pDest += uiSegSize;
-                }
-                pTempSrc += 2 + uiSegSize;
-            } else {
-                if (pDest + uiSegSize > pEndOfDest || pTempSrc + uiSegSize > pEndOfSrc) {
-                    // Обработка ошибки, недостаточно данных в исходном буфере или недостаточно места в целевом буфере
-                    throw std::runtime_error("rled error 3");
-                }
-                memcpy(pDest, pTempSrc, uiSegSize);
-                pDest += uiSegSize;
-                pTempSrc += uiSegSize;
+            if (in + 2 + segSize > in_end) break;           // ข้อมูลไม่ครบ
+
+            size_t bytes_to_copy = (size_t)count * segSize;
+            if (out + bytes_to_copy > out_end) break;       // ป้องกัน buffer overflow
+
+            const uint8_t* segment = in + 2;
+            for (uint8_t i = 0; i < count; ++i)
+            {
+                memcpy(out, segment, segSize);
+                out += segSize;
             }
+            in += 2 + segSize;
         }
+        else
+        {
+            if (in + segSize > in_end || out + segSize > out_end) break;
+            memcpy(out, in, segSize);
+            out += segSize;
+            in += segSize;
+        }
+    }
 
-        dwRLEDecompressSourceSize = 0;
-    } catch (const std::exception& e) {
-        FLog("%s", e.what());
+    // รีเซ็ตทุกครั้ง ป้องกัน reuse ค่าเก่า
+    dwRLEDecompressSourceSize = 0;
+
+    // ถ้ายังเขียนไม่ครบ dest (กรณี rare มาก) ให้ฟังก์ชันเดิมช่วยต่อ
+    if (out < out_end)
+    {
+        orig_RLEDecompress(out, out_end - out, in, segSize, escape);
     }
 }
 
@@ -1703,7 +1616,8 @@ void(*CStreaming__Init2)();
 void CStreaming__Init2_hook()
 {
     CStreaming__Init2();
-    *(uint32_t*)(g_libGTASA+(VER_x32 ? 0x00685FA0:0x85EBD8)) = 536870912;
+	auto &msAvailable = CStreaming::ms_memoryAvailable;
+    msAvailable = 0x20000000;
 }
 
 int(*mpg123_param)(void* mh, int key, long val, int ZERO, double fval);
@@ -1716,12 +1630,59 @@ int mpg123_param_hook(void* mh, int key, long val, int ZERO, double fval)
     return mpg123_param(mh, key, val | (0x2000 | 0x200 | 0x100 | 0x40), ZERO, fval);
 }
 
+int g_iLastRenderedObject;
+
+void(*CEntity_Render)(CEntityGTA*);
+void CEntity_Render_hook(CEntityGTA* thiz) {
+    g_iLastRenderedObject = thiz->m_nModelIndex;
+    CEntity_Render(thiz);
+}
+
+CEntityGTA* (*CFileLoader__LoadObjectInstance)(CFileObjectInstance *pObject, const char *pName);
+CEntityGTA* CFileLoader__LoadObjectInstance_hook(CFileObjectInstance *pObject, const char *pName)
+{
+    // Check if this building should be removed
+    for (int i = 0; i < CBuildingRemoval::m_TotalRemovedObjects; i++)
+    {
+        const auto& buildingInfo = CBuildingRemoval::m_RemoveBuildings[i];
+        // Check model ID match (or -1 for all models)
+        if (pObject->m_nModelId == buildingInfo.modelId || buildingInfo.modelId == static_cast<uint32_t>(-1))
+        {
+            CVector pos;
+
+            pos.x = pObject->m_vecPosition.x;
+            pos.y = pObject->m_vecPosition.y;
+            pos.z = pObject->m_vecPosition.z;
+
+            float distance = CBuildingRemoval::GetDistanceBetween3DPoints(&pos, &buildingInfo.position);
+            if (distance <= buildingInfo.radius) {
+                // Replace with invisible model (19300 is commonly used as invisible model)
+                pObject->m_nModelId = 19300;
+                break;
+            }
+        }
+    }
+    return CFileLoader__LoadObjectInstance(pObject, pName);
+}
+
+void (*CAEWeatherAudioEntity__UpdateParameter)(uintptr_t thiz, uintptr_t a1, uint16_t a2);
+void CAEWeatherAudioEntity__UpdateParameter_hook(uintptr_t thiz, uintptr_t a1, uint16_t a2)
+{
+    uint32_t* pArea = (uint32_t*)(g_libGTASA + (VER_x32 ? 0x95957C : 0xBC2418));
+    uint32_t old = *pArea;
+    if (pGame->m_sound.bDisableInteriorAmbient) *pArea = 1;
+    CAEWeatherAudioEntity__UpdateParameter(thiz, a1, a2);
+    *pArea = old;
+}
+
+#include "Widgets/TouchInterface.h"
+
 void InjectHooks()
 {
     FLog("InjectHooks");
     CHook::Write(g_libGTASA + (VER_x32 ? 0x678954 : 0x84F2D0), &Scene);
 
-#if !VER_x32 // mb all.. wtf crash x64?
+#if !defined(BUILD_32BIT_ONLY) && !VER_x32
     CHook::RET("_ZN11CPlayerInfo14LoadPlayerSkinEv");
     CHook::RET("_ZN11CPopulation10InitialiseEv");
 #endif
@@ -1779,79 +1740,17 @@ void InjectHooks()
     TextureDatabase::InjectHooks();
     TextureDatabaseEntry::InjectHooks();
     TextureDatabaseRuntime::InjectHooks();
+    TextureDatabaseRuntime::InstallLoadGate();
     CCustomBuildingDNPipeline::InjectHooks();
     //CWidgetRadar::InjectHooks();
 
     //CRealTimeShadowManager::InjectHooks();
-    CHook::Write(g_libGTASA+(VER_x32 ? 0xA41140 : 0xCE3EE8), &COcclusion::aOccluders);
-    CHook::Write(g_libGTASA+(VER_x32 ? 0xA45790:0xCE8538), &COcclusion::NumOccludersOnMap);
-}
-
-void InstallUrezHooks()
-{
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ) + 14) = 't';
-
-    CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F));
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F) + 12) = 'd';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F) + 13) = 'x';
-    *(char*)(g_libGTASA + (VER_x32 ? 0x1E8C04 : 0x71406F) + 14) = 't';
-}
-
-void InstallCRHooks()
-{
-    struct TexturePathPatch
-    {
-        uintptr_t x32;
-        uintptr_t x64;
-        const char* oldExtension;
-    };
-
-    static const TexturePathPatch patches[] =
-    {
-        { 0x1E87A0, 0x714003, "pvr" }, // pvr.tmb
-        { 0x1E8C04, 0x71406F, "pvr" }, // pvr
-        { 0x1E878C, 0x714017, "etc" }, // etc.tmb
-        { 0x1E8BF4, 0x71407F, "etc" }, // etc
-        { 0x1E87F0, 0x713FB3, "unc" }, // unc.tmb
-    };
-
-    for (const auto& patch : patches)
-    {
-        uintptr_t address = g_libGTASA + (VER_x32 ? patch.x32 : patch.x64);
-        char* extension = reinterpret_cast<char*>(address + 12);
-
-        if (memcmp(extension, patch.oldExtension, 3) != 0)
-        {
-            FLog(
-                "Texture extension patch skipped: expected %s, got %.3s at %p",
-                patch.oldExtension,
-                extension,
-                reinterpret_cast<void*>(address)
-            );
-            continue;
-        }
-
-        CHook::UnFuck(address);
-
-        extension[0] = 'd';
-        extension[1] = 'x';
-        extension[2] = 't';
-
-        // FLog("Texture extension patched: %s -> dxt", patch.oldExtension);
-    }
+    COcclusion::InjectHooks();
 }
 
 void InstallSpecialHooks()
 {
     InjectHooks();
-
-    InstallUrezHooks();
-
-	//InstallCRHooks(); //call this when using the CRMP cache
-
     CHook::Redirect("_ZN5CGame20InitialiseRenderWareEv", &CGame::InitialiseRenderWare);
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6785FC : 0x84EC20), &StartGameScreen__OnNewGameCheck_hook, &StartGameScreen__OnNewGameCheck);
 
@@ -1866,16 +1765,22 @@ void InstallSpecialHooks()
 
     CHook::RET("_ZN4CPed31RemoveWeaponWhenEnteringVehicleEi"); // CPed::RemoveWeaponWhenEnteringVehicle
 
-    CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6701D4 : 0x840708), &RLEDecompress_hook, &RLEDecompress);
+    //CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6701D4 : 0x840708), &RLEDecompress_hook, &orig_RLEDecompress);
 
-    CHook::InlineHook("_Z11OS_FileReadPvS_i", &OS_FileRead_hook, &OS_FileRead);
+    //CHook::InlineHook("_Z11OS_FileReadPvS_i", &OS_FileRead_hook, &OS_FileRead);
 
 	CHook::InlineHook("_Z32_rxOpenGLDefaultAllInOneRenderCBP10RwResEntryPvhj", &rxOpenGLDefaultAllInOneRenderCB_hook, &rxOpenGLDefaultAllInOneRenderCB);
-	CHook::InlineHook("_ZN25CCustomBuildingDNPipeline18CustomPipeRenderCBEP10RwResEntryPvhj", &CCustomBuildingDNPipeline__CustomPipeRenderCB_hook, &CCustomBuildingDNPipeline__CustomPipeRenderCB);
+	//CHook::InlineHook("_ZN25CCustomBuildingDNPipeline18CustomPipeRenderCBEP10RwResEntryPvhj", &CCustomBuildingDNPipeline__CustomPipeRenderCB_hook, &CCustomBuildingDNPipeline__CustomPipeRenderCB);
 }
+
+#include <EGL/egl.h>
+#include <GLES2/gl2.h>   // If using OpenGL ES 2.0 or 3.0
+
+void SetUpGLHooks();
 
 void InstallHooks()
 {
+    //SetUpGLHooks();
     CHook::Redirect("_Z13Render2dStuffv", &Render2dStuff);
     CHook::Redirect("_Z13RenderEffectsv", &RenderEffects);
     CHook::InlineHook("_Z14AND_TouchEventiiii", &AND_TouchEvent_hook, &AND_TouchEvent);
@@ -1899,7 +1804,8 @@ void InstallHooks()
     CHook::InlineHook("_ZN7CWeapon18ProcessLineOfSightERK7CVectorS2_R9CColPointRP7CEntity11eWeaponTypeS6_bbbbbbb", &CWeapon__ProcessLineOfSight_hook, &CWeapon__ProcessLineOfSight);
     CHook::InlineHook("_ZN11CBulletInfo9AddBulletEP7CEntity11eWeaponType7CVectorS3_", &CBulletInfo_AddBullet_hook, &CBulletInfo_AddBullet);
 
-    //CHook::InlineHook("_ZN11CFileLoader18LoadObjectInstanceEPKc", &CFileLoader__LoadObjectInstance_hook, &CFileLoader__LoadObjectInstance);
+    // RemoveBuilding
+    CHook::InlineHook("_ZN11CFileLoader18LoadObjectInstanceEP19CFileObjectInstancePKc", &CFileLoader__LoadObjectInstance_hook, &CFileLoader__LoadObjectInstance); // _ZN11CFileLoader18LoadObjectInstanceEPKc
 
     CHook::InlineHook("_ZN6CRadar9ClearBlipEi", &CRadar_ClearBlip_hook, &CRadar_ClearBlip);
 
@@ -1911,6 +1817,7 @@ void InstallHooks()
     CHook::InlineHook("_ZN7CObject6RenderEv", &CObject_Render_hook, & CObject_Render);
 
     CHook::Redirect("_Z19PlayerIsEnteringCarv", &PlayerIsEnteringCar);
+    
     if(*(uint8_t *)(g_libGTASA + (VER_x32 ? 0x6B8B9C:0x896135)))
     {
         CHook::Redirect("_ZNK14TextureListing11GetMipCountEv", &getmip);
@@ -1944,10 +1851,12 @@ void InstallHooks()
     CHook::InlineHook("_ZN4CHud14DrawCrossHairsEv", &DrawCrosshair_hook, &DrawCrosshair);
 
     // retexture
-    CHook::InlineHook("_ZN7CEntity6RenderEv", &CEntity_Render_hook, &CEntity_Render);
+    //CHook::InlineHook("_ZN7CEntity6RenderEv", &CEntity_Render_hook, &CEntity_Render);
+    CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x66F76C : 0x83F610), &CEntity_Render_hook, &CEntity_Render);
 
     //CHook::InlineHook("_ZN26CAEGlobalWeaponAudioEntity21ServiceAmbientGunFireEv", &TaskEnterVehicleHook, &TaskEnterVehicle);
-#if VER_x32
+
+    #if VER_x32
     CHook::UnFuck(g_libGTASA + 0x4DD9E8);
     *(float*)(g_libGTASA + 0x4DD9E8) = 0.015f;
 #else
@@ -1965,6 +1874,8 @@ void InstallHooks()
     CHook::Write(g_libGTASA + 0x339134, 0x52846C02);
     CHook::Write(g_libGTASA + 0x339404, 0x52846C02);
 #endif*/
+
+    CHook::InlineHook("_ZN21CAEWeatherAudioEntity16UpdateParametersEP8CAESounds", &CAEWeatherAudioEntity__UpdateParameter_hook, &CAEWeatherAudioEntity__UpdateParameter);
 
     HookCPad();
 }

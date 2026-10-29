@@ -3,8 +3,10 @@
 //
 
 #include "editobject.h"
+#include "gizmo.h"
 #include <jni.h>
 #include "main.h"
+#include "../game/Timer.h"
 
 #include "../game/game.h"
 #include "net/netgame.h"
@@ -23,7 +25,7 @@ void CObjectEditor::startEditPlayerAttach(int slot)
     }
     CObjectEditor::iEditedId = slot;
     CObjectEditor::editType = TYPE_PLAYER_ATTACH;
-    CObjectEditor::time = GetTickCount();
+    CObjectEditor::time = CTimer::m_snTimeInMillisecondsNonClipped;
 
     CObjectEditor::showGui();
 }
@@ -39,7 +41,7 @@ void CObjectEditor::startEditObject(uint16_t objectId)
 
     CObjectEditor::editType = TYPE_OBJECT;
 
-    CObjectEditor::time = GetTickCount();
+    CObjectEditor::time = CTimer::m_snTimeInMillisecondsNonClipped;
 
     CObjectEditor::showGui();
 }
@@ -53,7 +55,7 @@ void CObjectEditor::showGui() {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_samp_mobile_game_ui_AttachEdit_Exit(JNIEnv *env, jobject thiz) {
+Java_com_sampmobile_xyvern_game_ui_AttachEdit_Exit(JNIEnv *env, jobject thiz) {
     CPlayerPed* pPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed();
     int slot = CObjectEditor::iEditedId;
 
@@ -122,7 +124,7 @@ void CObjectEditor::SendOnEditAttach(int response, int index, int modelid, int b
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_samp_mobile_game_ui_AttachEdit_AttachClick(JNIEnv *env, jobject thiz, jint button_type,
+Java_com_sampmobile_xyvern_game_ui_AttachEdit_AttachClick(JNIEnv *env, jobject thiz, jint button_type,
                                                   jboolean button_id) {
 
     auto pPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed();
@@ -253,8 +255,8 @@ Java_com_samp_mobile_game_ui_AttachEdit_AttachClick(JNIEnv *env, jobject thiz, j
         }
     }
 
-    if(GetTickCount() - CObjectEditor::time > 250) {
-        CObjectEditor::time = GetTickCount();
+    if(CTimer::m_snTimeInMillisecondsNonClipped - CObjectEditor::time > 250) {
+        CObjectEditor::time = CTimer::m_snTimeInMillisecondsNonClipped;
 
         if (CObjectEditor::editType == CObjectEditor::TYPE_PLAYER_ATTACH) {
             CObjectEditor::SendOnEditAttach(
@@ -294,7 +296,7 @@ Java_com_samp_mobile_game_ui_AttachEdit_AttachClick(JNIEnv *env, jobject thiz, j
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_samp_mobile_game_ui_AttachEdit_Save(JNIEnv *env, jobject thiz) {
+Java_com_sampmobile_xyvern_game_ui_AttachEdit_Save(JNIEnv *env, jobject thiz) {
     CPlayerPed* pPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed();
     int slot = CObjectEditor::iEditedId;
     auto attach = pPlayer->GetAttachedObject(slot);
@@ -340,4 +342,27 @@ Java_com_samp_mobile_game_ui_AttachEdit_Save(JNIEnv *env, jobject thiz) {
     CObjectEditor::bIsToggle = false;
     pJavaWrapper->HideEditObject();
     CObjectEditor::time = 0;
+}
+
+// Render gizmo 3D di posisi object yang sedang diedit.
+// Dipanggil tiap frame dari CNetGame::Process() saat edit mode aktif.
+void CObjectEditor::ProcessGizmo() {
+    if (!bIsToggle) return;
+    if (editType != TYPE_OBJECT) return;
+    if (!pNetGame) return;
+
+    CObject *pObject = pNetGame->GetObjectPool()->GetAt(iEditedId);
+    if (!pObject || !pObject->m_pEntity) return;
+
+    RwMatrix mat = pObject->m_pEntity->GetMatrix().ToRwMatrix();
+    CVector pos(mat.pos.x, mat.pos.y, mat.pos.z);
+
+    CGizmo::Render(pos, CGizmo::GetActiveAxis());
+}
+
+// JNI: set gizmo active axis dari Java (0=X, 1=Y, 2=Z, -1=none)
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_sampmobile_xyvern_game_ui_AttachEdit_SetGizmoAxis(JNIEnv *env, jobject thiz, jint axis) {
+    CGizmo::SetActiveAxis((CGizmo::eAxis)axis);
 }

@@ -4,8 +4,8 @@
 
 extern CGame* pGame;
 extern CNetGame* pNetGame;
-extern UI* pUI;
-// 0.3.7
+
+
 CTextDrawPool::CTextDrawPool()
 {
     for (int i = 0; i < MAX_TEXT_DRAWS; i++) {
@@ -20,14 +20,14 @@ CTextDrawPool::CTextDrawPool()
     m_dwHoverColor = 0;
     m_wClickedTextDrawID = 0xFFFF;
 }
-// 0.3.7
+
 CTextDrawPool::~CTextDrawPool()
 {
     for (int i = 0; i < MAX_TEXT_DRAWS; i++) {
         Delete(i);
     }
 }
-// 0.3.7
+
 void CTextDrawPool::New(uint16_t wTextDrawID, TEXT_DRAW_TRANSMIT* pTextDrawTransmit, const char* szText)
 {
     if (m_pTextDraw[wTextDrawID]) {
@@ -40,7 +40,7 @@ void CTextDrawPool::New(uint16_t wTextDrawID, TEXT_DRAW_TRANSMIT* pTextDrawTrans
     m_pTextDraw[wTextDrawID] = pTextDraw;
     m_bSlotState[wTextDrawID] = true;
 }
-// 0.3.7
+
 void CTextDrawPool::Delete(uint16_t wTextDrawID)
 {
     if (m_pTextDraw[wTextDrawID]) {
@@ -49,7 +49,7 @@ void CTextDrawPool::Delete(uint16_t wTextDrawID)
         m_bSlotState[wTextDrawID] = false;
     }
 }
-// 0.3.7
+
 void CTextDrawPool::Draw()
 {
     for (int i = 0; i < MAX_TEXT_DRAWS; i++)
@@ -108,51 +108,57 @@ void CTextDrawPool::SendClick()
     pNetGame->GetRakClient()->RPC(&RPC_ClickTextDraw, &bsClick, HIGH_PRIORITY, RELIABLE_ORDERED, 0, false, UNASSIGNED_NETWORK_ID, nullptr);
 }
 
-enum eTouchType
-{
-    TOUCH_POP  = 1,
-    TOUCH_PUSH = 2,
-    TOUCH_MOVE = 3
-};
-
 bool CTextDrawPool::onTouchEvent(int type, bool multi, int x, int y)
 {
-    if (!m_bSelectState)
-        return true;
+    if (m_bSelectState == false) return true;
+    static bool bWannaClick = false;
 
     m_wClickedTextDrawID = 0xFFFF;
 
-    for (int i = MAX_TEXT_DRAWS - 1; i >= 0; i--)
+
+    for (int i = 0; i < MAX_TEXT_DRAWS; i++)
     {
-        if (!m_bSlotState[i] || !m_pTextDraw[i])
-            continue;
-
-        CTextDraw* pTextDraw = m_pTextDraw[i];
-        pTextDraw->m_bHovered = false;
-        pTextDraw->m_dwHoverColor = 0;
-
-        if (!pTextDraw->m_TextDrawData.byteSelectable)
-            continue;
-
-        if (!IsPointInRect(x, y, &pTextDraw->m_rectArea))
-            continue;
-
-        switch (type)
+        if (m_bSlotState[i] && m_pTextDraw[i])
         {
-            case TOUCH_PUSH:
-            case TOUCH_MOVE:
-                pTextDraw->m_bHovered = true;
-                pTextDraw->m_dwHoverColor = m_dwHoverColor;
-                break;
+            CTextDraw* pTextDraw = m_pTextDraw[i];
+            pTextDraw->m_bHovered = false;
+            pTextDraw->m_dwHoverColor = 0;
 
-            case TOUCH_POP:
-                m_wClickedTextDrawID = i;
-                pUI->PushToBufferedQueueTextDrawPressed((uint16_t)i);
-                pTextDraw->m_bHovered = false;
-                pTextDraw->m_dwHoverColor = 0;
-                break;
+            if (pTextDraw->m_TextDrawData.byteSelectable)
+            {
+                FLog("onTouchEvent textdraw 2");
+                switch (type)
+                {
+                    case 2:
+                        if (IsPointInRect(x, y, &(pTextDraw->m_rectArea)))
+                        {
+                            bWannaClick = true;
+                            return false;
+                        }
+                        break;
+                    case 3:
+                        /*m_wClickedTextDrawID = 0xFFFF;
+                        pTextDraw->m_bHovered = true;
+                        pTextDraw->m_dwHoverColor = m_dwHoverColor;
+                        FLog("x: %f, y:%f, %d",IsPointInRect(x, y, &pTextDraw->m_rectArea));*/
+                        break;
+
+                    case 1:
+                        FLog("m_rectArea %f %f %f %f, clicked: %f %f", pTextDraw->m_rectArea.bottom, pTextDraw->m_rectArea.top,pTextDraw->m_rectArea.left,pTextDraw->m_rectArea.right,
+                             x,y);
+                        if (IsPointInRect(x, y, &pTextDraw->m_rectArea)) {
+                            FLog("Point is in rect");
+                            m_wClickedTextDrawID = i;
+                            SendClick();
+                            pTextDraw->m_bHovered = false;
+                            pTextDraw->m_dwHoverColor = 0;
+                            return false;
+                        }
+                        bWannaClick = false;
+                        break;
+                }
+            }
         }
-        return false;
     }
 
     return true;

@@ -1,0 +1,2689 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Eastside Stories - Modern Game HUD</title>
+    <!-- Genesis Design System Fonts: General Sans (Display) + DM Sans (Body) + JetBrains Mono (Code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+    <style>
+html, body, #app {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+/* Genesis Design System Tokens */
+
+:root {
+  /* Colors */
+  --genesis-primary: #6366F1;
+  --genesis-primary-hover: #4F46E5;
+  --genesis-secondary: #20970B;
+  --genesis-neutral: #9C9C9C;
+  --genesis-bg-light: #FAFAFA;
+  --genesis-surface-light: #FFFFFF;
+  --genesis-text-primary-light: #0A0A0A;
+  --genesis-text-secondary-light: #6B6B6B;
+  
+  /* In-Game Dark Surface Variants (Transparent Overlay) */
+  --genesis-bg-dark: rgba(10, 12, 20, 0.85);
+  --genesis-surface-dark: rgba(18, 22, 36, 0.94);
+  --genesis-surface-card: rgba(26, 32, 52, 0.85);
+  --genesis-text-primary: #F8FAFC;
+  --genesis-text-secondary: #94A3B8;
+  --genesis-text-muted: #64748B;
+  --genesis-border: rgba(232, 232, 236, 0.14);
+  --genesis-border-focus: #6366F1;
+
+  /* Semantic State Colors */
+  --genesis-success: #10B981;
+  --genesis-success-hover: #059669;
+  --genesis-warning: #F59E0B;
+  --genesis-error: #EF4444;
+  --genesis-error-hover: #DC2626;
+
+  /* Typography */
+  --font-display: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+
+  /* Border Radius */
+  --radius-xs: 4px;   /* Tags, chips, badges, inline code */
+  --radius-sm: 6px;   /* Buttons, inputs, selects */
+  --radius-md: 8px;   /* Metadata cards, dropdowns, panels */
+  --radius-lg: 12px;  /* Cards, modals, search bar, preview panels */
+  --radius-full: 9999px; /* Avatars, status dots, pills */
+
+  /* Spacing Scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Elevation & Shadows */
+  --shadow-card: 0 8px 30px rgba(0, 0, 0, 0.35);
+  --shadow-primary-glow: 0 4px 14px rgba(99, 102, 241, 0.4);
+  --ring-focus: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  --ring-error: 0 0 0 3px rgba(239, 68, 68, 0.25);
+  
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-body);
+    user-select: none;
+}
+
+:root {
+    /* ====================================================================
+       Tuff Advance HUD 2.0 palette.
+
+       Not eyeballed from screenshots: every value below is read out of the
+       vendor package's own `shared/settings.lua` (Settings.Default) and its
+       compiled `nui/dist` stylesheet — the shipped NUI dist is plain, only
+       the Lua is FXAP-escrowed. Geometry (radii, blur, hairline) was measured
+       off the mounted NUI with getComputedStyle.
+
+       Where settings.lua and the dist stylesheet disagree, settings.lua wins:
+       it is what the resource actually drives. So health is #FF635C and food
+       #FFD373 (Settings.Default.PLAYERINFO.STATUS.COLOR), which is why the
+       accent red is not the #FD4444 the stylesheet happens to use for its
+       hardcoded alert pulse — same family, different token.
+       ==================================================================== */
+    --tuff-surface: #0E0F11;
+    --tuff-surface-2: #141518;
+    --tuff-surface-3: #191B1F;
+    --tuff-line: rgba(240, 247, 250, 0.07);
+    --tuff-line-lit: rgba(240, 247, 250, 0.16);
+    --tuff-hairline: rgba(240, 247, 250, 0.06);   /* the `inset 0 1px` top edge */
+    --tuff-text: #F0F7FA;
+    --tuff-dim: rgba(240, 247, 250, 0.55);
+    --tuff-mute: rgba(240, 247, 250, 0.32);
+    --tuff-shadow: 0 10px 30px rgba(0, 0, 0, 0.62);
+    --tuff-lime: #C4FF48;
+    --tuff-mint: #00FFA6;
+    --tuff-cyan: #00D0FF;
+    --tuff-yellow: #FFD373;
+    --tuff-red: #FF635C;
+    --tuff-stress: #B672FF;                        /* Stress icon only        */
+    --tuff-blackmoney: #C91D15;                    /* Settings.Default BLACKMONEY bg */
+    --tuff-gang: #9A33FF;                          /* Settings.Default GANG bg       */
+
+    /* The single most recognisable thing about the vendor HUD: surfaces are
+       frosted glass, not opaque panels. Measured live — bg is
+       rgba(14,15,17,0.7) with backdrop-filter blur(18px) saturate(125%).
+       Using #0E0F11 at 0.7 alpha rather than a gradient is what keeps the
+       GTA world legible through the panel. */
+    --tuff-glass: rgba(14, 15, 17, 0.70);
+    --tuff-blur: blur(18px) saturate(125%);
+    /* Full-bleed surfaces (Fleeca, inventory, modals) sit a little denser. */
+    --tuff-glass-heavy: rgba(14, 15, 17, 0.86);
+    --tuff-blur-heavy: blur(20px) saturate(120%);
+
+    /* --- legacy --vhud-* names remapped onto the Tuff palette ----------- */
+    --vhud-bg: var(--tuff-surface);
+    --vhud-panel: var(--tuff-glass);
+    --vhud-panel-solid: var(--tuff-surface-2);
+    --vhud-line: var(--tuff-line);
+    --vhud-line-lit: var(--tuff-line-lit);
+    --vhud-hairline: var(--tuff-hairline);
+    --vhud-blur: var(--tuff-blur);
+    --vhud-shadow: var(--tuff-shadow);
+    --vhud-accent: var(--tuff-cyan);    /* water / armour / focus       */
+    --vhud-gold: var(--tuff-yellow);    /* food / warning               */
+    --vhud-green: var(--tuff-mint);     /* cash / success / mood        */
+    --vhud-red: var(--tuff-red);        /* low stats / destructive      */
+    --vhud-lime: var(--tuff-lime);      /* speed / fuel / primary CTA   */
+    --vhud-stress: var(--tuff-stress);  /* stress icon                  */
+}
+
+/* Frosted glass on every HUD surface. The vendor ships exactly two blur
+   values: blur(18px) saturate(125%) on the HUD widgets, blur(20px) on the
+   full-bleed screens. Only the blur lives here — the drop shadows are
+   per-surface and get their hairline added further down, after every element
+   rule has had its say. */
+.vhud-street-box,
+.checkpoint-widget,
+.vhud-cluster-box,
+.toast,
+.info-tile,
+.vhud-tile {
+    backdrop-filter: var(--tuff-blur);
+    -webkit-backdrop-filter: var(--tuff-blur);
+}
+
+/* Deliberately NOT in the list above: .vhud-compass-top, .modal-inv and the
+   overlay .modal-card — those are transparent layout wrappers, not surfaces.
+   A backdrop-filter on a transparent element still renders a blurred
+   rectangle, so blurring the compass wrapper would paint a 56px smear across
+   the top of the screen with nothing inside it. The compass tiles carry their
+   own glass. */
+.modal-card,
+.modal-fleeca,
+.esx-item-card,
+.esx-qty-input,
+.esx-btn {
+    backdrop-filter: var(--tuff-blur-heavy);
+    -webkit-backdrop-filter: var(--tuff-blur-heavy);
+}
+
+body {
+    background: transparent;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    pointer-events: none;
+    position: relative;
+}
+
+/* Server logo (top right) */
+.server-logo-top {
+    /* Top-left: Tuff puts the brand mark opposite the notification feed, and
+       the toasts own the top-right corner, so they no longer collide. */
+    position: absolute;
+    top: 20px;
+    left: 24px;
+    right: auto;
+    transform: none;
+    display: flex;
+    align-items: center;
+    opacity: 0.95;
+    z-index: 90;
+}
+
+.server-logo-img {
+    width: 62px;
+    height: auto;
+    max-height: 52px;
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(0, 208, 255, 0.35));
+    animation: logoPulse 4s ease-in-out infinite alternate;
+}
+
+@keyframes logoPulse {
+    from {
+        transform: scale(1);
+        filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 16px rgba(255, 211, 115, 0.25));
+    }
+    to {
+        transform: scale(1.03);
+        filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 25px rgba(255, 211, 115, 0.45));
+    }
+}
+
+/* HBE status gauges (v-hud vertical tile stack at RIGHT CENTER - NO PERCENTAGE TEXT) */
+.hbe-vertical-stack {
+    position: absolute;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    padding: 0;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.vhud-tile {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    background: var(--tuff-glass);
+    border: 1px solid var(--vhud-line);
+    border-top: 1px solid var(--vhud-line-lit);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65), inset 0 1px 0 var(--vhud-hairline);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.vhud-tile-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%;
+    background: var(--tile-col);
+    opacity: 0.85;
+    transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.3s ease;
+    z-index: 1;
+}
+
+.vhud-tile.is-warning {
+    animation: vhudPulse 1.1s ease-in-out infinite alternate;
+    border-color: rgba(255, 99, 92, 0.85);
+    box-shadow: 0 0 14px rgba(255, 99, 92, 0.6);
+}
+
+.vhud-tile.is-warning .vhud-tile-fill {
+    background: #FF635C !important;
+}
+
+@keyframes vhudPulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.08); }
+}
+
+.vhud-tile-icon {
+    position: relative;
+    z-index: 2;
+    width: 21px;
+    height: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.vhud-tile-icon svg {
+    width: 100%;
+    height: 100%;
+    fill: #F0F7FA;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+}
+
+/* Floating Compass (v-hud Top Center per user request) */
+.vhud-compass-top {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.cmp-bearings-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
+}
+
+.cmp-bearing-main {
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 800;
+    color: #F0F7FA;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9), 0 0 12px rgba(240, 247, 250, 0.4);
+    min-width: 28px;
+    text-align: center;
+}
+
+.cmp-bearing-sub {
+    font-family: var(--font-display);
+    font-size: 13.5px;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.38);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    min-width: 28px;
+    text-align: center;
+}
+
+.cmp-pointer-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 0 6px #00D0FF);
+    margin-top: -1px;
+}
+
+.cmp-degree-text {
+    font-family: var(--font-code);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #00D0FF;
+    letter-spacing: 0.05em;
+    text-shadow: 0 0 8px rgba(0, 208, 255, 0.6);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Street Name Box (Bottom Left, directly above GTA SA Minimap) */
+.vhud-street-box {
+    position: absolute;
+    bottom: 180px;
+    left: 24px;
+    background: var(--vhud-panel);
+    border: 1px solid var(--vhud-line);
+    border-top: 1px solid var(--vhud-line-lit);
+    border-radius: var(--radius-md);
+    padding: 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--vhud-shadow), inset 0 1px 0 var(--vhud-hairline);
+    pointer-events: none;
+    z-index: 95;
+    max-width: 280px;
+}
+
+.street-cardinal-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(0, 208, 255, 0.15);
+    border: 1px solid rgba(0, 208, 255, 0.35);
+    color: #00D0FF;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.street-text-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.street-name-main {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: #F0F7FA;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.street-subtitle-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(240, 247, 250, 0.55);
+}
+
+.street-sub-name {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: var(--font-display);
+    color: rgba(240, 247, 250, 0.65);
+}
+
+.street-dot {
+    color: rgba(240, 247, 250, 0.35);
+    font-size: 9px;
+}
+
+.street-clock {
+    font-family: var(--font-code);
+    color: var(--vhud-gold);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Checkpoint / Destination Capsule (Bottom Left, docked above Street Box) */
+.checkpoint-widget {
+    position: absolute;
+    bottom: 232px;
+    left: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--vhud-panel);
+    border: 1px solid var(--vhud-line);
+    border-left: 3px solid var(--vhud-gold);
+    border-radius: 999px;
+    padding: 6px 14px 6px 10px;
+    box-shadow: var(--vhud-shadow), 0 0 16px rgba(255, 211, 115, 0.2), inset 0 1px 0 var(--vhud-hairline);
+    pointer-events: none;
+    z-index: 96;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+    will-change: opacity, transform;
+}
+
+.checkpoint-widget.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.checkpoint-icon-box {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 211, 115, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.checkpoint-svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--vhud-gold);
+}
+
+.checkpoint-text-col {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+}
+
+.checkpoint-hint {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(240, 247, 250, 0.45);
+    letter-spacing: 0.05em;
+}
+
+.checkpoint-target {
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 700;
+    color: #F0F7FA;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.checkpoint-distance {
+    font-family: var(--font-code);
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--vhud-green);
+    text-shadow: 0 0 8px rgba(0, 255, 166, 0.5);
+    font-variant-numeric: tabular-nums;
+    margin-left: 2px;
+}
+
+/* Speedometer Cluster (v-hud FiveM supercar digital cluster from reference image) */
+.vhud-cluster-box {
+    position: absolute;
+    bottom: 26px;
+    right: 30px;
+    width: 275px;
+    background: var(--vhud-panel);
+    border: 1px solid var(--vhud-line);
+    border-top: 1px solid var(--vhud-line-lit);
+    border-radius: 12px;
+    box-shadow: var(--vhud-shadow), 0 0 24px rgba(0, 0, 0, 0.75), inset 0 1px 0 var(--vhud-hairline);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0.25s;
+    z-index: 100;
+}
+
+.vhud-cluster-box.active {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+    visibility: visible;
+}
+
+/* Top RPM Bar with Segments & Numbers 0-9 */
+.cluster-rpm-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+}
+
+.cluster-rpm-bar {
+    position: relative;
+    width: 100%;
+    height: 7px;
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(240, 247, 250, 0.08);
+}
+
+.cluster-rpm-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00D0FF 0%, #00FFA6 60%, #FFD373 80%, #FF635C 100%);
+    transition: width 0.1s linear;
+}
+
+.cluster-rpm-segments {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    pointer-events: none;
+}
+
+.rpm-seg {
+    flex: 1;
+    border-right: 1px solid rgba(0, 0, 0, 0.85);
+}
+
+.cluster-rpm-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-code);
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.5);
+    padding: 0 1px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Main Speed & Gear Row */
+.cluster-main-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 2px;
+}
+
+.cluster-speed-group {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.cluster-speed-val {
+    font-family: var(--font-display);
+    font-size: 46px;
+    font-weight: 800;
+    line-height: 0.9;
+    color: #F0F7FA;
+    letter-spacing: -0.04em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+    font-variant-numeric: tabular-nums;
+}
+
+.cluster-speed-unit {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 800;
+    color: rgba(240, 247, 250, 0.6);
+    letter-spacing: 0.08em;
+}
+
+.cluster-gear-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: rgba(20, 21, 24, 0.9);
+    border: 1px solid rgba(0, 208, 255, 0.5);
+    color: #00D0FF;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 10px rgba(0, 208, 255, 0.25);
+}
+
+/* Sub Info Row: Vehicle Model & Odometer */
+.cluster-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 2px;
+}
+
+.cluster-veh-name {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    color: #F0F7FA;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.cluster-odometer {
+    font-family: var(--font-code);
+    font-size: 9.5px;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.65);
+    border: 1px solid rgba(240, 247, 250, 0.12);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Sliders Row: Fuel & Temp */
+.cluster-sliders-row {
+    display: flex;
+    gap: 14px;
+    border-top: 1px solid var(--vhud-line);
+    padding-top: 8px;
+}
+
+.slider-block {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.slider-track-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.slider-cap {
+    font-family: var(--font-code);
+    font-size: 8.5px;
+    font-weight: 800;
+    color: rgba(240, 247, 250, 0.55);
+}
+
+.slider-track {
+    flex: 1;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(240, 247, 250, 0.1);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+}
+
+.slider-fill {
+    height: 100%;
+    width: 100%;
+    border-radius: 999px;
+    transition: width 0.2s linear, background-color 0.2s ease;
+}
+
+.slider-fuel-fill {
+    background: #00FFA6;
+    box-shadow: 0 0 6px rgba(0, 255, 166, 0.6);
+}
+
+.slider-hp-fill {
+    background: #00D0FF;
+    box-shadow: 0 0 6px rgba(0, 208, 255, 0.6);
+}
+
+.slider-name {
+    font-family: var(--font-display);
+    font-size: 8px;
+    font-weight: 800;
+    color: rgba(240, 247, 250, 0.45);
+    letter-spacing: 0.08em;
+    text-align: center;
+}
+
+/* Tell-Tale Status Icons */
+.cluster-tell-tales {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--vhud-line);
+    padding-top: 8px;
+    margin-top: 2px;
+}
+
+.tell-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(240, 247, 250, 0.20);
+    transition: all 0.2s ease;
+}
+
+.tell-icon svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+}
+
+.tell-icon.active {
+    color: #F0F7FA;
+}
+
+.icon-signal {
+    font-weight: 900;
+    font-size: 16px;
+    line-height: 1;
+    color: rgba(240, 247, 250, 0.20);
+}
+
+.icon-signal.active {
+    color: var(--vhud-green);
+    text-shadow: 0 0 8px rgba(0, 255, 166, 0.8);
+}
+
+/* Engine running: Green neon */
+.icon-engine.active {
+    color: #00FFA6;
+    filter: drop-shadow(0 0 6px rgba(0, 255, 166, 0.75));
+}
+
+/* Headlights turned on: Cyan neon */
+.icon-lights.active {
+    color: #00D0FF;
+    filter: drop-shadow(0 0 6px rgba(0, 208, 255, 0.75));
+}
+
+/* Doors locked: Amber neon */
+.icon-lock.active {
+    color: #FFD373;
+    filter: drop-shadow(0 0 6px rgba(255, 211, 115, 0.75));
+}
+
+/* Seatbelt buckled vs unbuckled */
+.icon-seatbelt.unbuckled {
+    color: #FF635C;
+    animation: vhudPulse 1s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 6px rgba(255, 99, 92, 0.75));
+}
+
+.icon-seatbelt.buckled {
+    color: #00FFA6;
+    filter: drop-shadow(0 0 5px rgba(0, 255, 166, 0.5));
+}
+
+/* Notification toasts (v-hud style) */
+.toast-container {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast {
+    width: 320px;
+    background: var(--vhud-panel);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    border: 1px solid var(--vhud-line);
+    border-top: 1px solid var(--vhud-line-lit);
+    border-left: 4px solid var(--vhud-accent);
+    box-shadow: var(--vhud-shadow), inset 0 1px 0 var(--vhud-hairline);
+    animation: toastSlideIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    transition: all var(--transition-fast);
+}
+
+.toast.fade-out {
+    opacity: 0;
+    transform: translateX(30px);
+}
+
+.toast.success { border-left-color: var(--vhud-green); }
+.toast.error { border-left-color: var(--vhud-red); }
+.toast.warning { border-left-color: var(--vhud-gold); }
+.toast.info { border-left-color: var(--vhud-accent); }
+
+@keyframes toastSlideIn {
+    from { opacity: 0; transform: translateX(40px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.toast-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.toast-title {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: #F0F7FA;
+    letter-spacing: -0.02em;
+}
+
+.toast-time {
+    font-family: var(--font-code);
+    font-size: 10px;
+    color: rgba(240, 247, 250, 0.5);
+    font-variant-numeric: tabular-nums;
+}
+
+.toast-body {
+    font-size: 12px;
+    color: rgba(240, 247, 250, 0.75);
+    line-height: 1.4;
+}
+
+/* Modals & dialogs (v-hud glass style) */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.modal-card {
+    background: var(--vhud-panel);
+    border: 1px solid var(--vhud-line);
+    border-top: 1px solid var(--vhud-line-lit);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(0, 208, 255, 0.12);
+    color: #F0F7FA;
+    padding: 24px 28px;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: modalPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+    position: relative;
+}
+
+@keyframes modalPop {
+    from { transform: scale(0.92) translateY(15px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--vhud-line);
+    margin-bottom: 20px;
+}
+
+.modal-title-box {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.modal-title {
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #F0F7FA;
+}
+
+.modal-subtitle {
+    font-size: 12px;
+    color: rgba(240, 247, 250, 0.6);
+}
+
+.btn-modal-close {
+    background: rgba(240, 247, 250, 0.08);
+    border: 1px solid rgba(240, 247, 250, 0.15);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: #F0F7FA;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-modal-close:hover {
+    background: rgba(255, 99, 92, 0.8);
+    border-color: #FF635C;
+}
+
+/* Modal sizing */
+.modal-stats { width: 560px; }
+.modal-inv { width: 620px; }
+.modal-atm { width: 480px; }
+.modal-vmenu { width: 440px; }
+.modal-gas { width: 420px; }
+.modal-help { width: 640px; }
+
+/* FLEECA BANK / ATM (FIVEM NOPIXEL AUTHENTIC) */
+.modal-fleeca {
+    width: 900px !important;
+    height: 520px !important;
+    max-width: 95vw;
+    padding: 0 !important;
+    background: #141518 !important;
+    border: 1px solid rgba(240, 247, 250, 0.08) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85) !important;
+    overflow: hidden !important;
+    user-select: none;
+}
+
+.fleeca-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+/* 1. Left Sidebar */
+.fleeca-sidebar {
+    width: 180px;
+    background: #141518;
+    border-right: 1px solid rgba(240, 247, 250, 0.06);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    box-sizing: border-box;
+}
+
+.fleeca-brand {
+    margin-bottom: 32px;
+    padding-left: 8px;
+}
+
+.brand-text {
+    font-family: var(--font-display, inherit);
+    font-size: 22px;
+    font-weight: 900;
+    font-style: italic;
+    color: #F0F7FA;
+    letter-spacing: 0.08em;
+}
+
+.brand-green {
+    color: #00FFA6;
+}
+
+.fleeca-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.fleeca-nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 20px;
+    background: transparent;
+    border: none;
+    color: rgba(240, 247, 250, 0.55);
+    font-size: 13.5px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+
+.fleeca-nav-btn .nav-icon {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.2;
+}
+
+.fleeca-nav-btn:hover {
+    color: #F0F7FA;
+    background: rgba(240, 247, 250, 0.04);
+}
+
+.fleeca-nav-btn.active {
+    background: #191B1F;
+    color: #00FFA6;
+    font-weight: 700;
+}
+
+.fleeca-nav-btn.active .nav-icon {
+    color: #00FFA6;
+    stroke: #00FFA6;
+}
+
+.fleeca-sidebar-footer {
+    padding-top: 16px;
+    border-top: 1px solid rgba(240, 247, 250, 0.05);
+}
+
+.fleeca-close-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    color: rgba(240, 247, 250, 0.55);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    width: 100%;
+    transition: color 0.15s ease;
+}
+
+.fleeca-close-btn .close-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.fleeca-close-btn:hover {
+    color: #FF635C;
+}
+
+/* 2. Center Column: Virtual Card & Controls */
+.fleeca-center {
+    flex: 1;
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+/* Virtual Card */
+.fleeca-card {
+    width: 100%;
+    height: 185px;
+    background: linear-gradient(135deg, #191B1F 0%, #191B1F 100%);
+    border: 1px solid rgba(240, 247, 250, 0.12);
+    border-top: 1px solid rgba(240, 247, 250, 0.25);
+    border-radius: 14px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    padding: 20px 24px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+}
+
+.fleeca-card::after {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 180px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(0, 255, 166, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.card-balance-box {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-bal-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.55);
+    margin-bottom: 2px;
+}
+
+.card-balance {
+    font-size: 26px;
+    font-weight: 800;
+    color: #F0F7FA;
+    font-family: var(--font-code, monospace);
+    letter-spacing: -0.02em;
+}
+
+.card-watermark {
+    font-size: 20px;
+    font-weight: 900;
+    color: rgba(240, 247, 250, 0.12);
+    font-family: var(--font-display, inherit);
+    letter-spacing: 0.1em;
+}
+
+.card-number {
+    font-family: var(--font-code, monospace);
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    color: rgba(240, 247, 250, 0.95);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.card-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.card-holder {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-holder-label {
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.55);
+    margin-bottom: 1px;
+}
+
+.card-holder-name {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #F0F7FA;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.card-badge {
+    background: #00D0FF;
+    border-radius: 4px;
+    padding: 3px 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.card-badge-net {
+    font-size: 11px;
+    font-weight: 900;
+    color: #F0F7FA;
+    font-style: italic;
+    letter-spacing: 0.08em;
+}
+
+/* Tab Contents */
+.fleeca-tab-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.fleeca-input-group {
+    display: flex;
+    align-items: center;
+    background: #191B1F;
+    border: 1px solid rgba(240, 247, 250, 0.10);
+    border-radius: 8px;
+    padding: 4px 16px;
+    margin-bottom: 14px;
+    transition: border-color 0.15s ease;
+}
+
+.fleeca-input-group:focus-within {
+    border-color: #00FFA6;
+}
+
+.input-currency {
+    font-size: 19px;
+    font-weight: 800;
+    color: #00FFA6;
+    margin-right: 10px;
+    font-family: var(--font-code, monospace);
+}
+
+.fleeca-amount-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #F0F7FA;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 8px 0;
+    user-select: text !important;
+}
+
+.fleeca-amount-input::placeholder {
+    color: rgba(240, 247, 250, 0.32);
+}
+
+.fleeca-btn-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.fleeca-action-btn {
+    flex: 1;
+    padding: 12px;
+    background: #191B1F;
+    border: 1px solid rgba(240, 247, 250, 0.08);
+    border-radius: 8px;
+    color: #00FFA6;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.fleeca-action-btn:hover {
+    background: #191B1F;
+    border-color: #00FFA6;
+    color: #F0F7FA;
+}
+
+.fleeca-quick-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.quick-chip {
+    flex: 1;
+    padding: 7px 4px;
+    background: rgba(240, 247, 250, 0.04);
+    border: 1px solid rgba(240, 247, 250, 0.08);
+    border-radius: 6px;
+    color: rgba(240, 247, 250, 0.55);
+    font-size: 11.5px;
+    font-weight: 600;
+    font-family: var(--font-code, monospace);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.quick-chip:hover {
+    background: rgba(0, 255, 166, 0.12);
+    border-color: #00FFA6;
+    color: #00FFA6;
+}
+
+.fleeca-cash-info {
+    font-size: 12px;
+    color: rgba(240, 247, 250, 0.55);
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 4px;
+    border-top: 1px solid rgba(240, 247, 250, 0.05);
+}
+
+.fleeca-cash-info b {
+    color: #00D0FF;
+    font-family: var(--font-code, monospace);
+}
+
+/* Transfer Tab Styles */
+.transfer-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F0F7FA;
+    margin-bottom: 4px;
+}
+
+.transfer-subtitle {
+    font-size: 12px;
+    color: rgba(240, 247, 250, 0.55);
+    margin-bottom: 16px;
+}
+
+.fleeca-field {
+    margin-bottom: 14px;
+}
+
+.field-label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(240, 247, 250, 0.55);
+    margin-bottom: 6px;
+}
+
+.fleeca-field-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: #191B1F;
+    border: 1px solid rgba(240, 247, 250, 0.10);
+    border-radius: 8px;
+    color: #F0F7FA;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease;
+    user-select: text !important;
+}
+
+.fleeca-field-input:focus {
+    border-color: #00FFA6;
+}
+
+.fleeca-primary-btn {
+    width: 100%;
+    padding: 12px;
+    background: #00FFA6;
+    border: none;
+    border-radius: 8px;
+    color: #F0F7FA;
+    font-size: 13.5px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: background-color 0.15s ease;
+    margin-top: 6px;
+}
+
+.fleeca-primary-btn:hover {
+    background: #00FFA6;
+}
+
+/* Paycheck Tab */
+.paycheck-amount-card {
+    background: #191B1F;
+    border: 1px solid rgba(240, 247, 250, 0.10);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.paycheck-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: rgba(240, 247, 250, 0.55);
+}
+
+.paycheck-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: #00FFA6;
+    font-family: var(--font-code, monospace);
+}
+
+/* 3. Right Column: Transaction History */
+.fleeca-history {
+    width: 270px;
+    background: #141518;
+    border-left: 1px solid rgba(240, 247, 250, 0.06);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 18px;
+    box-sizing: border-box;
+}
+
+.history-header {
+    font-size: 15px;
+    font-weight: 700;
+    color: #F0F7FA;
+    margin-bottom: 14px;
+}
+
+.history-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 6px;
+}
+
+.history-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.history-list::-webkit-scrollbar-thumb {
+    background: #00FFA6;
+    border-radius: 999px;
+}
+
+.history-item {
+    background: #191B1F;
+    border: 1px solid rgba(240, 247, 250, 0.06);
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hist-left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.hist-amount {
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: var(--font-code, monospace);
+}
+
+.hist-amount.positive {
+    color: #00FFA6;
+}
+
+.hist-amount.negative {
+    color: #FF635C;
+}
+
+.hist-desc {
+    font-size: 11px;
+    color: #F0F7FA;
+    font-weight: 600;
+}
+
+.hist-time {
+    font-size: 10px;
+    color: rgba(240, 247, 250, 0.55);
+}
+
+/* Grid & Info Rows */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.info-tile {
+    background: var(--tuff-glass);
+    border: 1px solid var(--vhud-line);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.tile-label {
+    font-size: 11px;
+    color: rgba(240, 247, 250, 0.5);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.tile-value {
+    font-size: 14px;
+    font-weight: 800;
+    color: #F0F7FA;
+}
+
+.tile-value.green { color: var(--vhud-green); }
+.tile-value.blue { color: var(--vhud-accent); }
+.tile-value.gold { color: var(--vhud-gold); }
+
+/* ESX InventoryHUD Layout (FiveM Style from Reference Image) */
+.modal-inv {
+    width: auto !important;
+    max-width: 95vw !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.esx-inv-wrapper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
+    width: 100%;
+    max-width: 1140px;
+    padding: 10px;
+    pointer-events: auto;
+    position: relative;
+    user-select: none;
+}
+
+.esx-inv-panel {
+    flex: 1;
+    min-width: 460px;
+    max-width: 490px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.esx-inv-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-bottom: 2px solid rgba(240, 247, 250, 0.15);
+}
+
+.esx-inv-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 800;
+    color: #F0F7FA;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.esx-inv-sub {
+    font-family: var(--font-code);
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.6);
+}
+
+.esx-inv-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    min-height: 236px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.esx-inv-grid::-webkit-scrollbar {
+    width: 5px;
+}
+.esx-inv-grid::-webkit-scrollbar-thumb {
+    background: rgba(240, 247, 250, 0.2);
+    border-radius: 4px;
+}
+
+/* Individual Slot Card */
+.esx-item-card {
+    position: relative;
+    width: 100%;
+    height: 108px;
+    background: rgba(20, 21, 24, 0.78);
+    border: 1px solid rgba(240, 247, 250, 0.08);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.esx-item-card:hover {
+    border-color: rgba(240, 247, 250, 0.35);
+    background: rgba(20, 21, 24, 0.88);
+}
+
+.esx-item-card.selected {
+    border: 1px solid #00D0FF;
+    background: rgba(20, 21, 24, 0.90);
+    box-shadow: 0 0 12px rgba(0, 208, 255, 0.45);
+}
+
+.esx-item-card.ground-card.selected {
+    border: 1px solid #00FFA6;
+    background: rgba(0, 255, 166, 0.18);
+    box-shadow: 0 0 12px rgba(0, 255, 166, 0.45);
+}
+
+.esx-item-count {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 700;
+    color: #F0F7FA;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+    z-index: 2;
+}
+
+.esx-item-icon-wrap {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 6px 2px 6px;
+    pointer-events: none;
+}
+
+.esx-item-icon {
+    max-width: 58px;
+    max-height: 58px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+    transition: transform 0.15s ease;
+}
+
+.esx-item-card:hover .esx-item-icon {
+    transform: scale(1.06);
+}
+
+.esx-item-name {
+    width: 100%;
+    background: rgba(14, 15, 17, 0.88);
+    border-top: 1px solid rgba(240, 247, 250, 0.05);
+    padding: 4px 3px;
+    font-family: var(--font-display);
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #F0F7FA;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: 0.04em;
+    pointer-events: none;
+}
+
+/* Center Controls Column */
+.esx-inv-center {
+    width: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding-top: 28px;
+    flex-shrink: 0;
+}
+
+.esx-qty-box {
+    width: 100%;
+}
+
+.esx-qty-input {
+    width: 100%;
+    height: 38px;
+    background: rgba(20, 21, 24, 0.85);
+    border: 1px solid rgba(240, 247, 250, 0.2);
+    border-radius: 3px;
+    color: #F0F7FA;
+    font-family: var(--font-code);
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.esx-qty-input:focus {
+    border-color: #00D0FF;
+    box-shadow: 0 0 8px rgba(0, 208, 255, 0.4);
+}
+
+.esx-btn {
+    width: 100%;
+    height: 38px;
+    border-radius: 3px;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    background: rgba(20, 21, 24, 0.90);
+    border: 1px solid rgba(240, 247, 250, 0.12);
+    color: #F0F7FA;
+    transition: all 0.15s ease;
+}
+
+.esx-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.esx-btn-use:hover {
+    background: #00D0FF;
+    border-color: #00D0FF;
+    color: #F0F7FA;
+}
+
+.esx-btn-give:hover {
+    background: #00FFA6;
+    border-color: #00FFA6;
+    color: #F0F7FA;
+}
+
+.esx-btn-drop:hover {
+    background: #FF635C;
+    border-color: #FF635C;
+    color: #F0F7FA;
+}
+
+.esx-btn-take {
+    background: rgba(0, 255, 166, 0.25);
+    border: 1px solid #00FFA6;
+    color: #00FFA6;
+}
+
+.esx-btn-take:hover {
+    background: #00FFA6;
+    color: #F0F7FA;
+    box-shadow: 0 0 12px rgba(0, 255, 166, 0.6);
+}
+
+.esx-btn-close {
+    background: rgba(240, 247, 250, 0.05);
+    border: 1px solid rgba(240, 247, 250, 0.08);
+    color: rgba(240, 247, 250, 0.55);
+}
+
+.esx-btn-close:hover {
+    background: rgba(240, 247, 250, 0.12);
+    color: #F0F7FA;
+}
+
+/* Empty Secondary Notice */
+.esx-empty-notice {
+    height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed rgba(240, 247, 250, 0.12);
+    border-radius: 4px;
+    background: rgba(20, 21, 24, 0.4);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(240, 247, 250, 0.4);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 20px;
+}
+
+/* Button variants */
+.btn-blue {
+    background: linear-gradient(135deg, #00D0FF 0%, #00D0FF 100%);
+    border: 1px solid rgba(240, 247, 250, 0.12);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    color: #F0F7FA;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-blue:hover { 
+    transform: translateY(-1px); 
+    box-shadow: 0 4px 14px rgba(0, 208, 255, 0.45); 
+}
+
+.btn-red {
+    background: rgba(255, 99, 92, 0.15);
+    border: 1px solid rgba(255, 99, 92, 0.35);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    color: var(--vhud-red);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-red:hover { 
+    background: var(--vhud-red); 
+    color: #F0F7FA; 
+}
+
+.btn-green {
+    background: linear-gradient(135deg, #00FFA6 0%, #00FFA6 100%);
+    border: 1px solid rgba(240, 247, 250, 0.12);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    color: #F0F7FA;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-green:hover { 
+    transform: translateY(-1px); 
+    box-shadow: 0 4px 14px rgba(0, 255, 166, 0.45); 
+}
+
+/* VMenu & ATM Action Grids */
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.action-card {
+    background: rgba(20, 21, 24, 0.88);
+    border: 1px solid var(--vhud-line);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.action-card:hover {
+    border-color: var(--vhud-accent);
+    background: rgba(25, 27, 31, 0.95);
+    transform: translateY(-2px);
+    box-shadow: var(--vhud-shadow);
+}
+
+.action-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.action-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    color: #F0F7FA;
+    letter-spacing: -0.01em;
+}
+
+.action-status {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(240, 247, 250, 0.55);
+}
+
+.action-status.on { color: var(--vhud-green); }
+.action-status.off { color: var(--vhud-red); }
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--vhud-red);
+    box-shadow: 0 0 8px rgba(255, 99, 92, 0.6);
+}
+
+.status-dot.active {
+    background: var(--vhud-green);
+    box-shadow: 0 0 10px rgba(0, 255, 166, 0.8);
+}
+
+/* Form inputs */
+.form-input {
+    width: 100%;
+    background: rgba(20, 21, 24, 0.92);
+    border: 1px solid var(--vhud-line);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    color: #F0F7FA;
+    font-size: 14px;
+    font-family: var(--font-body);
+    outline: none;
+    transition: all var(--transition-fast);
+}
+
+.form-input:focus {
+    border-color: var(--vhud-accent);
+    box-shadow: 0 0 0 3px rgba(0, 208, 255, 0.25);
+    background: rgba(20, 21, 24, 1);
+}
+
+/* Custom confirm dialogs */
+.dialog-card {
+    width: 420px;
+    pointer-events: auto;
+}
+
+.dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dialog-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.dialog-input-row .form-input {
+    flex: 1;
+}
+
+/* ====================================================================
+   Responsive: phone viewports.
+
+   The HUD is desktop-tuned: fixed px widths on the panels and absolute
+   placement that assumes a 1920-wide surface. On a phone the CSS viewport is
+   only ~360-412 px wide, so wide panels overflowed off-screen and anything
+   anchored to the right edge was unreachable. PC (omp-cef) stays above these
+   breakpoints and is unchanged.
+   ==================================================================== */
+
+@media (max-width: 900px) {
+    /* Panels that used a hard desktop width. */
+    .modal-fleeca,
+    .modal-help,
+    .modal-gas,
+    .dialog-card,
+    .esx-inv-panel {
+        width: calc(100vw - 24px) !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 24px) !important;
+        max-height: calc(100vh - 24px) !important;
+        margin: 12px !important;
+    }
+
+    .esx-inv-panel {
+        max-width: calc(100vw - 24px) !important;
+    }
+
+    /* Inventory: stack the two columns on a phone instead of overflowing. */
+    .esx-inv-wrap,
+    .esx-inv-body {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    /* Keep panels inside the viewport when they are absolutely placed. */
+    .modal-fleeca,
+    .dialog-card {
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Brand mark and similar corner anchors: stop them eating the screen. */
+    .server-logo-img {
+        width: 44px;
+        max-height: 40px;
+    }
+
+    /* Dialogs get slimmer padding so the content still fits. */
+    .dialog-card {
+        padding: 14px !important;
+    }
+
+    /* Any remaining tall panels must not be taller than the screen. */
+    .modal-fleeca {
+        height: auto !important;
+    }
+}
+
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+"use strict";(()=>{var T=null,te=null,ae=null,h=null,ie=null,$e=null,$=null,G=null,le=null,se=null,oe=null,ce=null,re=null,de=null,ue=null,pe=null,me=null,ve=null,ge=null,fe=null,be=null,P=null,x=null,ye=null,z=null,he=null,Ee=null,ke=null,w=null,Ge=null,Te=null,D=null,A=null,f=-1,H=-1,He=.5;function Se(){let e=document.getElementById("app")||document.body;e.innerHTML=`
+    <!-- Server logo: Top Right per user request -->
+    <div class="server-logo-top" id="serverLogo">
+        <img src="logo.png" alt="Eastside Stories" class="server-logo-img">
+    </div>
+
+    <!-- HBE: 3 Clean Rounded-Square Tiles in Vertical Stack at RIGHT CENTER. NO PERCENTAGE TEXT! -->
+    <div class="hbe-vertical-stack" id="hbeWidget">
+        <div class="vhud-tile" id="hungerGauge" style="--tile-col: #FFD373;" title="Makan">
+            <div class="vhud-tile-fill" id="hungerFill" style="height: 100%;"></div>
+            <div class="vhud-tile-icon">
+                <svg viewBox="0 0 24 24"><path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/></svg>
+            </div>
+        </div>
+
+        <div class="vhud-tile" id="thirstGauge" style="--tile-col: #00D0FF;" title="Minum">
+            <div class="vhud-tile-fill" id="thirstFill" style="height: 100%;"></div>
+            <div class="vhud-tile-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+            </div>
+        </div>
+
+        <div class="vhud-tile" id="moodGauge" style="--tile-col: #00FFA6;" title="Mood / Energi">
+            <div class="vhud-tile-fill" id="moodFill" style="height: 100%;"></div>
+            <div class="vhud-tile-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-3.5-9c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm7 0c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Minimal Compass: TOP CENTER (per user request) -->
+    <div class="vhud-compass-top" id="compassWidget">
+        <div class="cmp-bearings-row">
+            <span class="cmp-bearing-sub" id="cmpLeftBearing">SE</span>
+            <span class="cmp-bearing-main" id="cmpMainBearing">S</span>
+            <span class="cmp-bearing-sub" id="cmpRightBearing">SW</span>
+        </div>
+        <div class="cmp-pointer-arrow">
+            <svg viewBox="0 0 14 8" width="14" height="8">
+                <polygon points="0,0 14,0 7,8" fill="#00D0FF"/>
+            </svg>
+        </div>
+        <div class="cmp-degree-text" id="compassDegrees">172\xB0</div>
+    </div>
+
+    <!-- Street Box: Bottom Left, directly above GTA SA Minimap -->
+    <div class="vhud-street-box" id="navWidget">
+        <div class="street-cardinal-badge" id="streetHeading">S</div>
+        <div class="street-text-col">
+            <div class="street-name-main" id="locationText">Market Street</div>
+            <div class="street-subtitle-row">
+                <span class="street-sub-name" id="districtText">LOS SANTOS</span>
+                <span class="street-dot">&bull;</span>
+                <span class="street-clock" id="navTime">12:00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkpoint / Destination Capsule: Bottom Left, docked above Street Box -->
+    <div class="checkpoint-widget" id="checkpointWidget">
+        <div class="checkpoint-icon-box">
+            <svg viewBox="0 0 24 24" class="checkpoint-svg">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+        </div>
+        <div class="checkpoint-text-col">
+            <span class="checkpoint-hint">Destination</span>
+            <span class="checkpoint-target" id="checkpointTarget">Waypoint</span>
+        </div>
+        <div class="checkpoint-distance" id="checkpointDistance">0 M</div>
+    </div>
+
+    <!-- Speedometer: Modern FiveM Supercar Digital Cluster from Reference Image -->
+    <div class="vhud-cluster-box" id="speedoWidget">
+        <!-- RPM Bar with Segments & Numbers 0-9 -->
+        <div class="cluster-rpm-container">
+            <div class="cluster-rpm-bar">
+                <div class="cluster-rpm-fill" id="speedoRpmFill"></div>
+                <div class="cluster-rpm-segments">
+                    <span class="rpm-seg"></span><span class="rpm-seg"></span><span class="rpm-seg"></span>
+                    <span class="rpm-seg"></span><span class="rpm-seg"></span><span class="rpm-seg"></span>
+                    <span class="rpm-seg"></span><span class="rpm-seg seg-red"></span><span class="rpm-seg seg-red"></span><span class="rpm-seg seg-red"></span>
+                </div>
+            </div>
+            <div class="cluster-rpm-labels">
+                <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span>
+                <span>5</span><span>6</span><span>7</span><span>8</span><span>9</span>
+            </div>
+        </div>
+
+        <!-- Main Speed & Gear Row -->
+        <div class="cluster-main-row">
+            <div class="cluster-speed-group">
+                <span class="cluster-speed-val" id="speedValue">0</span>
+                <span class="cluster-speed-unit">KM/H</span>
+            </div>
+            <div class="cluster-gear-badge" id="speedoGearBadge">P</div>
+        </div>
+
+        <!-- Sub Info: Vehicle Model & Odometer -->
+        <div class="cluster-info-row">
+            <span class="cluster-veh-name" id="speedoVehName">VEHICLE</span>
+            <span class="cluster-odometer" id="speedoOdo">128 853 KM</span>
+        </div>
+
+        <!-- Sliders: Fuel & Temp -->
+        <div class="cluster-sliders-row">
+            <div class="slider-block">
+                <div class="slider-track-wrap">
+                    <span class="slider-cap cap-left">E</span>
+                    <div class="slider-track">
+                        <div class="slider-fill slider-fuel-fill" id="fuelSliderFill" style="width: 100%;"></div>
+                    </div>
+                    <span class="slider-cap cap-right">F</span>
+                </div>
+                <div class="slider-name">FUEL</div>
+            </div>
+
+            <div class="slider-block">
+                <div class="slider-track-wrap">
+                    <span class="slider-cap cap-left">C</span>
+                    <div class="slider-track">
+                        <div class="slider-fill slider-hp-fill" id="hpSliderFill" style="width: 100%;"></div>
+                    </div>
+                    <span class="slider-cap cap-right">H</span>
+                </div>
+                <div class="slider-name">TEMP</div>
+            </div>
+        </div>
+
+        <!-- Tell-Tale Status Icons -->
+        <div class="cluster-tell-tales">
+            <div class="tell-icon icon-signal">&lsaquo;</div>
+            <div class="tell-icon icon-seatbelt" id="iconSeatbelt">
+                <svg viewBox="0 0 24 24"><path d="M18.92 2.01C18.72 1.42 18.16 1 17.5 1h-11c-.66 0-1.21.42-1.42 1.01L3 8v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1V8l-2.08-5.99zM6.85 3h10.29l1.04 3H5.81l1.04-3zM19 13H5V8h14v5z"/><circle cx="7.5" cy="10.5" r="1.5"/><circle cx="16.5" cy="10.5" r="1.5"/></svg>
+            </div>
+            <div class="tell-icon icon-lights" id="iconLights">
+                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+            </div>
+            <div class="tell-icon icon-engine active" id="iconEngine">
+                <svg viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
+            </div>
+            <div class="tell-icon icon-lock" id="iconLock">
+                <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <!-- MODAL: STATS -->
+        <div class="modal-card modal-stats" id="modalStats" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title">STATISTIK KARAKTER</span>
+                    <span class="modal-subtitle">Informasi Akun & Karakter Roleplay</span>
+                </div>
+                <button class="btn-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="statsContent"></div>
+            <div style="text-align: right; margin-top: 10px;">
+                <button class="btn-blue" onclick="closeModal()">TUTUP</button>
+            </div>
+        </div>
+
+        <!-- MODAL: INVENTORY (Authentic esx_inventoryhud aesthetic) -->
+        <div class="modal-card modal-inv" id="modalInv" style="display: none;">
+            <div class="esx-inv-wrapper">
+                <!-- LEFT: Player Inventory -->
+                <div class="esx-inv-panel esx-inv-left">
+                    <div class="esx-inv-header">
+                        <span class="esx-inv-title">INVENTORY</span>
+                        <span class="esx-inv-sub" id="invCountHeader">0 / 20</span>
+                    </div>
+                    <div class="esx-inv-grid" id="invGrid"></div>
+                </div>
+
+                <!-- CENTER: Controls (Quantity + Actions) -->
+                <div class="esx-inv-center">
+                    <div class="esx-qty-box">
+                        <input type="number" id="invActionCount" class="esx-qty-input" value="1" min="1" max="9999">
+                    </div>
+                    <button class="esx-btn esx-btn-use" id="btnInvUse" onclick="invUse()">USE</button>
+                    <button class="esx-btn esx-btn-give" id="btnInvGive" onclick="invGive()">GIVE</button>
+                    <button class="esx-btn esx-btn-drop" id="btnInvDrop" onclick="invDrop()">DROP</button>
+                    <button class="esx-btn esx-btn-take" id="btnInvTake" onclick="invTake()" style="display: none;">TAKE</button>
+                    <button class="esx-btn esx-btn-close" onclick="closeModal()">CLOSE</button>
+                </div>
+
+                <!-- RIGHT: Secondary / Ground Items Inventory -->
+                <div class="esx-inv-panel esx-inv-right">
+                    <div class="esx-inv-header">
+                        <span class="esx-inv-title">GROUND / DROPS</span>
+                        <span class="esx-inv-sub" id="groundCountHeader">0 ITEM</span>
+                    </div>
+                    <div class="esx-inv-grid" id="groundGrid"></div>
+                    <div class="esx-empty-notice" id="groundEmptyNotice">
+                        SECOND INVENTORY IS NOT AVAILABLE
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: FLEECA ATM (FIVEM AUTHENTIC) -->
+        <div class="modal-card modal-fleeca" id="modalAtm" style="display: none;">
+            <div class="fleeca-wrapper">
+                <!-- LEFT SIDEBAR -->
+                <div class="fleeca-sidebar">
+                    <div class="fleeca-brand">
+                        <span class="brand-text">FLE<span class="brand-green">EE</span>CA</span>
+                    </div>
+                    
+                    <div class="fleeca-nav">
+                        <button type="button" class="fleeca-nav-btn active" id="fleecaNavHome" onclick="fleecaSwitchTab('home')">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                            </svg>
+                            <span>Home</span>
+                        </button>
+
+                        <button type="button" class="fleeca-nav-btn" id="fleecaNavTransfer" onclick="fleecaSwitchTab('transfer')">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="6" width="20" height="12" rx="2"/>
+                                <circle cx="12" cy="12" r="2"/>
+                                <path d="M6 12h.01M18 12h.01"/>
+                            </svg>
+                            <span>Transfer</span>
+                        </button>
+
+                        <button type="button" class="fleeca-nav-btn" id="fleecaNavPaycheck" onclick="fleecaSwitchTab('paycheck')">
+                            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
+                            <span>Paycheck</span>
+                        </button>
+                    </div>
+
+                    <div class="fleeca-sidebar-footer">
+                        <button type="button" class="fleeca-close-btn" onclick="closeModal()">
+                            <svg class="close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                            <span>Close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CENTER COLUMN: VIRTUAL CARD & CONTROLS -->
+                <div class="fleeca-center">
+                    <!-- VIRTUAL CARD -->
+                    <div class="fleeca-card">
+                        <div class="card-top">
+                            <div class="card-balance-box">
+                                <span class="card-bal-label">BALANCE</span>
+                                <span class="card-balance" id="atmCardBalance">$0</span>
+                            </div>
+                            <div class="card-watermark">ESS</div>
+                        </div>
+
+                        <div class="card-number" id="atmCardNumber">
+                            <span id="atmCardNumSuffix">00000</span>
+                        </div>
+
+                        <div class="card-bottom">
+                            <div class="card-holder">
+                                <span class="card-holder-label">CARD HOLDER</span>
+                                <span class="card-holder-name" id="atmCardHolder">CITIZEN</span>
+                            </div>
+                            <div class="card-badge">
+                                <span class="card-badge-net">SHARK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB VIEW: HOME (DEPOSIT / WITHDRAW) -->
+                    <div class="fleeca-tab-content" id="fleecaTabHome">
+                        <div class="fleeca-input-group">
+                            <span class="input-currency">$</span>
+                            <input type="number" id="atmActionAmount" class="fleeca-amount-input" placeholder="Amount" min="1">
+                        </div>
+
+                        <div class="fleeca-btn-row">
+                            <button type="button" class="fleeca-action-btn" onclick="fleecaDeposit()">Deposit</button>
+                            <button type="button" class="fleeca-action-btn" onclick="fleecaWithdraw()">Withdraw</button>
+                        </div>
+
+                        <div class="fleeca-quick-row">
+                            <button type="button" class="quick-chip" onclick="fleecaSetAmount(100)">+$100</button>
+                            <button type="button" class="quick-chip" onclick="fleecaSetAmount(500)">+$500</button>
+                            <button type="button" class="quick-chip" onclick="fleecaSetAmount(1000)">+$1,000</button>
+                            <button type="button" class="quick-chip" onclick="fleecaSetAmount(5000)">+$5,000</button>
+                            <button type="button" class="quick-chip" onclick="fleecaSetAllCash()">All Cash</button>
+                        </div>
+
+                        <div class="fleeca-cash-info">
+                            <span>Uang Dompet (Cash): </span>
+                            <b id="atmCashInfo">$0</b>
+                        </div>
+                    </div>
+
+                    <!-- TAB VIEW: TRANSFER -->
+                    <div class="fleeca-tab-content" id="fleecaTabTransfer" style="display: none;">
+                        <div class="transfer-title">Transfer Saldo Bank</div>
+                        <div class="transfer-subtitle">Kirim uang langsung ke nomor rekening karakter lain.</div>
+
+                        <div class="fleeca-field">
+                            <label class="field-label">NOMOR REKENING TUJUAN (5 DIGIT)</label>
+                            <input type="number" id="atmTransferAccount" class="fleeca-field-input" placeholder="Nomor Rekening 5-Digit (contoh: 58219)" min="10000" max="99999">
+                        </div>
+
+                        <div class="fleeca-field">
+                            <label class="field-label">NOMINAL TRANSFER ($)</label>
+                            <div class="fleeca-input-group">
+                                <span class="input-currency">$</span>
+                                <input type="number" id="atmTransferAmount" class="fleeca-amount-input" placeholder="Jumlah transfer..." min="1">
+                            </div>
+                        </div>
+
+                        <button type="button" class="fleeca-primary-btn" onclick="fleecaSubmitTransfer()">KIRIM TRANSFER</button>
+                    </div>
+
+                    <!-- TAB VIEW: PAYCHECK -->
+                    <div class="fleeca-tab-content" id="fleecaTabPaycheck" style="display: none;">
+                        <div class="transfer-title">Pencairan Gaji (Paycheck)</div>
+                        <div class="transfer-subtitle">Klaim akumulasi gaji pekerjaan kamu ke saldo bank.</div>
+
+                        <div class="paycheck-amount-card">
+                            <span class="paycheck-label">GAJI TERSEDIA</span>
+                            <span class="paycheck-value" id="atmPaycheckVal">$0</span>
+                        </div>
+
+                        <button type="button" class="fleeca-primary-btn" onclick="fleecaClaimPaycheck()">KLAIM PAYCHECK KE BANK</button>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: TRANSACTION HISTORY -->
+                <div class="fleeca-history">
+                    <div class="history-header">History:</div>
+                    <div class="history-list" id="atmHistoryList">
+                        <!-- History items -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: VEHICLE MENU (VMENU) -->
+        <div class="modal-card modal-vmenu" id="modalVMenu" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title" id="vmenuTitle">KONTROL KENDARAAN</span>
+                    <span class="modal-subtitle" id="vmenuPlate">PLAT: EAST-01</span>
+                </div>
+                <button class="btn-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="action-grid">
+                <div class="action-card" onclick="vAction('engine')">
+                    <div class="action-info">
+                        <span class="action-name">Mesin (Engine)</span>
+                        <span class="action-status">Nyalakan / Matikan</span>
+                    </div>
+                    <div class="status-dot" id="vEngineDot"></div>
+                </div>
+                <div class="action-card" onclick="vAction('lock')">
+                    <div class="action-info">
+                        <span class="action-name">Kunci Pintu (Lock)</span>
+                        <span class="action-status">Buka / Kunci</span>
+                    </div>
+                    <div class="status-dot" id="vLockDot"></div>
+                </div>
+                <div class="action-card" onclick="vAction('lights')">
+                    <div class="action-info">
+                        <span class="action-name">Lampu Depan</span>
+                        <span class="action-status">Nyalakan / Matikan</span>
+                    </div>
+                    <div class="status-dot" id="vLightsDot"></div>
+                </div>
+                <div class="action-card" onclick="vAction('trunk')">
+                    <div class="action-info">
+                        <span class="action-name">Bagasi (Trunk)</span>
+                        <span class="action-status">Buka / Tutup</span>
+                    </div>
+                    <div class="status-dot" id="vTrunkDot"></div>
+                </div>
+                <div class="action-card" onclick="vAction('hood')" style="grid-column: 1 / -1;">
+                    <div class="action-info">
+                        <span class="action-name">Kap Mesin (Hood)</span>
+                        <span class="action-status">Buka / Tutup</span>
+                    </div>
+                    <div class="status-dot" id="vHoodDot"></div>
+                </div>
+            </div>
+            <button class="btn-blue" style="width: 100%; margin-top: 8px;" onclick="closeModal()">TUTUP</button>
+        </div>
+
+        <!-- MODAL: REFUEL GAS STATION -->
+        <div class="modal-card modal-gas" id="modalGas" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title">POM BENSIN (REFUEL)</span>
+                    <span class="modal-subtitle">Pengisian Bahan Bakar Kendaraan</span>
+                </div>
+                <button class="btn-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="stats-grid">
+                <div class="info-tile">
+                    <span class="tile-label">Bahan Bakar Saat Ini</span>
+                    <span class="tile-value blue" id="gasCurFuel">0 L</span>
+                </div>
+                <div class="info-tile">
+                    <span class="tile-label">Kapasitas Tangki</span>
+                    <span class="tile-value" id="gasMaxFuel">100 L</span>
+                </div>
+            </div>
+            <div style="margin: 16px 0;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+                    <span>Jumlah Pengisian:</span>
+                    <span id="gasLitersVal" style="color: #C4FF48;">10 Liter</span>
+                </div>
+                <input type="range" id="gasSlider" min="1" max="100" value="10" style="width: 100%; accent-color: #C4FF48;" oninput="updateGasCost()">
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button class="btn-blue" style="flex: 1; padding: 6px;" onclick="gasPreset(5)">+5L</button>
+                <button class="btn-blue" style="flex: 1; padding: 6px;" onclick="gasPreset(10)">+10L</button>
+                <button class="btn-blue" style="flex: 1; padding: 6px;" onclick="gasPreset(25)">+25L</button>
+                <button class="btn-green" style="flex: 1; padding: 6px;" onclick="gasFullTank()">FULL</button>
+            </div>
+            <div class="info-tile" style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="tile-label">Total Biaya:</span>
+                    <span class="tile-value green" id="gasTotalCost" style="font-size: 18px;">$5.00</span>
+                </div>
+            </div>
+            <button class="btn-green" style="width: 100%; padding: 13px; font-size: 14px;" onclick="submitRefuel()">ISI BAHAN BAKAR SEKARANG</button>
+        </div>
+
+        <!-- MODAL: GPS NAVIGATOR -->
+        <div class="modal-card modal-help" id="modalGps" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title">GPS NAVIGATOR</span>
+                    <span class="modal-subtitle">Pencarian & Penunjuk Arah Destinasi</span>
+                </div>
+                <button class="btn-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <input type="text" placeholder="Cari nama lokasi atau kategori..." class="form-input" style="margin-bottom: 14px; background: rgba(20, 21, 24,0.9); border: 1px solid rgba(196, 255, 72,0.3); padding: 10px 14px; color: #F0F7FA; border-radius: 8px; width: 100%;" oninput="filterGpsList(this.value)">
+            <div id="gpsListContainer" style="max-height: 380px; overflow-y: auto;"></div>
+            <button class="btn-blue" style="width: 100%; margin-top: 12px;" onclick="closeModal()">TUTUP</button>
+        </div>
+
+        <!-- MODAL: DEALERSHIP SHOWROOM -->
+        <div class="modal-card modal-help" id="modalDealer" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title">SHOWROOM KENDARAAN</span>
+                    <span class="modal-subtitle">Pilih & Beli Kendaraan Impianmu</span>
+                </div>
+                <button class="btn-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="dealerVehContainer" style="max-height: 400px; overflow-y: auto;"></div>
+            <button class="btn-blue" style="width: 100%; margin-top: 12px;" onclick="closeModal()">TUTUP</button>
+        </div>
+
+        <!-- MODAL: HELP & COMMANDS GUIDE -->
+        <div class="modal-card modal-help" id="modalHelp" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title">PANDUAN PERINTAH SERVER</span>
+                    <span class="modal-subtitle">Daftar Command & Bantuan Bermain</span>
+                </div>
+                <button class="btn-modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 4px;">
+                <div class="info-tile">
+                    <span class="tile-label" style="color: #C4FF48;">Karakter & Roleplay</span>
+                    <span style="font-size: 12px; color: #F0F7FA; margin-top: 4px;">
+                        <b>/stats</b> - Buka status profil karakter<br>
+                        <b>/inv</b> - Buka tas & kelola barang bawaan<br>
+                        <b>/pay [id] [jumlah]</b> - Berikan uang tunai ke pemain lain<br>
+                        <b>/id [nama/id]</b> - Cari info ID pemain online<br>
+                        <b>/me [aksi]</b> &bull; <b>/do [keadaan]</b> - Emote roleplay
+                    </span>
+                </div>
+                <div class="info-tile">
+                    <span class="tile-label" style="color: #C4FF48;">Kendaraan & Transportasi</span>
+                    <span style="font-size: 12px; color: #F0F7FA; margin-top: 4px;">
+                        <b>/v</b> atau <b>/vmenu</b> - Kontrol mesin, kunci, lampu, bagasi, kap mesin<br>
+                        <b>/lock</b> - Kunci atau buka pintu mobil<br>
+                        <b>/engine</b> - Nyalakan atau matikan mesin<br>
+                        <b>/refuel</b> - Isi bensin di stasiun pompa bensin<br>
+                        <b>/hood</b> &bull; <b>/trunk</b> - Buka kap mesin atau bagasi
+                    </span>
+                </div>
+                <div class="info-tile">
+                    <span class="tile-label" style="color: #FFD373;">Keuangan & Perbankan</span>
+                    <span style="font-size: 12px; color: #F0F7FA; margin-top: 4px;">
+                        <b>/atm</b> - Tarik tunai, setor uang, transfer saldo, dan ambil paycheck<br>
+                        <b>/salary</b> - Cek rincian slip gaji pekerjaan
+                    </span>
+                </div>
+                <div class="info-tile">
+                    <span class="tile-label" style="color: #FFD373;">Navigasi & Bantuan</span>
+                    <span style="font-size: 12px; color: #F0F7FA; margin-top: 4px;">
+                        <b>/gps</b> - Pasang rute penunjuk arah ke lokasi publik & pekerjaan<br>
+                        <b>/ask [pertanyaan]</b> - Ajukan pertanyaan ke Admin / Helper online<br>
+                        <b>/report [alasan]</b> - Laporkan pelanggaran aturan / cheater
+                    </span>
+                </div>
+            </div>
+            <button class="btn-blue" style="width: 100%; margin-top: 14px;" onclick="closeModal()">TUTUP</button>
+        </div>
+
+        <!-- MODAL: GENERIC INPUT / CONFIRM DIALOG (replaces prompt/confirm) -->
+        <div class="modal-card dialog-card" id="modalInputDialog" style="display: none;">
+            <div class="modal-header">
+                <div class="modal-title-box">
+                    <span class="modal-title" id="dialogTitle">Konfirmasi</span>
+                    <span class="modal-subtitle" id="dialogSubtitle"></span>
+                </div>
+                <button class="btn-modal-close" onclick="dialogCancel()">&times;</button>
+            </div>
+            <div class="dialog-body">
+                <div class="dialog-input-row" id="dialogInputRow" style="display: none;">
+                    <input type="text" class="form-input" id="dialogInputField" placeholder="" onkeydown="if(event.key==='Enter')dialogConfirm()">
+                </div>
+                <div class="inv-actions-row" style="margin-top: 4px;">
+                    <button class="btn-red" style="flex: 1;" onclick="dialogCancel()">BATAL</button>
+                    <button class="btn-green" style="flex: 2;" id="dialogConfirmBtn" onclick="dialogConfirm()">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+  `,T=document.getElementById("speedoWidget"),te=document.getElementById("speedValue"),ae=document.getElementById("speedoRpmFill"),h=document.getElementById("speedoGearBadge"),ie=document.getElementById("speedoVehName"),$e=document.getElementById("speedoOdo"),$=document.getElementById("fuelSliderFill"),G=document.getElementById("hpSliderFill"),le=document.getElementById("hungerFill"),se=document.getElementById("thirstFill"),oe=document.getElementById("moodFill"),ce=document.getElementById("hungerGauge"),re=document.getElementById("thirstGauge"),de=document.getElementById("moodGauge"),ue=document.getElementById("cmpMainBearing"),pe=document.getElementById("cmpLeftBearing"),me=document.getElementById("cmpRightBearing"),ve=document.getElementById("compassDegrees"),ge=document.getElementById("streetHeading"),fe=document.getElementById("locationText"),be=document.getElementById("districtText"),P=document.getElementById("navTime"),x=document.getElementById("checkpointWidget"),ye=document.getElementById("checkpointTarget"),z=document.getElementById("checkpointDistance"),he=document.getElementById("iconEngine"),Ee=document.getElementById("iconLights"),ke=document.getElementById("iconLock"),w=document.getElementById("iconSeatbelt"),Ge=document.getElementById("iconSignal"),Te=document.getElementById("toastContainer"),D=document.getElementById("modalOverlay")}var R=["N","NE","E","SE","S","SW","W","NW"],ze={N:0,NNE:22.5,NE:45,ENE:67.5,E:90,ESE:112.5,SE:135,SSE:157.5,S:180,SSW:202.5,SW:225,WSW:247.5,W:270,WNW:292.5,NW:315,NNW:337.5},Q=null,Z=null;function Ce(e){Z=e,Q===null&&(Q=requestAnimationFrame(()=>{if(Q=null,Z===null)return;let n=(Z%360+360)%360;ve&&(ve.innerText=`${Math.round(n)}\xB0`);let t=Math.round(n/45)%8,a=(t+7)%8,i=(t+1)%8;ue&&(ue.innerText=R[t]),pe&&(pe.innerText=R[a]),me&&(me.innerText=R[i]),ge&&(ge.innerText=R[t])}))}function We(e,n,t){let a=Math.max(0,Math.min(100,e)),i=Math.max(0,Math.min(100,n)),l=Math.max(0,Math.min(100,t));le&&(le.style.height=`${a}%`),se&&(se.style.height=`${i}%`),oe&&(oe.style.height=`${l}%`),ce&&ce.classList.toggle("is-warning",a<25),re&&re.classList.toggle("is-warning",i<25),de&&de.classList.toggle("is-warning",l<25)}function Ve(e,n,t,a){let i=typeof a=="number"?a:ze[e]??0;Ce(i),fe&&(fe.innerText=(n||"San Andreas").replace(/_/g," ")),be&&(be.innerText="LOS SANTOS");let l=t?new Date(t*1e3):new Date,s=String(l.getHours()).padStart(2,"0"),c=String(l.getMinutes()).padStart(2,"0");P&&(P.innerText=`${s}:${c}`)}function Ue(e,n,t){x&&(e===1||e===!0?(x.classList.contains("active")||x.classList.add("active"),ye&&(ye.innerText=(n||"Waypoint").replace(/_/g," ")),z&&(t>=1e3?z.innerText=`${(t/1e3).toFixed(1)} KM`:z.innerText=`${Math.round(t)} M`)):x.classList.contains("active")&&x.classList.remove("active"))}var ee=null,ne=null;function Ke(e,n,t,a,i,l,s,c,p,d){ne={visible:e,speed:n,health:t,fuel:a,vehicleName:i,gear:l,engine:s,lights:c,doors:p,seatbelt:d},ee===null&&(ee=requestAnimationFrame(()=>{if(ee=null,!ne||!T||!te)return;let{visible:v,speed:g,health:u,fuel:L,vehicleName:o,gear:r,engine:S,lights:E,doors:M,seatbelt:Re}=ne;if(v===1||v===!0){T.classList.contains("active")||T.classList.add("active");let y=Math.min(250,Math.max(0,g));if(te.innerText=Math.round(y).toString(),ie&&(ie.innerText=o&&o.length>0?o.toUpperCase():"VEHICLE"),h&&(r&&r.length>0?(h.innerText=r,h.style.color=r==="R"?"#FF635C":"#00D0FF",h.style.borderColor=r==="R"?"#FF635C":"rgba(0, 208, 255, 0.5)"):(h.innerText=y===0?"P":y<30?"1":y<65?"2":y<105?"3":"4",h.style.color="#00D0FF",h.style.borderColor="rgba(0, 208, 255, 0.5)")),he&&he.classList.toggle("active",S===1),Ee&&Ee.classList.toggle("active",E===1),ke&&ke.classList.toggle("active",M===1),w&&(Re===1?(w.classList.remove("unbuckled"),w.classList.add("buckled")):(w.classList.remove("buckled"),w.classList.add("unbuckled"))),ae){let F=0;if(y>0){let J=[30,65,105,150,220],Y=0;for(let O=0;O<J.length;O++){let X=J[O];if(y<=X||O===J.length-1){F=25+(y-Y)/(X-Y)*75;break}Y=X}}F=Math.max(0,Math.min(100,F)),ae.style.width=`${F}%`}let j=Math.max(0,Math.min(100,L));$&&($.style.width=`${j}%`,$.style.background=j<20?"#FF635C":j<45?"#FFD373":"#00FFA6");let q=Math.max(0,Math.min(100,u/1e3*100));G&&(G.style.width=`${q}%`,G.style.background=q<35?"#FF635C":q<60?"#FFD373":"#00D0FF")}else T.classList.contains("active")&&T.classList.remove("active")}))}function m(e,n,t="info",a=4e3){if(!Te)return;let i=document.createElement("div");i.className=`toast ${t}`;let l=new Date,s=`${String(l.getHours()).padStart(2,"0")}:${String(l.getMinutes()).padStart(2,"0")}`;i.innerHTML=`
+    <div class="toast-header">
+      <span class="toast-title">${e}</span>
+      <span class="toast-time">${s}</span>
+    </div>
+    <div class="toast-body">${n}</div>
+  `,Te.appendChild(i),setTimeout(()=>{i.classList.add("fade-out"),setTimeout(()=>{i.remove()},300)},a)}function b(e){document.querySelectorAll(".modal-card").forEach(t=>{t.style.display="none"});let n=document.getElementById(e);n&&D&&(n.style.display="block",D.classList.add("active"),A=e)}function k(){D&&D.classList.remove("active"),document.querySelectorAll(".modal-card").forEach(e=>{e.style.display="none"}),A&&window.cef&&window.cef.emit("ui:close",A),A=null}var U=null,W=!1;function Be(e,n,t,a){let i=document.getElementById("dialogTitle"),l=document.getElementById("dialogSubtitle"),s=document.getElementById("dialogInputRow"),c=document.getElementById("dialogInputField"),p=document.getElementById("dialogConfirmBtn");i&&(i.innerText=e),l&&(l.innerText=n),p&&(p.innerText=a?.confirmText||"OK"),W=!!(a&&a.input),s&&(s.style.display=W?"flex":"none"),c&&(c.value="",c.placeholder=a?.placeholder||""),U=t,b("modalInputDialog"),W&&c&&setTimeout(()=>c.focus(),60)}function _e(){let e=document.getElementById("dialogInputField"),n=W?e?.value||"":"1",t=U;U=null,k(),t&&t(n)}function je(){U=null,k()}function qe(e){let n=document.getElementById("statsContent");n&&(n.innerHTML=`
+    <div class="stats-grid">
+      <div class="info-tile">
+        <span class="tile-label">Nama Karakter</span>
+        <span class="tile-value">${e.name} (${e.id})</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Akun UCP</span>
+        <span class="tile-value blue">${e.ucp}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Uang Tunai (Cash)</span>
+        <span class="tile-value green">$${e.cash}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Saldo Bank</span>
+        <span class="tile-value green">$${e.bank}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Pekerjaan Utama</span>
+        <span class="tile-value">${e.job1||"Pengangguran"}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Pekerjaan Sampingan</span>
+        <span class="tile-value">${e.job2||"Tidak Ada"}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Fraksi & Jabatan</span>
+        <span class="tile-value">${e.faction||"Warga Sipil"} (${e.rank||"-"})</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Nomor Telepon</span>
+        <span class="tile-value">${e.phone?e.phone:"Tidak Punya"}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Status VIP</span>
+        <span class="tile-value gold">${e.vip}</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Waktu Bermain</span>
+        <span class="tile-value">${e.hours}j ${e.minutes}m ${e.seconds}d</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Slot Kendaraan / Rumah</span>
+        <span class="tile-value">${e.vehSlot} Kendaraan &bull; ${e.houseSlot} Properti</span>
+      </div>
+      <div class="info-tile">
+        <span class="tile-label">Status Masker</span>
+        <span class="tile-value">${e.maskId>0?`Mask_#${e.maskId}`:"Tidak Aktif"}</span>
+      </div>
+    </div>
+  `,b("modalStats"))}function Me(e){let n=(e||"").toLowerCase().trim(),t={cash:"cash.png",money:"cash.png",bread:"bread.png",chl\u00E9b:"bread.png",chleb:"bread.png",snack:"chocolate.png",chocolate:"chocolate.png",water:"water.png",voda:"water.png","purified water":"purifiedwater.png",cocacola:"cocacola.png","coca-cola":"cocacola.png","coca cola":"cocacola.png",cola:"cocacola.png",kola:"cocacola.png",bandage:"bandage.png",medkit:"medikit.png",medikit:"medikit.png",firstaid:"medikit.png",cellphone:"phone.png",phone:"phone.png",gps:"phone.png","portable radio":"phone.png",radio:"phone.png",boombox:"phone.png",mask:"headbag.png",weed:"weed.png","rolled weed":"cigar.png","rolling paper":"rarecigar.png","weed seed":"highgrademaleseed.png","plant seed":"lowgradefemaleseed.png","tree seed":"highgradefemaleseed.png","flower seed":"lowgradefemaleseed.png",fertilizer:"wateringcan.png",plant:"weed.png",cigarettes:"cigarette.png",cigarette:"cigarette.png",cigar:"cigar.png","fish rod":"fishingrod.png","fishing rod":"fishingrod.png",fish:"fish.png",bait:"bait.png","fuel can":"WEAPON_PETROLCAN.png","gas can":"WEAPON_PETROLCAN.png","petrol can":"WEAPON_PETROLCAN.png",axe:"WEAPON_HATCHET.png",hatchet:"WEAPON_HATCHET.png",component:"drill.png",drill:"drill.png",lockpick:"lockpick.png","nitrous oxide":"fixkit.png","octane saver fluid":"fixkit_large.png","reinforced engine block":"fixkit_large.png","reinforced body panels":"fixkit.png",acetaminophen:"aspirin.png",promethazine:"aspirin.png","9mm luger":"clip.png","12 gauge":"clip.png",".44 magnum":"clip.png","7.62mm caliber":"clip.png",ammo:"clip.png",bullet:"clip.png","bulletproof vest":"bulletproof_vest.png",vest:"bulletproof_vest.png",armor:"bulletproof_vest.png",beer:"beer.png",vodka:"vodka.png",whisky:"whisky.png",wine:"wine.png",knife:"WEAPON_KNIFE.png",bat:"WEAPON_BAT.png","baseball bat":"WEAPON_BAT.png",katana:"WEAPON_KNIFE.png",pistol:"WEAPON_PISTOL.png","colt 45":"WEAPON_PISTOL.png","silenced 9mm":"WEAPON_PISTOL.png","desert eagle":"WEAPON_PISTOL50.png",shotgun:"WEAPON_PUMPSHOTGUN.png","sawnoff shotgun":"WEAPON_SAWNOFFSHOTGUN.png","combat shotgun":"WEAPON_ASSAULTSHOTGUN.png","micro uzi":"WEAPON_MICROSMG.png",uzi:"WEAPON_MICROSMG.png",mp5:"WEAPON_SMG.png","tec-9":"WEAPON_MACHINEPISTOL.png","ak-47":"WEAPON_ASSAULTRIFLE.png",m4:"WEAPON_CARBINERIFLE.png","country rifle":"WEAPON_SNIPERRIFLE.png",rifle:"WEAPON_SNIPERRIFLE.png","sniper rifle":"WEAPON_SNIPERRIFLE.png"};if(t[n])return`items/${t[n]}`;for(let[i,l]of Object.entries(t))if(n.includes(i))return`items/${l}`;return`items/${n.replace(/[^a-z0-9]/g,"_").replace(/_+/g,"_")}.png`}function Je(e,n,t,a,i){let l=document.getElementById("invGrid"),s=document.getElementById("groundGrid"),c=document.getElementById("invCountHeader"),p=document.getElementById("groundCountHeader"),d=document.getElementById("groundEmptyNotice"),v=document.getElementById("btnInvTake");if(!l)return;l.innerHTML="",c&&(c.innerText=`${n} / ${t}`);let g=[];try{g=JSON.parse(e||"[]")}catch(o){console.error("Error parsing inventory items:",o)}g.length===0?l.innerHTML='<div style="grid-column: 1 / -1; text-align: center; color: rgba(240, 247, 250,0.35); padding: 40px 10px; font-size: 12px; font-weight: 700;">INVENTORY KOSONG</div>':g.forEach(o=>{let r=document.createElement("div");r.className=`esx-item-card ${f===o.slot?"selected":""}`;let S=Me(o.name);r.innerHTML=`
+        <span class="esx-item-count">${o.amount}</span>
+        <div class="esx-item-icon-wrap">
+          <img class="esx-item-icon" src="${S}" alt="${o.name}" onerror="this.onerror=null; this.src='items/bagel.png';">
+        </div>
+        <div class="esx-item-name" title="${o.name}">${o.name}</div>
+      `,r.onclick=()=>{document.querySelectorAll(".esx-item-card").forEach(M=>M.classList.remove("selected")),r.classList.add("selected"),f=o.slot,H=-1;let E=document.getElementById("invActionCount");E&&(E.value="1"),v&&(v.style.display="none")},l.appendChild(r)});let u=[];try{u=JSON.parse(a||"[]")}catch(o){console.error("Error parsing ground dropped items:",o)}let L=typeof i=="number"?i:u.length;p&&(p.innerText=`${L} ITEM`),s&&(s.innerHTML="",u.length>0?(d&&(d.style.display="none"),s.style.display="grid",u.forEach(o=>{let r=document.createElement("div");r.className=`esx-item-card ground-card ${H===o.dropId?"selected":""}`;let S=Me(o.name);r.innerHTML=`
+          <span class="esx-item-count">${o.amount}</span>
+          <div class="esx-item-icon-wrap">
+            <img class="esx-item-icon" src="${S}" alt="${o.name}" onerror="this.onerror=null; this.src='items/bagel.png';">
+          </div>
+          <div class="esx-item-name" title="${o.name}">${o.name}</div>
+        `,r.onclick=()=>{document.querySelectorAll(".esx-item-card").forEach(M=>M.classList.remove("selected")),r.classList.add("selected"),H=o.dropId,f=-1;let E=document.getElementById("invActionCount");E&&(E.value=String(o.amount)),v&&(v.style.display="block")},r.ondblclick=()=>{window.cef&&window.cef.emit("inv:pickup",o.dropId)},s.appendChild(r)})):(s.style.display="none",d&&(d.style.display="flex"),v&&(v.style.display="none"))),b("modalInv")}function Ye(){if(f<0)return m("Inventory","Pilih item di inventory kamu terlebih dahulu!","warning");window.cef&&window.cef.emit("inv:use",f)}function Xe(){if(f<0)return m("Inventory","Pilih item di inventory kamu terlebih dahulu!","warning");let e=document.getElementById("invActionCount"),n=Math.max(1,parseInt(e?.value||"1",10));window.cef&&window.cef.emit("inv:drop",f,n)}function Qe(){if(f<0)return m("Inventory","Pilih item di inventory kamu terlebih dahulu!","warning");let e=document.getElementById("invActionCount"),n=Math.max(1,parseInt(e?.value||"1",10));Be("Berikan Item","Masukkan ID pemain penerima:",t=>{let a=parseInt(t,10);!isNaN(a)&&a>=0&&window.cef&&window.cef.emit("inv:give",f,a,n)},{input:!0,placeholder:"ID Pemain",confirmText:"BERIKAN"})}function Ze(){if(H<0)return m("Inventory","Pilih item di tanah terlebih dahulu!","warning");window.cef&&window.cef.emit("inv:pickup",H)}var C=[];function en(e){if(!e||e<=0)return"Baru saja";let n=Math.floor(Date.now()/1e3),t=Math.max(0,n-e);if(t<60)return"Baru saja";let a=Math.floor(t/60);if(a<60)return`${a} min lalu`;let i=Math.floor(a/60);return i<24?`${i} jam lalu`:`${Math.floor(i/24)} hari lalu`}var we=0,Le=0,xe=0,Ie="Citizen",B=0;function nn(e,n,t,a,i,l){we=e,Le=n,xe=t,a&&(Ie=a.replace("_"," ")),i!==void 0&&(B=i);let s=document.getElementById("atmCardBalance"),c=document.getElementById("atmCashInfo"),p=document.getElementById("atmCardHolder"),d=document.getElementById("atmCardNumSuffix"),v=document.getElementById("atmPaycheckVal");if(s&&(s.innerText=`$${e.toLocaleString()}`),c&&(c.innerText=`$${n.toLocaleString()}`),p&&(p.innerText=Ie),d&&(d.innerText=t>0?String(t).padStart(5,"0"):"BELUM ADA REK"),v&&(v.innerText=`$${B.toLocaleString()}`),l)try{C=JSON.parse(l).map((u,L)=>({id:L+1,amount:u.amount,isAdd:u.type==="deposit"||u.type==="transfer_in"||u.type==="paycheck",desc:u.desc,time:en(u.time)}))}catch(g){console.error("Failed to parse history JSON:",g)}Fe(),N("home"),b("modalAtm")}function N(e){document.querySelectorAll(".fleeca-nav-btn").forEach(i=>i.classList.remove("active")),document.getElementById(`fleecaNav${e.charAt(0).toUpperCase()+e.slice(1)}`)?.classList.add("active");let n=document.getElementById("fleecaTabHome"),t=document.getElementById("fleecaTabTransfer"),a=document.getElementById("fleecaTabPaycheck");n&&(n.style.display=e==="home"?"flex":"none"),t&&(t.style.display=e==="transfer"?"flex":"none"),a&&(a.style.display=e==="paycheck"?"flex":"none")}function tn(e){let n=document.getElementById("atmActionAmount");if(n){let t=parseInt(n.value||"0",10);n.value=String(t+e)}}function an(){let e=document.getElementById("atmActionAmount");e&&(e.value=String(Le))}function Pe(){let e=document.getElementById("atmActionAmount"),n=parseInt(e?.value||"0",10);if(isNaN(n)||n<=0)return m("FLEECA","Masukkan jumlah setoran yang valid!","warning");if(n>Le)return m("FLEECA","Uang tunai di dompet tidak mencukupi!","warning");window.cef&&(window.cef.emit("atm:deposit",n),K(n,!0,"Deposit"),e&&(e.value=""))}function De(){let e=document.getElementById("atmActionAmount"),n=parseInt(e?.value||"0",10);if(isNaN(n)||n<=0)return m("FLEECA","Masukkan jumlah penarikan yang valid!","warning");if(n>we)return m("FLEECA","Saldo rekening bank kamu tidak mencukupi!","warning");window.cef&&(window.cef.emit("atm:withdraw",n),K(n,!1,"Withdraw"),e&&(e.value=""))}function ln(){if(xe<=0)return m("FLEECA","Kamu belum memiliki nomor rekening! Silakan buat rekening di Bank Point dengan /newrek.","warning");let e=document.getElementById("atmTransferAccount"),n=document.getElementById("atmTransferAmount"),t=parseInt(e?.value||"0",10),a=parseInt(n?.value||"0",10);if(isNaN(t)||t<=0)return m("FLEECA","Masukkan nomor rekening tujuan yang valid (5 digit)!","warning");if(t===xe)return m("FLEECA","Tidak bisa mentransfer ke nomor rekening sendiri!","warning");if(isNaN(a)||a<=0)return m("FLEECA","Masukkan nominal transfer yang valid!","warning");if(a>we)return m("FLEECA","Saldo bank kamu tidak mencukupi untuk transfer!","warning");window.cef&&(window.cef.emit("atm:transfer",t,a),K(a,!1,`Transfer ke #${t}`),n&&(n.value=""),e&&(e.value=""),N("home"))}function Ne(){if(B<=0)return m("FLEECA","Kamu tidak memiliki gaji yang dapat dicairkan saat ini.","info");if(window.cef){window.cef.emit("atm:paycheck"),K(B,!0,"Paycheck Claimed"),B=0;let e=document.getElementById("atmPaycheckVal");e&&(e.innerText="$0"),N("home")}}function Fe(){let e=document.getElementById("atmHistoryList");e&&(e.innerHTML="",C.forEach(n=>{let t=document.createElement("div");t.className="history-item",t.innerHTML=`
+      <div class="hist-left">
+        <span class="hist-amount ${n.isAdd?"positive":"negative"}">${n.isAdd?"+":"-"} $${n.amount.toLocaleString()}</span>
+        <span class="hist-desc">${n.desc}</span>
+      </div>
+      <span class="hist-time">${n.time}</span>
+    `,e.appendChild(t)}))}function K(e,n,t){C.unshift({id:Date.now(),amount:e,isAdd:n,desc:t,time:"Baru saja"}),C.length>15&&C.pop(),Fe()}function sn(e){if(e){let n=document.getElementById("atmActionAmount");n&&(n.value=String(e))}De()}function on(e){if(e){let n=document.getElementById("atmActionAmount");n&&(n.value=String(e))}Pe()}function cn(){N("transfer")}function rn(){Ne()}function dn(e,n,t,a,i,l,s){let c=document.getElementById("vmenuTitle"),p=document.getElementById("vmenuPlate");c&&(c.innerText=e),p&&(p.innerText=n);let d=(v,g)=>{let u=document.getElementById(v);u&&(u.className=`status-dot ${g?"active":""}`)};d("vEngineDot",t===1),d("vLightsDot",a===1),d("vLockDot",i===1),d("vTrunkDot",l===1),d("vHoodDot",s===1),b("modalVMenu")}function un(e){window.cef&&(e==="engine"?window.cef.emit("v:engine"):e==="lock"?window.cef.emit("v:lock"):e==="lights"?window.cef.emit("v:lights"):e==="trunk"?window.cef.emit("v:trunk"):e==="hood"&&window.cef.emit("v:hood")),k()}function pn(e,n,t){He=t||.5;let a=document.getElementById("gasCurFuel"),i=document.getElementById("gasMaxFuel"),l=document.getElementById("gasSlider");a&&(a.innerText=`${Math.round(e)} L`),i&&(i.innerText=`${Math.round(n)} L`);let s=Math.max(0,n-e);l&&(l.max=Math.round(s).toString(),l.value=Math.min(20,Math.round(s)).toString(),_()),b("modalGas")}function _(){let e=document.getElementById("gasSlider"),n=document.getElementById("gasLitersVal"),t=document.getElementById("gasTotalCost"),a=parseInt(e?.value||"0",10);n&&(n.innerText=`${a} Liter`),t&&(t.innerText=`$${(a*He).toFixed(2)}`)}function mn(e){let n=document.getElementById("gasSlider");n&&(n.value=Math.min(parseInt(n.max||"100",10),e).toString(),_())}function vn(){let e=document.getElementById("gasSlider");e&&(e.value=e.max,_())}function gn(){let e=document.getElementById("gasSlider"),n=parseInt(e?.value||"0",10);n>0&&window.cef&&window.cef.emit("gas:refuel",n),k()}var V=[{category:"Publik",name:"San Fierro City Hall",x:-2757.4263,y:375.582,z:4.3348},{category:"Publik",name:"San Fierro Police Departement",x:-1605.8027,y:711.7601,z:13.8672},{category:"Publik",name:"San Fierro General Hospital",x:-2665.2368,y:630.4848,z:14.4531},{category:"Publik",name:"San Fierro News",x:-1901.6932,y:486.6408,z:35.1719},{category:"Publik",name:"San Fierro Bank",x:-2242.8726,y:311.4897,z:35.3203},{category:"Publik",name:"Insurance Center",x:-1939.5687,y:562.9002,z:35.1899},{category:"Publik",name:"Component Warehouse",x:-1862.1053,y:-145.7666,z:11.8984},{category:"Publik",name:"Departement of Motorvehicle",x:-2026.558,y:-98.4208,z:35.1641},{category:"Publik",name:"Fishing Factory & Pier",x:-2077.7153,y:1358.2211,z:7.1007},{category:"Publik",name:"Mechanic Center",x:-1826.0948,y:2.6957,z:15.1172},{category:"Publik",name:"Timber Warehouse",x:-1993.0046,y:-2388.0107,z:30.625},{category:"Publik",name:"Vehicle State Sales",x:-2095.2434,y:95.1803,z:35.3203},{category:"Publik",name:"Boat Mechanic",x:-2851.0676,y:1291.8901,z:2.0299},{category:"Publik",name:"Tax Office",x:-2060.2759,y:459.7005,z:35.1719},{category:"Publik",name:"San Fierro Federal Prison (SACF)",x:-2456.15,y:503.848,z:30.0781},{category:"Publik",name:"San Fierro Church (Hashbury)",x:-1989.9,y:1117.87,z:54.4688},{category:"Publik",name:"Angel Pine Police Station",x:-2161.37,y:-2384.76,z:30.8972},{category:"Publik",name:"Angel Pine Motel",x:-2192.99,y:-2255.03,z:30.696},{category:"Publik",name:"Cranberry Train Station",x:-1972.18,y:138.35,z:27.68},{category:"Publik",name:"Easter Bay Airport (SF Airport)",x:-1423.63,y:-287.18,z:14.14},{category:"Publik",name:"Ocean Flats / Garcia Complex",x:-2675.27,y:-190.969,z:4.32},{category:"Publik",name:"Jizzy Bar & Pleasure Domes",x:-2624.42,y:1412.17,z:7.0938},{category:"Publik",name:"De La Valle Casino",x:-2492.46,y:2363.2,z:10.2773},{category:"Pekerjaan",name:"Job Center",x:-2421.1575,y:-717.1309,z:133.3063},{category:"Pekerjaan",name:"Bus Driver (Missionary Hill)",x:-2524.1375,y:-619.1014,z:132.5625},{category:"Pekerjaan",name:"Street Sweeper",x:-2088.7322,y:-95.8982,z:35.1662},{category:"Pekerjaan",name:"Trashmaster",x:-1904.1689,y:-1704.9474,z:21.75},{category:"Pekerjaan",name:"Bus Driver (Juniper Hollow)",x:-2499.2954,y:1209.2731,z:37.4283},{category:"Pekerjaan",name:"Mower",x:-2297.6365,y:170.0636,z:35.3125},{category:"Pekerjaan",name:"Delivery Driver (Pangkalan)",x:-1702.7526,y:33.5595,z:3.5547},{category:"Pekerjaan",name:"Delivery Driver (Crate Loading)",x:-1699.6128,y:6.0661,z:3.5547},{category:"Pekerjaan",name:"Delivery Driver (Unloading Point)",x:-2750.7354,y:203.6906,z:7.0267},{category:"Pekerjaan",name:"Miner",x:-1298.1036,y:2501.2539,z:86.9291},{category:"Pekerjaan",name:"Box Courier",x:-1941.6987,y:-1040.1519,z:32.1719},{category:"Pekerjaan",name:"Farmer Store",x:-1425.6475,y:-1529.3163,z:102.2322},{category:"Pekerjaan",name:"Farmer Seeds",x:-2144.2056,y:-2424.8894,z:30.625},{category:"Pekerjaan",name:"Lumberjack",x:-1993.0046,y:-2388.0107,z:30.625},{category:"Pekerjaan",name:"White Taxi HQ",x:-2463.47,y:131.774,z:35.1719},{category:"Pekerjaan",name:"Trucker (Component Loading)",x:-1862.1053,y:-145.7666,z:11.8984}],I=[...V];function fn(e){if(e&&e.trim().length>2)try{let n=JSON.parse(e);Array.isArray(n)&&n.length>0?I=n:I=[...V]}catch{I=[...V]}else I=[...V];Oe(""),b("modalGps")}function Oe(e){let n=document.getElementById("gpsListContainer");if(!n)return;n.innerHTML="";let t=(e||"").toLowerCase(),a=I.filter(i=>i.name.toLowerCase().includes(t)||i.category.toLowerCase().includes(t));if(a.length===0){n.innerHTML='<div style="color: rgba(240, 247, 250, 0.32); text-align: center; padding: 24px;">Tidak ada lokasi yang cocok.</div>';return}a.forEach(i=>{let l=document.createElement("div");l.className="action-card",l.style.marginBottom="8px",l.style.cursor="pointer",l.innerHTML=`
+      <div class="action-info" style="pointer-events: none;">
+        <span class="action-name">${i.name}</span>
+        <span class="action-status">${i.category}</span>
+      </div>
+      <button class="btn-blue" style="padding: 6px 14px; font-size: 11px; pointer-events: none;">RUTE</button>
+    `,l.onclick=()=>{window.cef&&window.cef.emit("gps:route",i.name,i.x,i.y,i.z),k()},n.appendChild(l)})}function bn(e){let n=document.getElementById("dealerVehContainer");if(n){n.innerHTML="";try{JSON.parse(e||"[]").forEach(a=>{let i=document.createElement("div");i.className="action-card",i.style.marginBottom="8px",i.innerHTML=`
+        <div class="action-info">
+          <span class="action-name">${a.name} (Model: ${a.model})</span>
+          <span class="action-status on">$${a.price.toLocaleString()} &bull; Stok: ${a.stock}</span>
+        </div>
+        <button class="btn-green" style="padding: 8px 16px;">BELI</button>
+      `,i.onclick=()=>{Be("Konfirmasi Pembelian",`Beli "${a.name}" seharga $${a.price.toLocaleString()}?`,()=>{window.cef&&window.cef.emit("dealer:buy",a.index)},{confirmText:"BELI"})},n.appendChild(i)})}catch(t){console.error("Error parsing dealer vehicles:",t)}b("modalDealer")}}function Ae(){b("modalHelp")}typeof window<"u"&&(window.closeModal=k,window.invUse=Ye,window.invDrop=Xe,window.invGive=Qe,window.invTake=Ze,window.atmWithdraw=sn,window.atmDeposit=on,window.atmTransfer=cn,window.atmPaycheck=rn,window.fleecaSwitchTab=N,window.fleecaDeposit=Pe,window.fleecaWithdraw=De,window.fleecaSubmitTransfer=ln,window.fleecaClaimPaycheck=Ne,window.fleecaSetAmount=tn,window.fleecaSetAllCash=an,window.vAction=un,window.updateGasCost=_,window.gasPreset=mn,window.gasFullTank=vn,window.submitRefuel=gn,window.filterGpsList=Oe,window.renderHelp=Ae,window.dialogConfirm=_e,window.dialogCancel=je,document.addEventListener("keydown",e=>{e.key==="Escape"&&A&&k()}),window.cef&&(window.cef.on("hud:hbe",(e,n,t)=>{We(e,n,t)}),window.cef.on("hud:nav",(e,n,t,a)=>{Ve(e,n,t,a)}),window.cef.on("hud:compass",(e,n)=>{Ce(e)}),window.cef.on("hud:checkpoint",(e,n,t)=>{Ue(e,n,t)}),window.cef.on("hud:speedo",(e,n,t,a,i,l,s,c,p,d)=>{Ke(e,n,t,a,i,l,s,c,p,d)}),window.cef.on("hud:notify",(e,n,t,a)=>{m(e,n,t,a)}),window.cef.on("hud:stats",e=>{try{let n=JSON.parse(e);qe(n)}catch(n){console.error("Failed to parse stats JSON:",n)}}),window.cef.on("hud:inv",(e,n,t,a,i)=>{Je(e,n,t,a,i)}),window.cef.on("hud:atm",(e,n,t,a,i,l)=>{nn(e,n,t,a,i,l)}),window.cef.on("hud:vmenu",(e,n,t,a,i,l,s)=>{dn(e,n,t,a,i,l,s)}),window.cef.on("hud:gas",(e,n,t)=>{pn(e,n,t)}),window.cef.on("hud:gps",e=>{fn(e)}),window.cef.on("hud:dealer",e=>{bn(e)}),window.cef.on("hud:help",e=>{Ae()})));typeof document<"u"&&(document.readyState==="loading"?document.addEventListener("DOMContentLoaded",()=>Se()):Se());setInterval(()=>{let e=new Date,n=String(e.getHours()).padStart(2,"0"),t=String(e.getMinutes()).padStart(2,"0"),a=String(e.getSeconds()).padStart(2,"0");P&&(P.innerText=`${n}:${t}:${a}`)},1e3);})();
+
+    </script>
+</body>
+</html>

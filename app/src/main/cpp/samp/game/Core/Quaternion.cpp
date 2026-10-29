@@ -77,7 +77,7 @@ void CQuaternion::Slerp(CQuaternion *pQ1, CQuaternion *pQ2, float t)
 
 	if((1.0 - cosom) > SLERP_DELTA)
 	{
-		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (slerp)
+		// стандартный случай (slerp)
 		omega = acos(cosom);
 		sinom = sin(omega);
 		scale0 = sin((1.0 - t) * omega) / sinom;
@@ -85,7 +85,7 @@ void CQuaternion::Slerp(CQuaternion *pQ1, CQuaternion *pQ2, float t)
 	}
 	else
 	{
-		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+		// если маленький угол - линейная интерполяция
 		scale0 = 1.0 - t;
 		scale1 = t;
 	}

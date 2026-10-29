@@ -4,7 +4,7 @@
 
 extern CGame *pGame;
 
-// 0.3.7
+
 CObjectPool::CObjectPool()
 {
 	for (OBJECTID ObjectID = 0; ObjectID < MAX_OBJECTS; ObjectID++)
@@ -15,7 +15,7 @@ CObjectPool::CObjectPool()
 
 	m_iObjectCount = 0;
 }
-// 0.3.7
+
 CObjectPool::~CObjectPool()
 {
 	for (OBJECTID ObjectID = 0; ObjectID < MAX_OBJECTS; ObjectID++)
@@ -58,10 +58,10 @@ void CObjectPool::Process()
 	static uint32_t s_dwLastTick = 0;
 
 	if (s_dwLastTick == 0) {
-		s_dwLastTick = GetTickCount();
+		s_dwLastTick = CTimer::m_snTimeInMillisecondsNonClipped;
 	}
 
-	uint32_t dwThisTick = GetTickCount();
+	uint32_t dwThisTick = CTimer::m_snTimeInMillisecondsNonClipped;
 	float fElapsedTime = (dwThisTick - s_dwLastTick) / 1000.0f;
 
 	for (OBJECTID i = 0; i < MAX_OBJECTS; i++)

@@ -12,15 +12,25 @@ CSettings::CSettings()
 	FLog("Loading settings..");	
 
 	char buff[0x7F];
-	sprintf(buff, "%sSAMP/settings.ini", g_pszStorage);
+	snprintf(buff, sizeof(buff), "%sSAMP/settings.ini", g_pszStorage ? g_pszStorage : "");
 
 	INIReader reader(buff);
 
 	if(reader.ParseError() < 0)
 	{
-		FLog("Error: can't load %s", buff);
-		std::terminate();
-		return;
+		CSimpleIniA ini;
+		ini.SetUnicode(false);
+		ini.SetValue("client", "name", buff);
+		ini.SetValue("client", "host", "127.0.0.1");
+		ini.SetValue("client", "port", "7777");
+		ini.SetValue("client", "password", "");
+		ini.SetValue("client", "version", "0.3.DL-R1");
+		ini.SetValue("gui", "androidkeyboard", "false");
+		ini.SetValue("gui", "VoiceChatEnable", "true");
+		ini.SetValue("gui", "fps", "0");
+		ini.SetValue("gui", "ChatMaxMessages", "6");
+		ini.SetValue("gui", "FPSLimit", "120");
+		ini.SaveFile(buff);
 	}
 
 	// client
@@ -28,11 +38,11 @@ CSettings::CSettings()
 	sprintf(buff, "__android_%d%d", rand() % 1000, rand() % 1000);
 	length = reader.Get("client", "name", buff).copy(m_Settings.szNickName, 24);
 	m_Settings.szNickName[length] = '\0';
-	length = reader.Get("client", "host", "163.52.135.25").copy(m_Settings.szHost, MAX_SETTINGS_STRING);
+	length = reader.Get("client", "host", "127.0.0.1").copy(m_Settings.szHost, MAX_SETTINGS_STRING);
 	m_Settings.szHost[length] = '\0';
 	length = reader.Get("client", "password", "").copy(m_Settings.szPassword, MAX_SETTINGS_STRING);
 	m_Settings.szPassword[length] = '\0';
-    length = reader.Get("client", "version", "0.3.7").copy(m_Settings.szVersion, MAX_SETTINGS_STRING);
+    length = reader.Get("client", "version", "0.3.DL-R1").copy(m_Settings.szVersion, MAX_SETTINGS_STRING);
     m_Settings.szVersion[length] = '\0';
 	m_Settings.iPort = reader.GetInteger("client", "port", 7777);
     m_Settings.bAutoAim = reader.GetBoolean("client", "autoaim", false);
@@ -42,7 +52,10 @@ CSettings::CSettings()
 	m_Settings.bOnline = reader.GetBoolean("debug", "online", true);
 
 	// gui
-	length = reader.Get("gui", "Font", "arial.ttf").copy(m_Settings.szFont, MAX_SETTINGS_STRING);
+	// szFont is a 40-byte buffer; MAX_SETTINGS_STRING is 0x7F (127). Copying at
+	// that size overflows into the next struct fields on the heap. Copy at most
+	// sizeof-1 and NUL-terminate inside the buffer.
+	length = reader.Get("gui", "Font", "arial.ttf").copy(m_Settings.szFont, sizeof(m_Settings.szFont) - 1);
 	m_Settings.szFont[length] = '\0';
 	m_Settings.fFontSize = reader.GetReal("gui", "FontSize", 30.0f);
 	m_Settings.iFontOutline = reader.GetInteger("gui", "FontOutline", 2);
@@ -81,12 +94,18 @@ CSettings::CSettings()
 	m_Settings.fVoiceChatSize = reader.GetReal("gui", "VoiceChatSize", 30.0f);
 	m_Settings.fVoiceChatPosX = reader.GetReal("gui", "VoiceChatPosX", 1520.0f);
 	m_Settings.fVoiceChatPosY = reader.GetReal("gui", "VoiceChatPosY", 480.0f);
+	m_Settings.fDefenseButtonPosX = reader.GetReal("gui", "DefenseButtonPosX", -1.0f);
+	m_Settings.fDefenseButtonPosY = reader.GetReal("gui", "DefenseButtonPosY", -1.0f);
+	m_Settings.fDefenseButtonScale = reader.GetReal("gui", "DefenseButtonScale", 1.0f);
+	m_Settings.fDefenseButtonPosX = reader.GetReal("gui", "DefenseButtonPosX", -1.0f);
+	m_Settings.fDefenseButtonPosY = reader.GetReal("gui", "DefenseButtonPosY", -1.0f);
+	m_Settings.fDefenseButtonScale = reader.GetReal("gui", "DefenseButtonScale", 1.0f);
 
 	m_Settings.iAndroidKeyboard = reader.GetBoolean("gui", "androidkeyboard", false);
 	m_Settings.iFirstPerson = reader.GetBoolean("gui", "firstperson", true);
 	m_Settings.iCutout = reader.GetBoolean("gui", "cutout", false);
 	m_Settings.iFPSCounter = reader.GetBoolean("gui", "fps", false);
-	m_Settings.iFPSCount = reader.GetInteger("gui", "FPSLimit", 60);
+	m_Settings.iFPSCount = reader.GetInteger("gui", "FPSLimit", 120);
 	m_Settings.iHPArmourText = reader.GetBoolean("gui", "hparmourtext", false);
 	m_Settings.iOutfitGuns = reader.GetBoolean("gui", "outfitguns", false);
 	m_Settings.iPCMoney = reader.GetBoolean("gui", "pcmoney", false);
@@ -96,12 +115,40 @@ CSettings::CSettings()
 	FLog("Settings loaded.");
 }
 
-const stSettings& CSettings::GetReadOnly()
+void CSettings::SaveDefenseButtonSettings()
 {
-    return m_Settings;
+	char path[0x7F];
+	snprintf(path, sizeof(path), "%sSAMP/settings.ini", g_pszStorage);
+
+	CSimpleIniA ini;
+	ini.SetUnicode(false);
+	if (ini.LoadFile(path) < 0)
+		return;
+
+	char value[32];
+	snprintf(value, sizeof(value), "%.6f", m_Settings.fDefenseButtonPosX);
+	ini.SetValue("gui", "DefenseButtonPosX", value);
+	snprintf(value, sizeof(value), "%.6f", m_Settings.fDefenseButtonPosY);
+	ini.SetValue("gui", "DefenseButtonPosY", value);
+	snprintf(value, sizeof(value), "%.3f", m_Settings.fDefenseButtonScale);
+	ini.SetValue("gui", "DefenseButtonScale", value);
+	ini.SaveFile(path);
 }
 
-stSettings& CSettings::GetWrite()
+void CSettings::SaveVoiceButtonSettings()
 {
-    return m_Settings;
+	char path[0x7F];
+	snprintf(path, sizeof(path), "%sSAMP/settings.ini", g_pszStorage);
+
+	CSimpleIniA ini;
+	ini.SetUnicode(false);
+	if (ini.LoadFile(path) < 0)
+		return;
+
+	char value[32];
+	snprintf(value, sizeof(value), "%.1f", m_Settings.fVoiceChatPosX);
+	ini.SetValue("gui", "VoiceChatPosX", value);
+	snprintf(value, sizeof(value), "%.1f", m_Settings.fVoiceChatPosY);
+	ini.SetValue("gui", "VoiceChatPosY", value);
+	ini.SaveFile(path);
 }

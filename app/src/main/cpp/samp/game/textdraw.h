@@ -89,8 +89,6 @@ public:
 
     void LoadTexture();
 
-    uintptr_t LoadTexture(const char* texname);
-
     void SnapshotProcess();
 
 

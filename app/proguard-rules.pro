@@ -5,7 +5,7 @@
 
 -keep class com.wardrumstudios.utils.* { *; }
 
--keep class com.samp.mobile.game.* { *; }
+-keep class com.sampmobile.xyvern.game.* { *; }
 
 -dontwarn javax.servlet.**
 -dontwarn org.conscrypt.**

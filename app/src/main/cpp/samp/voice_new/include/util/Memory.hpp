@@ -24,6 +24,11 @@ namespace Memory
 {
     class ScopeExit {
     public:
+        ScopeExit() noexcept = default;
+        ScopeExit(const ScopeExit&) = delete;
+        ScopeExit(ScopeExit&&) noexcept = default;
+        ScopeExit& operator=(const ScopeExit&) = delete;
+        ScopeExit& operator=(ScopeExit&&) noexcept = default;
 
     private:
         using CallbackType = std::function<void()>;

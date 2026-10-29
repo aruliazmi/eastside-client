@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Thumb seekbar: batang kecil kuningan, bukan lingkaran neon. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#FF0037"/>
-            <corners android:radius="@dimen/_50sdp"/>
-            <size android:height="@dimen/_20sdp" android:width="@dimen/_20sdp"/>
+            <solid android:color="@color/es_brass" />
+            <corners android:radius="1dp" />
+            <size android:height="12dp" android:width="4dp" />
         </shape>
     </item>
 </selector>

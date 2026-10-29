@@ -1,8 +1,10 @@
 #include "../main.h"
 #include "../gui/gui.h"
+#include "../game/game.h"
 
 #include "Plugin.h"
 
+#include "include/util/KeyFilter.h"
 #include "include/util/Timer.h"
 
 #include "Record.h"
@@ -12,29 +14,29 @@
 #include "PluginConfig.h"
 #include "MicroIcon.h"
 #include "SpeakerList.h"
-//#include "PluginMenu.h"
 #include "GlobalStream.h"
 #include "StreamAtPoint.h"
 #include "StreamAtVehicle.h"
 #include "StreamAtPlayer.h"
 #include "StreamAtObject.h"
 
-#include "../audiostream.h"
-extern CAudioStream* pAudioStream;
-
 extern UI* pUI;
+extern CGame* pGame;
 
 bool Plugin::OnPluginLoad() noexcept
 {
-    if(!Render::Init())
+    LogVoice("[sv:info] : this voicechat officialy by cybermor for samp pc. "
+        "I just edited the source to be able work on samp mobile.\n");
+
+    if(!CVoiceRender::Init())
     {
         LogVoice("[sv:err:plugin] : failed to init render module");
         return false;
     }
 
-    Render::AddDeviceInitCallback(Plugin::OnDeviceInit);
-    Render::AddRenderCallback(Plugin::OnRender);
-    Render::AddDeviceFreeCallback(Plugin::OnDeviceFree);
+    CVoiceRender::AddDeviceInitCallback(Plugin::OnDeviceInit);
+    CVoiceRender::AddRenderCallback(Plugin::OnRender);
+    CVoiceRender::AddDeviceFreeCallback(Plugin::OnDeviceFree);
 
     return true;
 }
@@ -44,7 +46,7 @@ bool Plugin::OnSampLoad() noexcept
     if(!Samp::Init())
     {
         LogVoice("[sv:err:plugin] : failed to init samp");
-        Render::Free();
+        CVoiceRender::Free();
         return false;
     }
 
@@ -54,7 +56,7 @@ bool Plugin::OnSampLoad() noexcept
     if(!Network::Init())
     {
         LogVoice("[sv:err:plugin] : failed to init network");
-        Render::Free();
+        CVoiceRender::Free();
         Samp::Free();
         return false;
     }
@@ -67,7 +69,7 @@ bool Plugin::OnSampLoad() noexcept
     if(!Playback::Init())
     {
         LogVoice("[sv:err:plugin] : failed to init playback");
-        Render::Free();
+        CVoiceRender::Free();
         Samp::Free();
         Network::Free();
         return false;
@@ -91,7 +93,8 @@ void Plugin::OnExitGame() noexcept
     Playback::Free();
 }
 
-int MicType = 1; //1. classbutton 2. imgui
+int MicType = 1;
+
 void Plugin::MainLoop()
 {
     if(!Samp::IsLoaded()) return;
@@ -117,28 +120,14 @@ void Plugin::MainLoop()
     Playback::Tick();
     Record::Tick();
 
-    int defaultKey = 0x42;
+    int defaultKey = 66;
 
-    
-    //
-    if(MicroIcon::IsShowed())
-    {
-        if (MicType == 1)
-        {
-            if (!Plugin::muteStatus)
-            {
-                //button voice
-                VoiceButton* vbutton = pUI->voicebutton();
-                if (vbutton->recording() && Plugin::recordStatus == 0)
-                {
-                    if (pAudioStream)
-                    {
-                        pAudioStream->Stop(true);
-                    }
-                    if (PluginConfig::GetMicroEnable())
-                    {
-                        LogVoice("[sv:dbg:plugin] : activation key(%hhu) pressed", defaultKey);
-
+    if (MicroIcon::IsShowed()) {
+        if (MicType == 1) {
+            if (!Plugin::muteStatus) {
+                if (PluginConfig::GetMicroEnable()) {
+                    VoiceButton* vbutton = pUI->voicebutton();
+                    if (vbutton->recording() && Plugin::recordStatus == 0) {
                         if (!Plugin::recordBusy)
                         {
                             Plugin::recordStatus = true;
@@ -152,13 +141,7 @@ void Plugin::MainLoop()
                         if (!Network::SendControlPacket(SV::ControlPacketType::pressKey, &pressKeyPacket, sizeof(pressKeyPacket)))
                             LogVoice("[sv:err:main:HookWndProc] : failed to send PressKey packet");
                     }
-                }
-                if (!vbutton->recording() && Plugin::recordStatus == 1)
-                {
-                    if (PluginConfig::GetMicroEnable())
-                    {
-                        LogVoice("[sv:dbg:plugin] : activation key(%hhu) released", defaultKey);
-
+                    if (!vbutton->recording() && Plugin::recordStatus == 1) {
                         if (!Plugin::recordBusy)
                         {
                             Plugin::recordStatus = false;
@@ -173,13 +156,11 @@ void Plugin::MainLoop()
                     }
                 }
             }
-            else
-            {
+            else {
 
             }
         }
-        if (MicType == 2)
-        {
+        else if (MicType == 2) {
             ImGuiIO& io = ImGui::GetIO();
 
             ImGui::PushStyleColor(ImGuiCol_Button, (ImVec4)ImColor(0x00, 0x00, 0x00, 0x00).Value);
@@ -192,32 +173,23 @@ void Plugin::MainLoop()
 
             ImGui::Begin("VoiceButton", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
 
-            ImVec2 vecButSize = ImVec2(MicroIcon::kBaseIconSize * 4 + 3.0f, MicroIcon::kBaseIconSize * 4);//*7 and *3 //absolutePosition()
+            ImVec2 vecButSize = ImVec2(MicroIcon::kBaseIconSize * 5 + 3.0f, MicroIcon::kBaseIconSize * 5);
 
             if (!Plugin::muteStatus)
             {
-                if (Plugin::MicPress > 1) {
-                    Plugin::MicPress--;
-                }
-                if (ImGui::ImageButton(Plugin::recordStatus ? (ImTextureID)MicroIcon::tActiveIcon->raster : (ImTextureID)MicroIcon::tPassiveIcon->raster, vecButSize))
+                if (ImGui::ImageButton(Plugin::recordStatus ? (ImTextureID)MicroIcon::tActiveIcon->raster :
+                    (ImTextureID)MicroIcon::tPassiveIcon->raster, vecButSize))
                 {
                     if (PluginConfig::GetMicroEnable())
                     {
-                        if (pAudioStream)
-                        {
-                            pAudioStream->Stop(true);
-                        }
                         if (!Plugin::recordStatus)
                         {
-                            LogVoice("[sv:dbg:plugin] : activation key(%hhu) pressed", defaultKey);
+                            LogVoice("[sv:dbg:plugin] : activation key(%hhx) pressed", defaultKey);
 
                             if (!Plugin::recordBusy)
                             {
                                 Plugin::recordStatus = true;
                                 Record::StartRecording();
-                                if (Plugin::MicPress == 0) {
-                                    Plugin::MicPress = 30;
-                                }
                             }
 
                             SV::PressKeyPacket pressKeyPacket{};
@@ -229,7 +201,7 @@ void Plugin::MainLoop()
                         }
                         else
                         {
-                            LogVoice("[sv:dbg:plugin] : activation key(%hhu) released", defaultKey);
+                            LogVoice("[sv:dbg:plugin] : activation key(%hhx) released", defaultKey);
 
                             if (!Plugin::recordBusy)
                             {
@@ -245,23 +217,6 @@ void Plugin::MainLoop()
                         }
                     }
                 }
-                if (Plugin::MicPress == 1)
-                {
-                    LogVoice("[sv:dbg:plugin] : activation key(%hhu) released", defaultKey);
-
-                    if (!Plugin::recordBusy)
-                    {
-                        Plugin::recordStatus = false;
-                        Plugin::MicPress = 0;
-                    }
-
-                    SV::ReleaseKeyPacket releaseKeyPacket{};
-
-                    releaseKeyPacket.keyId = defaultKey;
-
-                    if (!Network::SendControlPacket(SV::ControlPacketType::releaseKey, &releaseKeyPacket, sizeof(releaseKeyPacket)))
-                        LogVoice("[sv:err:main:HookWndProc] : failed to send ReleaseKey packet");
-                }
             }
             else
             {
@@ -273,16 +228,14 @@ void Plugin::MainLoop()
 
             ImGui::SetWindowSize(ImVec2(-1, -1));
 
-            //MyLog2("io.DisplaySize.x %f x io.DisplaySize.y %f", io.DisplaySize.x, io.DisplaySize.y);
-            ImGui::SetWindowPos(ImVec2(io.DisplaySize.x / 1.3/*1.09*/ - vecButSize.x, io.DisplaySize.y / 1.5/*1.75*//*2.15*/ - vecButSize.y * 3));
-            //ImGui::SetWindowPos(ImVec2(1520.0f, 430.0f));
+            ImGui::SetWindowPos(ImVec2(io.DisplaySize.x / 1.1 - vecButSize.x, io.DisplaySize.y / 1.2 - vecButSize.y * 3));
             ImGui::End();
 
             ImGui::PopStyleColor(3);
             ImGui::GetStyle().FrameBorderSize = style.FrameBorderSize;
         }
     }
-
+   
     uint8_t frameBuffer[Network::kMaxVoiceDataSize];
     if(const auto frameSize = Record::GetFrame(frameBuffer, sizeof(frameBuffer)))
     {
@@ -377,9 +330,8 @@ void Plugin::ControlPacketHandler(const ControlPacket& controlPacket)
             if(controlPacket.length != sizeof(stData)) break;
 
             LogVoice("[sv:dbg:plugin:addkey] : keyid(0x%hhx)", stData.keyId);
-            LogVoice("[dbg:keyfilter] : adding key (0x%hhx)", stData.keyId); // xd fake
-
-            //KeyFilter::AddKey(stData.keyId);
+            
+            KeyFilter::AddKey(stData.keyId);
         } 
         break;
         case SV::ControlPacketType::removeKey:
@@ -388,9 +340,8 @@ void Plugin::ControlPacketHandler(const ControlPacket& controlPacket)
             if(controlPacket.length != sizeof(stData)) break;
 
             LogVoice("[sv:dbg:plugin:removekey] : keyid(0x%hhx)", stData.keyId);
-            LogVoice("[dbg:keyfilter] : removing key (0x%hhx)", stData.keyId); // xd fake
-
-            //KeyFilter::RemoveKey(stData.keyId);
+            
+            KeyFilter::RemoveKey(stData.keyId);
         } 
         break;
         case SV::ControlPacketType::removeAllKeys:
@@ -398,9 +349,8 @@ void Plugin::ControlPacketHandler(const ControlPacket& controlPacket)
             if(controlPacket.length) break;
 
             LogVoice("[sv:dbg:plugin:removeallkeys]");
-            LogVoice("[dbg:keyfilter] : removing all keys"); // xd fake
 
-            //KeyFilter::RemoveAllKeys();
+            KeyFilter::RemoveAllKeys();
         } 
         break;
         case SV::ControlPacketType::createGStream:
@@ -599,7 +549,6 @@ void Plugin::DisconnectHandler()
 
 void Plugin::OnDeviceInit()
 {
-    FLog("Plugin::OnDeviceInit()");
     SpeakerList::Init();
 	MicroIcon::Init();
 }
@@ -608,6 +557,15 @@ void Plugin::OnRender()
 {
     Timer::Tick();
     Plugin::MainLoop();
+
+    // Update listener position for 3D audio and apply changes
+    if (pGame && pGame->FindPlayerPed()) {
+        CPlayerPed* player = pGame->FindPlayerPed();
+        const BASS_3DVECTOR* pos = reinterpret_cast<const BASS_3DVECTOR*>(&player->m_pPed->GetPosition());
+        // Leave velocity/front/top as previously set/default for simplicity
+        BASS_Set3DPosition(pos, nullptr, nullptr, nullptr);
+    }
+    BASS_Apply3D();
     SpeakerList::Render();
 }
 
@@ -620,7 +578,5 @@ void Plugin::OnDeviceFree()
 bool Plugin::muteStatus { false };
 bool Plugin::recordStatus { false };
 bool Plugin::recordBusy { false };
-int Plugin::MicRecord{ 0 };
-int Plugin::MicPress{ 0 };
 
 std::map<uint32_t, StreamPtr> Plugin::streamTable;

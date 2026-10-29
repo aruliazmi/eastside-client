@@ -5,6 +5,7 @@
 #include "RW/RenderWare.h"
 #include "Streaming.h"
 #include "game/Models/ModelInfo.h"
+#include "../net/dl/dlmanager.h"
 
 #include <cmath>
 
@@ -14,8 +15,16 @@ extern MaterialTextGenerator* pMaterialTextGenerator;
 
 CObject::CObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance, uint8_t bAttached)
 {
-    if(!CModelInfo::GetModelInfo(iModel))
-        iModel = 18631; // ????????
+    CBaseModelInfo* mi = (iModel >= 0 && iModel < 20000) ? CModelInfo::GetModelInfo(iModel) : nullptr;
+    if (!mi || !mi->m_pColModel) {
+        int16_t virtId = DLManager::Instance().GetVirtualModelId(iModel);
+        CBaseModelInfo* virtMi = (virtId > 0 && virtId < 20000) ? CModelInfo::GetModelInfo(virtId) : nullptr;
+        if (virtMi && virtMi->m_pColModel) {
+            iModel = virtId;
+        } else {
+            iModel = 1225; // Safe base GTA SA object (barrel)
+        }
+    }
 
 	m_AttachedVehicleID = INVALID_VEHICLE_ID;
 	m_AttachedObjectID = INVALID_OBJECT_ID;
@@ -137,7 +146,7 @@ void CObject::Process(float fElapsedTime)
         matEnt = m_pEntity->GetMatrix().ToRwMatrix();
 		float distance = fElapsedTime * m_fMoveSpeed;
 		float remaining = DistanceRemaining(&matEnt);
-		uint32_t dwThisTick = GetTickCount();
+		uint32_t dwThisTick = CTimer::m_snTimeInMillisecondsNonClipped;
 
 		float posX = matEnt.pos.x;
 		float posY = matEnt.pos.y;
@@ -244,7 +253,7 @@ void CObject::Process(float fElapsedTime)
 	}
 }
 
-// 0.3.7
+
 void CObject::SetRotation(CVector * vecRotation)
 {
 	if (m_pEntity && GamePool_Object_GetAt(m_dwGTAId))
@@ -254,12 +263,6 @@ void CObject::SetRotation(CVector * vecRotation)
 		m_vecRotation.y = vecRotation->y;
 		m_vecRotation.z = vecRotation->z;
 	}
-}
-
-// Converts degrees to radians
-// keywords: 0.017453292 flt_8595EC
-constexpr float DegreesToRadians(float angleInDegrees) {
-    return angleInDegrees * PI / 180.0F;
 }
 
 void CObject::InstantRotate(float x, float y, float z)
@@ -280,7 +283,7 @@ void CObject::InstantRotate(float x, float y, float z)
     m_pEntity->Add();
 }
 
-// 0.3.7
+
 void CObject::GetRotation(float* pfX, float* pfY, float* pfZ)
 {
     if (!m_pEntity) return;
@@ -291,7 +294,7 @@ void CObject::GetRotation(float* pfX, float* pfY, float* pfZ)
     *pfY = *pfY * 57.295776 * -1.0;
     *pfZ = *pfZ * 57.295776 * -1.0;
 }
-// 0.3.7
+
 void CObject::RotateMatrix(CVector vecRot)
 {
 	m_vecRotation = vecRot;
@@ -322,7 +325,7 @@ void CObject::RotateMatrix(CVector vecRot)
 	m_matTarget.at.y = sinz * siny - coszx * cosy;
 	m_matTarget.at.z = cosy * cosx;
 }
-// 0.3.7
+
 void CObject::ApplyMoveSpeed()
 {
 	if (m_pEntity)
@@ -337,7 +340,7 @@ void CObject::ApplyMoveSpeed()
 		m_pEntity->SetMatrix((CMatrix&)mat);
 	}
 }
-// 0.3.7
+
 float CObject::DistanceRemaining(RwMatrix* matPos)
 {
 	float	fSX, fSY, fSZ;
@@ -396,6 +399,7 @@ void CObject::SetMaterialText(int index, char* text, int materialSize, char* fon
 	m_dwMaterialFontColor[index] = dwFontColor;
 	m_dwMaterialBackColor[index] = dwBackColor;
 	m_iMaterialTextAlign[index] = textAlignment;
+	m_bHasMaterialText = true;
 }
 
 void CObject::ProcessMaterialText()
@@ -414,7 +418,7 @@ void CObject::ProcessMaterialText()
 	}
 }
 
-// 0.3.7
+
 void CObject::MoveTo(float fX, float fY, float fZ, float fSpeed, float fRotX, float fRotY, float fRotZ)
 {
 	RwMatrix mat;
@@ -440,7 +444,7 @@ void CObject::MoveTo(float fX, float fY, float fZ, float fSpeed, float fRotX, fl
         m_pEntity->Add();
 	}
 
-	m_dwMoveTick = GetTickCount();
+	m_dwMoveTick = CTimer::m_snTimeInMillisecondsNonClipped;
 	m_fMoveSpeed = fSpeed;
 	m_matTarget.pos.x = fX;
 	m_matTarget.pos.y = fY;
@@ -485,7 +489,7 @@ void CObject::MoveTo(float fX, float fY, float fZ, float fSpeed, float fRotX, fl
 
 	// sub_1009F070
 }
-// 0.3.7
+
 void CObject::StopMoving()
 {
 	CVector vec = { 0.0f, 0.0f, 0.0f };
@@ -495,7 +499,7 @@ void CObject::StopMoving()
 	m_byteMoving &= ~1;
 }
 
-// 0.3.7
+
 void CObject::SetAttachedObject(uint16_t ObjectID, CVector* vecPos, CVector* vecRot, bool bSyncRotation)
 {
 	if (ObjectID == INVALID_OBJECT_ID)
@@ -521,7 +525,7 @@ void CObject::SetAttachedObject(uint16_t ObjectID, CVector* vecPos, CVector* vec
 		m_bSyncRotation = bSyncRotation;
 	}
 }
-// 0.3.7
+
 void CObject::SetAttachedVehicle(uint16_t VehicleID, CVector* vecPos, CVector* vecRot)
 {
 	if (VehicleID == INVALID_VEHICLE_ID)
@@ -545,7 +549,7 @@ void CObject::SetAttachedVehicle(uint16_t VehicleID, CVector* vecPos, CVector* v
 		m_vecAttachedRot.z = vecRot->z;
 	}
 } 
-// 0.3.7
+
 void CObject::AttachToVehicle(CVehicle* pVehicle)
 {
     if (GamePool_Object_GetAt(m_dwGTAId)) {
@@ -562,7 +566,7 @@ void CObject::AttachToVehicle(CVehicle* pVehicle)
         }
     }
 }
-// 0.3.7
+
 void CObject::AttachToObject(CObject* pObject)
 {
     if (GamePool_Object_GetAt(m_dwGTAId)) {
