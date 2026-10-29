@@ -222,11 +222,16 @@ void CStreaming::InjectHooks() {
     CHook::Write(g_libGTASA + (VER_x32 ? 0x006795A4 : 0x850B68), &CStreaming::desiredNumVehiclesLoaded);
     CHook::Write(g_libGTASA + (VER_x32 ? 0x00676AB8 : 0x84B5D0), &CStreaming::ms_files);
 
-    CHook::Write(g_libGTASA + (VER_x32 ? 0x00677564 : 0x84CB10), &CStreaming::ms_rwObjectInstances);
+    // Keep native ms_rwObjectInstances: libGTASA.so has its own properly-initialized
+    // CLinkList<CEntityGTA*> (0x972d78). Overwriting it with uninitialized memory breaks
+    // entity RwObject tracking and causes world entities/roads not to render!
+    // CHook::Write(g_libGTASA + (VER_x32 ? 0x00677564 : 0x84CB10), &CStreaming::ms_rwObjectInstances);
     CHook::Write(g_libGTASA + (VER_x32 ? 0x00677DD0 : 0x84DBD0), &CStreaming::ms_aInfoForModel);
 
     CHook::Redirect("_ZN10CStreaming13InitImageListEv", &CStreaming::InitImageList);
-    CHook::Redirect("_ZN10CStreaming12MakeSpaceForEi", &CStreaming::MakeSpaceFor);
+    // Keep native MakeSpaceFor: the client replacement commented out DeleteRwObjectsBehindCamera
+    // and passed flag 0 instead of 0x20 to RemoveLeastUsedModel, exhausting streaming memory!
+    // CHook::Redirect("_ZN10CStreaming12MakeSpaceForEi", &CStreaming::MakeSpaceFor);
     //CHook::Redirect("_ZN10CStreaming22LoadAllRequestedModelsEb", &CStreaming::LoadAllRequestedModels);
 }
 
