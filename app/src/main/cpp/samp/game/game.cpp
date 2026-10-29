@@ -767,14 +767,19 @@ bool CGame::InitialiseRenderWare() {
     auto loadDb = [&](const char* db) {
         auto tryOne = [&](TextureDatabaseFormat f) -> bool {
             // Load() needs the .tmb (thumbnails), .toc (entries) and .dat
-            // (payload). A missing .tmb is exactly what made SortEntries()
-            // deref an empty entry array (fault 0x1db), so probe both files
-            // before handing the database to the engine.
+            // (payload). A missing .tmb made SortEntries() deref an empty
+            // entry array (fault 0x1db); a missing .toc makes GetTexture()
+            // walk a NULL hash table (fault 0x110, RwTextureStreamRead ->
+            // GetTexture during model streaming). Probe all three before
+            // handing the database to the engine.
             char dat[512];
             char tmb[512];
+            char toc[512];
             snprintf(dat, sizeof(dat), "%stexdb/%s/%s.%s.dat",
                      g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
             snprintf(tmb, sizeof(tmb), "%stexdb/%s/%s.%s.tmb",
+                     g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
+            snprintf(toc, sizeof(toc), "%stexdb/%s/%s.%s.toc",
                      g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
             FILE* d = fopen(dat, "rb");
             if (!d) return false;
@@ -786,6 +791,13 @@ bool CGame::InitialiseRenderWare() {
                 return false;
             }
             fclose(t);
+            FILE* c = fopen(toc, "rb");
+            if (!c) {
+                FLog("texture db '%s' has .%s.dat/.tmb but no .%s.toc - skipping",
+                     db, tagOfFmt(f), tagOfFmt(f));
+                return false;
+            }
+            fclose(c);
             FLog("texture db '%s' -> .%s", db, tagOfFmt(f));
             TextureDatabaseRuntime::Load(db, false, f);
             return true;
