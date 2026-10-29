@@ -14,3 +14,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Log dump lokal, jangan pernah di-commit
+crash.txt
+*.log
