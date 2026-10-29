@@ -631,6 +631,29 @@ void CLocalPlayer::ProcessSpectating()
     }
 }
 
+// Called from CGame::RemovePlayer BEFORE the engine ped is destroyed: if the
+// spectate camera is attached to this ped, detach it first so the IK chain
+// does not walk freed memory on the next frame.
+void CLocalPlayer::OnSpectatedPedRemoved(CPlayerPed* pPed)
+{
+    if (!m_bIsSpectating || m_byteSpectateType != SPECTATE_TYPE_PLAYER || !pPed) return;
+
+    CPlayerPool* pPlayerPool = pNetGame->GetPlayerPool();
+    for (PLAYERID i = 0; i < MAX_PLAYERS; i++)
+    {
+        if (!pPlayerPool->GetSlotState(i)) continue;
+        if (pPlayerPool->GetAt(i)->GetPlayerPed() != pPed) continue;
+
+        if ((uint32_t)i == m_SpectateID)
+        {
+            TheCamera.RestoreWithJumpCut();
+            m_byteSpectateType = SPECTATE_TYPE_NONE;
+            m_bSpectateProcessed = false;
+        }
+        return;
+    }
+}
+
 bool CLocalPlayer::Spawn()
 {
     if (!m_bHasSpawnInfo) {

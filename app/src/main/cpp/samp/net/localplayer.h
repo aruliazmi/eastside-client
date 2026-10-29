@@ -337,6 +337,7 @@ public:
 	void ToggleSpectating(bool bToggle);
 	void ProcessSpectating();
 	bool IsSpectating() { return m_bIsSpectating; }
+	void OnSpectatedPedRemoved(CPlayerPed* pPed);
 	bool IsInRCMode() { return m_bInRCMode; };
 	void SpectatePlayer(PLAYERID PlayerID);
 	void SpectateVehicle(VEHICLEID VehicleID);

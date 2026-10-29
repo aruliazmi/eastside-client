@@ -433,8 +433,15 @@ bool CGame::RemovePlayer(CPlayerPed* pPed)
 {
 	if (!pPed) return false;
 
+	// The spectate camera may still be TakeControl'd on this ped. Destroying
+	// it without detaching leaves the camera/IK chain walking freed memory
+	// (IKChainManager_c::IsFacingTarget, SEGV fault 0x5 - tombstone_03).
+	if (pNetGame && pNetGame->GetPlayerPool() && pNetGame->GetPlayerPool()->GetLocalPlayer())
+		pNetGame->GetPlayerPool()->GetLocalPlayer()->OnSpectatedPedRemoved(pPed);
+
+	BYTE byteSlot = pPed->m_bytePlayerNumber;
 	delete pPed;
-	bUsedPlayerSlots[pPed->m_bytePlayerNumber] = false;
+	bUsedPlayerSlots[byteSlot] = false;
 	return true;
 }
 
@@ -727,7 +734,7 @@ void InitGui();
 
 // Identifies THIS build in the log. Repeated crash reports were ambiguous
 // because a stale APK looks identical to a new one up to the crash point.
-#define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe + txdslot-tex-init + spectate-ped-guard (v1.8.5)"
+#define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe + txdslot-tex-init + spectate-ped-guard + removeplayer-detach (v1.8.6)"
 
 bool CGame::InitialiseRenderWare() {
     FLog("InitialiseRenderWare .. build=%s", EASTSIDE_TEXDB_BUILD);
