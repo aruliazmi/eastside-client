@@ -18,6 +18,9 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+#include <cstdio>
+
+extern char* g_pszStorage;
 
 extern UI *pUI;
 
@@ -281,11 +284,46 @@ int CStreaming::AddImageToList(char const* pFileName, bool bNotPlayerImg) {
     // strrchr("", '\\') + 1 == (char*)1, crashing later in
     // CTxdStore::SetCurrentTxd -> strcmp((char*)1, "player") at fault 0x1.
     // Refuse to register a slot we cannot actually stream from.
+    // CdStreamOpen returns (slot << 24), so slot 0 -- GTA3.IMG, the first archive
+    // registered -- legitimately returns 0 and the return value alone cannot
+    // distinguish success from failure. v2.2.7 tested `streamHandle == 0` and
+    // therefore REJECTED GTA3.IMG. World models streamed from it then had no
+    // model info, so CEntity::Add -> GetBounds -> m_pColModel == NULL crashed at
+    // fault 0x8 inside CFileLoader::LoadScene, before the game left the loading
+    // screen.
+    //
+    // Verify the archive from the filesystem instead: if the file is present the
+    // open succeeded (the engine only copies the name into gCdImageNames when it
+    // did). A missing file is the case that must not be registered, because the
+    // engine then derives an empty txd database name and crashes at fault 0x1.
     int32 streamHandle = CdStreamOpen(ms_files[fileIndex].m_szName);
-    if (streamHandle == 0) {
+    bool archivePresent = false;
+    {
+        char full[512];
+        const char* base = g_pszStorage ? g_pszStorage : "";
+        if (base[0] != '\0') {
+            // ms_files[].m_szName holds the engine form ("TEXDB\\GTA3.IMG");
+            // the on-disk path needs POSIX separators.
+            size_t n = 0;
+            for (const char* p = base; *p && n + 1 < sizeof(full); ++p) full[n++] = *p;
+            if (n > 0 && full[n - 1] != '/' && n + 1 < sizeof(full)) full[n++] = '/';
+            for (const char* p = ms_files[fileIndex].m_szName; *p && n + 1 < sizeof(full); ++p)
+                full[n++] = (*p == '\\') ? '/' : *p;
+            full[n] = '\0';
+
+            FILE* probe = fopen(full, "rb");
+            if (probe) {
+                archivePresent = true;
+                fclose(probe);
+            }
+        }
+    }
+    if (!archivePresent) {
         ms_files[fileIndex].m_szName[0] = '\0';
         ms_files[fileIndex].m_StreamHandle = 0;
         ms_files[fileIndex].m_bNotPlayerImg = bNotPlayerImg;
+        FLog("AddImageToList: '%s' not found, slot rejected",
+             pFileName ? pFileName : "(null)");
         return -1;
     }
     ms_files[fileIndex].m_StreamHandle = streamHandle;
