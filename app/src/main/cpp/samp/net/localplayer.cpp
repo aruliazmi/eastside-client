@@ -608,7 +608,12 @@ void CLocalPlayer::ProcessSpectating()
         if (pPlayerPool->GetSlotState(m_SpectateID))
         {
             CPlayerPed* pTargetPed = pPlayerPool->GetAt(m_SpectateID)->GetPlayerPed();
-            if (pTargetPed)
+            // pTargetPed can outlive its engine object: after the spectated
+            // player despawns the wrapper stays in the pool while m_pPed is
+            // already destroyed. TakeControl(null) leaves the camera/IK
+            // chasing a dead ped and IKChainManager_c::IsFacingTarget then
+            // SEGVs on the null (fault addr 0x5, tombstone_03).
+            if (pTargetPed && pTargetPed->m_pPed)
             {
                 TheCamera.TakeControl(pTargetPed->m_pPed, static_cast<eCamMode>(m_byteSpectateMode), eSwitchType::JUMPCUT, 1);
                 m_bSpectateProcessed = true;
@@ -618,7 +623,7 @@ void CLocalPlayer::ProcessSpectating()
     else if (m_byteSpectateType == SPECTATE_TYPE_VEHICLE)
     {
         CVehicle* pVehicle = pVehiclePool->GetAt((VEHICLEID)m_SpectateID);
-        if (pVehicle)
+        if (pVehicle && pVehicle->m_pVehicle)
         {
             TheCamera.TakeControl(pVehicle->m_pVehicle, static_cast<eCamMode>(m_byteSpectateMode), eSwitchType::JUMPCUT, 1);
             m_bSpectateProcessed = true;
