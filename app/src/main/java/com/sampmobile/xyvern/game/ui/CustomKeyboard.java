@@ -153,8 +153,23 @@ public class CustomKeyboard {
         mInputLayout.setVisibility(View.INVISIBLE);
 
         mInputEt.requestFocus();
-        InputMethodManager imm = (InputMethodManager) mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.showSoftInput(mInputEt, InputMethodManager.SHOW_IMPLICIT);
+        // The EditText sits inside a layout that is still INVISIBLE at this point,
+        // so requestFocus() alone is not enough for the IME to attach. Post the
+        // showSoftInput call until after the view is VISIBLE, otherwise Android
+        // silently drops it and no keyboard ever appears on the softInputMode
+        // "adjustNothing" activity.
+        mInputEt.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (mInputEt == null) return;
+                mInputEt.requestFocus();
+                mInputEt.setSelection(mInputEt.getText().length());
+                InputMethodManager imm = (InputMethodManager) mContext.getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.showSoftInput(mInputEt, InputMethodManager.SHOW_FORCED);
+                }
+            }
+        }, 120);
 
         if(mAnimTask != null)
         {
@@ -178,6 +193,10 @@ public class CustomKeyboard {
         {
             mInputEt.setText(mSavedInput);
             mInputEt.setSelection(mInputEt.getText().length());
+        }
+        else
+        {
+            mInputEt.setText("");
         }
     }
 
@@ -214,6 +233,12 @@ public class CustomKeyboard {
             mInputHistory.remove(mInputHistory.size() - 1);
         }
         mInputHistory.add(0, str);
+
+        // The layout never closed after sending, so the input bar stayed on screen
+        // and the soft keyboard kept the window in adjustNothing offset.
+        mSavedInput = null;
+        mInputEt.setText("");
+        HideInputLayout();
 
         InputListener listener = (InputListener)mContext;
 

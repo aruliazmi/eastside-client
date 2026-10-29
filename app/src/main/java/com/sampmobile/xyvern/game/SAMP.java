@@ -57,7 +57,7 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mLoadingScreen.hide();
+                if (mLoadingScreen != null) mLoadingScreen.hide();
             }
         });
     }
@@ -66,6 +66,7 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                if (mDialog == null || mAttachEdit == null) return;
                 if (pause) {
                     mDialog.hideWithoutReset();
                     mAttachEdit.hideWithoutReset();
@@ -118,20 +119,26 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     private void showKeyboard() {
         runOnUiThread(() -> {
             Log.d("AXL", "showKeyboard()");
+            // The engine thread can call this before onCreate() finished building
+            // the overlays; a null here used to be an NPE on the UI thread.
+            if (mKeyboard == null) {
+                Log.w(TAG, "showKeyboard: keyboard overlay not ready yet");
+                return;
+            }
             mKeyboard.ShowInputLayout();
         });
     }
 
     private void hideKeyboard() {
-        runOnUiThread(() -> mKeyboard.HideInputLayout());
+        runOnUiThread(() -> { if (mKeyboard != null) mKeyboard.HideInputLayout(); });
     }
 
     private void showEditObject() {
-        runOnUiThread(() -> mAttachEdit.show());
+        runOnUiThread(() -> { if (mAttachEdit != null) mAttachEdit.show(); });
     }
 
     private void hideEditObject() {
-        runOnUiThread(() -> mAttachEdit.hide());
+        runOnUiThread(() -> { if (mAttachEdit != null) mAttachEdit.hide(); });
     }
 
     // =========================================================================
@@ -149,14 +156,6 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Log.i(TAG, "**** onCreate");
-        // super.onCreate() starts the native game thread (init(false) inside
-        // NvEventQueueActivity). Native callbacks (setPauseState, showDialog,
-        // showKeyboard, hideLoadingScreen, ...) can fire from that thread the
-        // moment it starts, so the UI fields must exist BEFORE it runs.
-        mKeyboard = new CustomKeyboard(this);
-        mDialog = new DialogManager(this);
-        mAttachEdit = new AttachEdit(this);
-        mLoadingScreen = new LoadingScreen(this);
         instance = this;
 
         // ============================================================
@@ -193,6 +192,19 @@ public class SAMP extends GTASA implements CustomKeyboard.InputListener, HeightP
         }
 
         super.onCreate(savedInstanceState);
+
+        // ============================================================
+        // The UI overlays MUST be created AFTER super.onCreate().
+        // NvEventQueueActivity.systemInit() calls setContentView(R.layout.main_render_screen),
+        // which replaces the whole content view. Anything addContentView()'d before
+        // that point was silently thrown away - which is exactly why tapping the chat
+        // box showed nothing: CustomKeyboard's (invisible) input bar no longer existed
+        // in the view hierarchy, so no IME could attach to it.
+        // ============================================================
+        mKeyboard = new CustomKeyboard(this);
+        mDialog = new DialogManager(this);
+        mAttachEdit = new AttachEdit(this);
+        mLoadingScreen = new LoadingScreen(this);
 
         if(!SignatureChecker.isSignatureValid(this, getPackageName())) {
             Toast.makeText(this, "Use original launcher! No remake", Toast.LENGTH_LONG).show();
