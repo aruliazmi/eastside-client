@@ -26,6 +26,15 @@ uintptr_t CUtil::FindLib(const char* libname)
 
 RwTexture* CUtil::LoadTextureFromDB(const char* dbname, const char* texture)
 {
+    // 'samp' is deliberately not in InitialiseRenderWare's load set: loading it
+    // faults _rwOpenGLRasterSetImage with a constant 0x801000 request regardless
+    // of on-disk variant (see game.cpp). GetDatabase("samp") still returns a
+    // half-initialised handle whose entries array was never filled, and
+    // Register + GetTexture then stream from it -> SIGSEGV 0x110 inside
+    // _rwStreamReadChunkHeader (tombstone_02/03). Reject the db name outright.
+    if (dbname && strcmp(dbname, "samp") == 0)
+        return nullptr;
+
     TextureDatabaseRuntime* db_handle = TextureDatabaseRuntime::GetDatabase(dbname);
     if(!db_handle)
     {

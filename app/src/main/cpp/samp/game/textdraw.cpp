@@ -84,9 +84,12 @@ uintptr_t LoadFromTxdSlot(const char* szSlot, const char* szTexture)
         CallFunction<void>(g_libGTASA + 0x55BDA8 + 1);*/
     }
 
-    static char *texdb[7] = { "samp", "mobile", "txd", "menu", "gta3", "gta_int", "player" };
+    // 'samp' is deliberately not loaded (see CUtil::LoadTextureFromDB). Server
+    // textdraws frequently request slot "samp" (spawn timers, 0.3.DL skins...);
+    // querying that half-initialised db is what SIGSEGV'd at 0x110 after spawn.
+    static char *texdb[7] = { "mobile", "txd", "menu", "gta3", "gta_int", "player" };
     bool FindedLibrary = false;
-    for (int i = 0; i < 7; i++)
+    for (int i = 0; i < 6; i++)
     {
         if (!strcmp(texdb[i], szSlot))
         {

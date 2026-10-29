@@ -2004,7 +2004,9 @@ uintptr_t LoadTexture(const char* texname)
 
 uintptr_t LoadTexture(const char* texname)
 {
-    static char* texdb[] = { "samp", "gta3", "gta_int", "player", "txd"};
+    // 'samp' is not loaded (see CUtil::LoadTextureFromDB / game.cpp) - do not
+    // query it here or the half-initialised db handle gets Register'd.
+    static char* texdb[] = { "gta3", "gta_int", "player", "txd"};
 
     for (int i = 0; i < sizeof(texdb) / sizeof(const char*); i++)
     {
