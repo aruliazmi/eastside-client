@@ -646,6 +646,7 @@ void CLocalPlayer::OnSpectatedPedRemoved(CPlayerPed* pPed)
 
         if ((uint32_t)i == m_SpectateID)
         {
+            CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
             TheCamera.RestoreWithJumpCut();
             m_byteSpectateType = SPECTATE_TYPE_NONE;
             m_bSpectateProcessed = false;

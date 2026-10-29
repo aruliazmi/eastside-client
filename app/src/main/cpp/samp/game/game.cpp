@@ -17,6 +17,7 @@
 void ApplyInGamePatches();
 void InitScripting();
 
+extern CNetGame* pNetGame;
 bool bUsedPlayerSlots[PLAYER_PED_SLOTS];
 
 uint16_t *szGameTextMessage;
