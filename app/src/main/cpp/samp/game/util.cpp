@@ -1,3 +1,4 @@
+#include "TxdStore.h"
 #include "../main.h"
 #include "game.h"
 #include "RW/RenderWare.h"
@@ -2028,33 +2029,45 @@ uintptr_t LoadTexture(const char* texname)
 
 RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
 {
-    RwTexture* tex;
-    if (strncmp(txdname, "none", 5u))
+    RwTexture* tex = nullptr;
+    if (txdname && txdname[0] && strncmp(txdname, "none", 4) != 0)
     {
-        uintptr_t v10 = ((int (*)(const char*))(g_libGTASA + 0x5D3E60+1))(txdname);
-        CHook::CallFunction<void>(g_libGTASA + 0x5D4184 + 1);
-        CHook::CallFunction<void>(g_libGTASA + 0x5D4184 + 1, v10, 0);
-        tex = CHook::CallFunction<RwTexture*>(g_libGTASA + 0x1DBABC + 1, texturename, 0);
-        CHook::CallFunction<void>(g_libGTASA + 0x5D41C4 + 1);
+        int32 slot = CTxdStore::FindTxdSlot(txdname);
+        if (slot != -1)
+        {
+            CTxdStore::PushCurrentTxd();
+            CTxdStore::SetCurrentTxd(slot);
+            void* curDict = CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x1DBA64 + 1 : 0x27427C));
+            if (curDict && texturename && texturename[0])
+            {
+                tex = CHook::CallFunction<RwTexture*>(g_libGTASA + (VER_x32 ? 0x1DB9B0 + 1 : 0x27417C), curDict, texturename);
+            }
+            CTxdStore::PopCurrentTxd();
+        }
     }
 
-    if(!tex) tex = (RwTexture*)LoadTexture(std::string(std::string(texturename) + "_" + txdname).c_str());
-    if(!tex) tex = (RwTexture*)LoadTexture(std::string(std::string(txdname) + "_" + texturename).c_str());
-    if(!tex) tex = (RwTexture*)LoadTexture(texturename);
-    if(!tex)
+    if(!tex && texturename && texturename[0])
     {
-        std::string str = texturename;
-        std::transform(str.begin(), str.end(), str.begin(), ::tolower);
-        tex = (RwTexture*)LoadTexture(str.c_str());
-    }
-    if(!tex)
-    {
-        std::string str = texturename;
-        std::transform(str.begin(), str.end(), str.begin(), ::toupper);
-        tex = (RwTexture*)LoadTexture(std::string(str + "_" + txdname).c_str());
+        if (txdname && txdname[0]) {
+            tex = (RwTexture*)LoadTexture(std::string(std::string(texturename) + "_" + txdname).c_str());
+            if(!tex) tex = (RwTexture*)LoadTexture(std::string(std::string(txdname) + "_" + texturename).c_str());
+        }
+        if(!tex) tex = (RwTexture*)LoadTexture(texturename);
+        if(!tex)
+        {
+            std::string str = texturename;
+            std::transform(str.begin(), str.end(), str.begin(), ::tolower);
+            tex = (RwTexture*)LoadTexture(str.c_str());
+        }
+        if(!tex && txdname && txdname[0])
+        {
+            std::string str = texturename;
+            std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+            tex = (RwTexture*)LoadTexture(std::string(str + "_" + txdname).c_str());
+        }
     }
 
-    if(!tex)
+    if(!tex && txdname && txdname[0] && texturename && texturename[0])
     {
         tex = (RwTexture*)CUtil::LoadTextureFromDB(txdname, texturename);
     }
@@ -2064,37 +2077,29 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
  
 int FindTxdSlot(const char* txdname)
 {
-	// CTxdStore::FindTxdSlot 
-	return ((int(*)(const char*))(g_libGTASA + 0x5D3E60 + 1))(txdname);
+	if (!txdname || !txdname[0]) return -1;
+	return CTxdStore::FindTxdSlot(txdname);
 }
  
 void PushCurrentTxd()
 {
-	// CTxdStore::PushCurrentTxd 
-	((void (*)())(g_libGTASA + 0x5D4184 + 1))();
-
+	CTxdStore::PushCurrentTxd();
 }
  
 void SetCurrentTxd(int slot)
 {
-	// CTxdStore::SetCurrentTxd 
-	((void (*)(int, int))(g_libGTASA + 0x5D40F4 + 1))(slot, 0);
+	CTxdStore::SetCurrentTxd(slot);
 }
  
 void PopCurrentTxd()
 {
-	// CTxdStore::PopCurrentTxd 
-	((void (*)())(g_libGTASA + 0x5D41C4 + 1))();
-
+	CTxdStore::PopCurrentTxd();
 }
  
 uintptr_t SetTexture(const char* texturename)
 {
 	uintptr_t thiz = 0;
-
-	// CSprite2d::SetTexture 
-	((void (*)(void*, const char*))(g_libGTASA + 0x5C8838 + 1))((void*)&thiz, texturename);
-
+	CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x5C8838 + 1 : 0x6ECCE8), (void*)&thiz, texturename);
 	return thiz;
 }
 
