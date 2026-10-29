@@ -912,11 +912,19 @@ int CTextureDatabaseRuntime__GetEntry_hook(uintptr_t thiz, const char* a2, bool*
 uintptr_t (*CTxdStore__TxdStoreFindCB)(const char *a1);
 uintptr_t CTxdStore__TxdStoreFindCB_hook(const char *a1)
 {
-	static char* texdbs[] = { "samp", "gta_int", "gta3" };
+	// `samp` is not in InitialiseRenderWare's load set (it faults
+	// _rwOpenGLRasterSetImage with a constant 0x801000 request), but this
+	// fallback still looks the db up. GetDatabase("samp") returns a
+	// half-initialised handle whose entries array was never filled, and
+	// Register+GetTexture then walk it -> SIGSEGV 0x110 inside
+	// _rwStreamReadChunkHeader via TextureDatabaseRuntime::GetTexture.
+	// Only query databases that were actually loaded.
+	static char* texdbs[] = { "gta_int", "gta3" };
 	for(auto &texdb : texdbs)
 	{
 		// TextureDatabaseRuntime::GetDatabase
 		uintptr_t db_handle = ((uintptr_t (*)(const char *))(g_libGTASA+0x1EAC8C+1))(texdb);
+		if(!db_handle) continue; // db never loaded -> skip, do not Register it
 
 		// TextureDatabaseRuntime::registered
 		uint32_t unk_61B8D4 = *(uint32_t*)(g_libGTASA+0x6BD174+4);
