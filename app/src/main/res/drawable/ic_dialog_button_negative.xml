@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tombol sekunder dialog: hanya garis, tanpa isi. -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+<layer-list
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:aapt="http://schemas.android.com/aapt">
     <item>
         <shape>
-            <corners android:radius="12.0dip" />
+            <corners
+                android:radius="12.0dip" />
             <stroke
                 android:width="@dimen/_1sdp"
-                android:color="@color/es_rule_strong" />
+                android:color="#FF0037" />
         </shape>
     </item>
 </layer-list>

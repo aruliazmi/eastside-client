@@ -11,16 +11,16 @@ bool Network::Init() noexcept
     if(Network::initStatus)
         return false;
 
-    LogVoice("[sv:dbg:network:init] : module initializing...");
+    FLog("[sv:dbg:network:init] : module initializing...");
 
     Network::socketHandle = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if(Network::socketHandle == INVALID_SOCKET) return false;
 
     if (const int sendBufferSize { kSendBufferSize }, recvBufferSize { kRecvBufferSize };
-        setsockopt(Network::socketHandle, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>
+            setsockopt(Network::socketHandle, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<const void*>
             (&sendBufferSize), sizeof(sendBufferSize)) == SOCKET_ERROR ||
-        setsockopt(Network::socketHandle, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const void*>
+            setsockopt(Network::socketHandle, SOL_SOCKET, SO_RCVBUF, reinterpret_cast<const void*>
             (&recvBufferSize), sizeof(recvBufferSize)) == SOCKET_ERROR)
     {
         return false;
@@ -34,7 +34,7 @@ bool Network::Init() noexcept
 
     Network::connectionStatus = ConnectionStatus::Disconnected;
 
-    LogVoice("[sv:dbg:network:init] : module initialized");
+    FLog("[sv:dbg:network:init] : module initialized");
 
     Network::initStatus = true;
 
@@ -46,16 +46,7 @@ void Network::Free() noexcept
     if(!Network::initStatus)
         return;
 
-    LogVoice("[sv:dbg:network:free] : module releasing...");
-
-    if(Network::connectionStatus != ConnectionStatus::Disconnected)
-    {
-        for(const auto& disconnectCallback : Network::disconnectCallbacks)
-        {
-            if(disconnectCallback != nullptr) 
-                disconnectCallback();
-        }
-    }
+    FLog("[sv:dbg:network:free] : module releasing...");
 
     Network::connectionStatus = ConnectionStatus::Disconnected;
 
@@ -73,12 +64,16 @@ void Network::Free() noexcept
     memset(Network::inputVoicePacket.GetData(), 0, Network::inputVoicePacket.GetSize());
     memset(Network::outputVoicePacket.GetData(), 0, Network::outputVoicePacket.GetSize());
 
-    while(!Network::controlQueue.empty())
-        Network::controlQueue.pop();
+    std::lock_guard<std::mutex> lock(controlQueueMutex);
+    for(auto & packet : Network::controlQueue) {
+        delete packet;
+    }
+    Network::controlQueue.clear();
+
     while(!Network::voiceQueue.empty())
         Network::voiceQueue.pop();
 
-    LogVoice("[sv:dbg:network:free] : module released");
+    FLog("[sv:dbg:network:free] : module released");
 
     Network::initStatus = false;
 }
@@ -114,7 +109,7 @@ bool Network::SendVoicePacket(const void *dataAddr, const uint16_t dataSize) noe
     Network::outputVoicePacket->length = dataSize;
     Network::outputVoicePacket->CalcHash();
 
-    memcpy(Network::outputVoicePacket->data, dataAddr, dataSize);
+    std::memcpy(Network::outputVoicePacket->data, dataAddr, dataSize);
 
     const auto voicePacketAddr = reinterpret_cast<const char*>(&Network::outputVoicePacket);
     const auto voicePacketSize = static_cast<int>(Network::outputVoicePacket->GetFullSize());
@@ -134,13 +129,14 @@ void Network::EndSequence() noexcept
     Network::outputVoicePacket->packid = NULL;
 }
 
-ControlPacketContainerPtr Network::ReceiveControlPacket() noexcept
+ControlPacket* Network::ReceiveControlPacket() noexcept
 {
+    std::lock_guard<std::mutex> lock(controlQueueMutex);
     if(!Network::initStatus || Network::controlQueue.empty())
         return nullptr;
 
-    auto controlPacket = std::move(*Network::controlQueue.front());
-    Network::controlQueue.pop();
+    auto controlPacket = Network::controlQueue.front();
+    Network::controlQueue.pop_front();
 
     return controlPacket;
 }
@@ -160,31 +156,13 @@ std::size_t Network::AddConnectCallback(ConnectCallback callback) noexcept
 {
     if(!Network::initStatus)  return -1;
 
-    for(std::size_t i { 0 }; i < Network::connectCallbacks.size(); ++i)
-    {
-        if(Network::connectCallbacks[i] == nullptr)
-        {
-            Network::connectCallbacks[i] = std::move(callback);
-            return i;
-        }
-    }
-
-    Network::connectCallbacks.emplace_back(std::move(callback));
+    Network::connectCallbacks.emplace_back(callback);
     return Network::connectCallbacks.size() - 1;
 }
 
 std::size_t Network::AddSvConnectCallback(SvConnectCallback callback) noexcept
 {
     if(!Network::initStatus) return -1;
-
-    for(std::size_t i { 0 }; i < Network::svConnectCallbacks.size(); ++i)
-    {
-        if(Network::svConnectCallbacks[i] == nullptr)
-        {
-            Network::svConnectCallbacks[i] = std::move(callback);
-            return i;
-        }
-    }
 
     Network::svConnectCallbacks.emplace_back(std::move(callback));
     return Network::svConnectCallbacks.size() - 1;
@@ -194,15 +172,6 @@ std::size_t Network::AddSvInitCallback(SvInitCallback callback) noexcept
 {
     if(!Network::initStatus) return -1;
 
-    for(std::size_t i { 0 }; i < Network::svInitCallbacks.size(); ++i)
-    {
-        if(Network::svInitCallbacks[i] == nullptr)
-        {
-            Network::svInitCallbacks[i] = std::move(callback);
-            return i;
-        }
-    }
-
     Network::svInitCallbacks.emplace_back(std::move(callback));
     return Network::svInitCallbacks.size() - 1;
 }
@@ -211,62 +180,11 @@ std::size_t Network::AddDisconnectCallback(DisconnectCallback callback) noexcept
 {
     if(!Network::initStatus) return -1;
 
-    for(std::size_t i { 0 }; i < Network::disconnectCallbacks.size(); ++i)
-    {
-        if(Network::disconnectCallbacks[i] == nullptr)
-        {
-            Network::disconnectCallbacks[i] = std::move(callback);
-            return i;
-        }
-    }
 
     Network::disconnectCallbacks.emplace_back(std::move(callback));
     return Network::disconnectCallbacks.size() - 1;
 }
 
-void Network::RemoveConnectCallback(const std::size_t callback) noexcept
-{
-    if(!Network::initStatus)
-        return;
-
-    if(callback >= Network::connectCallbacks.size())
-        return;
-
-    Network::connectCallbacks[callback] = nullptr;
-}
-
-void Network::RemoveSvConnectCallback(const std::size_t callback) noexcept
-{
-    if(!Network::initStatus)
-        return;
-
-    if(callback >= Network::svConnectCallbacks.size())
-        return;
-
-    Network::svConnectCallbacks[callback] = nullptr;
-}
-
-void Network::RemoveSvInitCallback(const std::size_t callback) noexcept
-{
-    if(!Network::initStatus)
-        return;
-
-    if(callback >= Network::svInitCallbacks.size())
-        return;
-
-    Network::svInitCallbacks[callback] = nullptr;
-}
-
-void Network::RemoveDisconnectCallback(const std::size_t callback) noexcept
-{
-    if(!Network::initStatus)
-        return;
-
-    if(callback >= Network::disconnectCallbacks.size())
-        return;
-
-    Network::disconnectCallbacks[callback] = nullptr;
-}
 
 void Network::VoiceThread() noexcept
 {
@@ -313,8 +231,8 @@ void Network::VoiceThread() noexcept
         }
 
         const auto received = recv(Network::socketHandle,
-            static_cast<char*>(Network::inputVoicePacket.GetData()),
-            Network::inputVoicePacket.GetSize(), NULL);
+                                   static_cast<char*>(Network::inputVoicePacket.GetData()),
+                                   Network::inputVoicePacket.GetSize(), NULL);
 
         if(received == SOCKET_ERROR)
             break;
@@ -325,7 +243,7 @@ void Network::VoiceThread() noexcept
         if(!Network::inputVoicePacket->CheckHeader()) continue;
         if(received != Network::inputVoicePacket->GetFullSize()) continue;
         if(Network::inputVoicePacket->packet == SV::VoicePacketType::keepAlive) continue;
-        
+
         Network::voiceQueue.try_emplace(MakeVoicePacketContainer(Network::inputVoicePacket));
     }
 }
@@ -335,7 +253,7 @@ void Network::OnRaknetConnect(const char *ip, const uint32_t port) noexcept
     if(!Network::initStatus)
         return;
 
-    LogVoice("[dbg:raknet:client:connect] : connecting to game server '*.*.*.*:****'...", ip, port);
+    FLog("[dbg:raknet:client:connect] : connecting to game server '*.*.*.*:****'...", ip, port);
 
     Network::serverIp = ip;
 
@@ -343,14 +261,14 @@ void Network::OnRaknetConnect(const char *ip, const uint32_t port) noexcept
     {
         for(const auto& connectCallback : Network::connectCallbacks)
         {
-            if(connectCallback != nullptr) 
+            if(connectCallback != nullptr)
                 connectCallback(Network::serverIp, port);
         }
     }
 
     Network::connectionStatus = ConnectionStatus::RNConnecting;
 
-    LogVoice("[dbg:raknet:client:connect] : connected");
+    FLog("[dbg:raknet:client:connect] : connected");
 }
 
 bool Network::OnRaknetRpc(const int id, RakNet::BitStream& parameters) noexcept
@@ -365,34 +283,33 @@ bool Network::OnRaknetRpc(const int id, RakNet::BitStream& parameters) noexcept
 
     for(const auto& svConnectCallback : Network::svConnectCallbacks)
     {
-        if(svConnectCallback != nullptr) 
+        if(svConnectCallback != nullptr)
             svConnectCallback(stData);
     }
 
     parameters.Write(reinterpret_cast<const char*>(&stData), sizeof(stData));
 
-    LogVoice("[sv:dbg:network:connect] : raknet connecting... "
+    FLog("[sv:dbg:network:connect] : raknet connecting... "
         "(version:%hhu;micro:%hhu)", stData.version, stData.micro);
 
     return true;
 }
 
-bool Network::OnRaknetReceive(Packet& packet) noexcept
+bool Network::OnRaknetReceive(Packet* packet) noexcept
 {
-    if(!Network::initStatus)
-        return true;
+//    if(*packet->data != kRaknetPacketId)
+//        return true;
+    auto controlPacketPtr = new ControlPacket();
 
-    if(packet.length < sizeof(uint8_t) + sizeof(ControlPacket))
-        return true;
+    RakNet::BitStream bs((unsigned char*)packet->data, packet->length, false);
+    bs.IgnoreBits(8); // skip packet and rpc id
+    bs.Read(controlPacketPtr->packet);
+    bs.Read(controlPacketPtr->length);
+    controlPacketPtr->data = new uint8_t[controlPacketPtr->length];
+    bs.Read(reinterpret_cast<char *>(controlPacketPtr->data), controlPacketPtr->length);
 
-    if(*packet.data != kRaknetPacketId)
-        return true;
-
-    const auto controlPacketPtr = reinterpret_cast<ControlPacket*>(packet.data + sizeof(uint8_t));
-    const uint32_t controlPacketSize = packet.length - sizeof(uint8_t);
-
-    if(controlPacketSize != controlPacketPtr->GetFullSize())
-        return false;
+    //  memcpy(controlPacketPtr, packet->data, sizeof(ControlPacket));
+    //controlPacketPtr = reinterpret_cast<ControlPacket*>(packet->data + sizeof(uint8_t));
 
     switch(controlPacketPtr->packet)
     {
@@ -401,7 +318,7 @@ bool Network::OnRaknetReceive(Packet& packet) noexcept
             const auto& stData = *reinterpret_cast<SV::ServerInfoPacket*>(controlPacketPtr->data);
             if(controlPacketPtr->length != sizeof(stData)) return false;
 
-            LogVoice("[sv:dbg:network:serverInfo] : connecting to voiceserver "
+            FLog("[sv:dbg:network:serverInfo] : connecting to voiceserver "
                 "'*.*.*.*:%hu'...", Network::serverIp.c_str(), stData.serverPort);
 
             sockaddr_in serverAddress {};
@@ -411,9 +328,9 @@ bool Network::OnRaknetReceive(Packet& packet) noexcept
             serverAddress.sin_port = htons(stData.serverPort);
 
             if (connect(Network::socketHandle, reinterpret_cast<const sockaddr*>(&serverAddress),
-                sizeof(serverAddress)) == SOCKET_ERROR)
+                        sizeof(serverAddress)) == SOCKET_ERROR)
             {
-                LogVoice("[sv:err:network:serverInfo] : connect error.");
+                FLog("[sv:err:network:serverInfo] : connect error.");
                 return false;
             }
 
@@ -430,28 +347,29 @@ bool Network::OnRaknetReceive(Packet& packet) noexcept
             Network::connectionStatus = ConnectionStatus::SVConnecting;
 
             Network::voiceThread = std::thread(Network::VoiceThread);
-        } 
-        break;
+        }
+            break;
         case SV::ControlPacketType::pluginInit:
         {
             const auto& stData = *reinterpret_cast<SV::PluginInitPacket*>(controlPacketPtr->data);
             if(controlPacketPtr->length != sizeof(stData)) return false;
 
-            LogVoice("[sv:dbg:network:pluginInit] : plugin init packet "
+            FLog("[sv:dbg:network:pluginInit] : plugin init packet "
                 "(bitrate:%u;mute:%hhu)", stData.bitrate, stData.mute);
 
             for(const auto& svInitCallback : Network::svInitCallbacks)
             {
-                if(svInitCallback != nullptr) 
+                if(svInitCallback != nullptr)
                     svInitCallback(stData);
             }
 
             Network::connectionStatus = ConnectionStatus::Connected;
-        } 
-        break;
+        }
+            break;
         default:
         {
-            Network::controlQueue.try_emplace(MakeControlPacketContainer(controlPacketPtr, controlPacketSize));
+            std::lock_guard<std::mutex> lock(controlQueueMutex);
+            Network::controlQueue.push_back(controlPacketPtr);
         }
     }
 
@@ -463,13 +381,13 @@ void Network::OnRaknetDisconnect() noexcept
     if(!Network::initStatus)
         return;
 
-    LogVoice("[sv:dbg:network:disconnect] : raknet disconnected");
+    FLog("[sv:dbg:network:disconnect] : raknet disconnected");
 
     if(Network::connectionStatus != ConnectionStatus::Disconnected)
     {
         for(const auto& disconnectCallback : Network::disconnectCallbacks)
         {
-            if(disconnectCallback != nullptr) 
+            if(disconnectCallback != nullptr)
                 disconnectCallback();
         }
     }
@@ -487,27 +405,11 @@ void Network::OnRaknetDisconnect() noexcept
     memset(Network::inputVoicePacket.GetData(), 0, Network::inputVoicePacket.GetSize());
     memset(Network::outputVoicePacket.GetData(), 0, Network::outputVoicePacket.GetSize());
 
-    while (!Network::controlQueue.empty())
-        Network::controlQueue.pop();
+    for(auto & packet : Network::controlQueue) {
+        delete packet;
+    }
+    Network::controlQueue.clear();
+
     while (!Network::voiceQueue.empty())
         Network::voiceQueue.pop();
 }
-
-bool Network::initStatus { false };
-
-int Network::socketHandle { INVALID_SOCKET };
-int Network::connectionStatus { ConnectionStatus::Disconnected };
-std::thread Network::voiceThread;
-std::string Network::serverIp;
-DWORD Network::serverKey { NULL };
-
-std::vector<Network::ConnectCallback> Network::connectCallbacks;
-std::vector<Network::SvConnectCallback> Network::svConnectCallbacks;
-std::vector<Network::SvInitCallback> Network::svInitCallbacks;
-std::vector<Network::DisconnectCallback> Network::disconnectCallbacks;
-
-SPSCQueue<ControlPacketContainerPtr> Network::controlQueue { 128 };
-SPSCQueue<VoicePacketContainerPtr> Network::voiceQueue { 512 };
-
-VoicePacketContainer Network::inputVoicePacket { kMaxVoiceDataSize };
-VoicePacketContainer Network::outputVoicePacket { kMaxVoiceDataSize };

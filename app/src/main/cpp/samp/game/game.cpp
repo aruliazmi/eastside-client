@@ -1,6 +1,6 @@
 #include "../main.h"
 #include "game.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 #include "Streaming.h"
 #include "MemoryMgr.h"
 #include "CFileMgr.h"
@@ -14,7 +14,7 @@
 #include "game/Models/ModelInfo.h"
 #include "game/Collision/Collision.h"
 
-void ApplyInGamePatches();
+void ApplySAMPPatchesInGame();
 void InitScripting();
 
 bool bUsedPlayerSlots[PLAYER_PED_SLOTS];
@@ -46,9 +46,6 @@ CGame::CGame()
 	m_bClockEnabled = false;
 	m_bInputEnable = true;
 
-	m_sound.bMissionAudioLoaded = false;
-	m_sound.bDisableInteriorAmbient = false;
-
 	memset(bUsedPlayerSlots, 0, sizeof(bUsedPlayerSlots));
 	memset(m_bPreloadedVehicleModels, 0, sizeof(m_bPreloadedVehicleModels));
 }
@@ -58,7 +55,7 @@ CGame::~CGame()
 
 }
 
-void ApplyPatches();
+void ApplyGlobalPatches();
 void InstallHooks();
 void CGame::StartGame()
 {
@@ -74,7 +71,7 @@ void CGame::StartGame()
 	//*(char*)(g_libGTASA + 0x6E00D9) = 0;
 
     InstallHooks();
-    ApplyPatches();
+    ApplyGlobalPatches();
 
 	GameAimSyncInit();
 	InitScripting();
@@ -87,12 +84,12 @@ void CGame::Initialize()
 {
 	FLog("CGame initializing..");
 
-    ApplyInGamePatches();
+    ApplySAMPPatchesInGame();
 	GameResetRadarColors();
 
     szGameTextMessage = new uint16_t[1076];
 }
-
+// 0.3.7
 void CGame::SetMaxStats()
 {
     CHook::CallFunction<void>("_ZN6CCheat18VehicleSkillsCheatEv");
@@ -101,7 +98,7 @@ void CGame::SetMaxStats()
     // CStats::SetStatValue nop
     CHook::RET("_ZN6CStats12SetStatValueEtf");
 }
-
+// 0.3.7
 void CGame::ToggleThePassingOfTime(bool bOnOff)
 {
 	/*if (bOnOff)
@@ -115,41 +112,42 @@ void CGame::ToggleThePassingOfTime(bool bOnOff)
 		this->m_bClockEnabled = false;
 	}*/
 }
-
+// 0.3.7
 void CGame::EnableClock(bool bEnable)
 {
-    static constexpr char clockFormat[] = "%02d:%02d";
-    uintptr_t clockAddress = g_libGTASA + (VER_x32 ? 0x2BD618 : 0x73E1DA);
-    CHook::UnFuck(clockAddress);
+	/*char byteClockData[] = { '%', '0', '2', 'd', ':', '%', '0', '2', 'd', 0 };
+	CHook::UnFuck(g_libGTASA + 0x2BD618);
 
-    if (bEnable)
-    {
-        memcpy(reinterpret_cast<void*>(clockAddress), clockFormat, sizeof(clockFormat));
-    }
-    else
-    {
-        memset(reinterpret_cast<void*>(clockAddress), 0, sizeof(clockFormat));
-    }
+	if (bEnable)
+	{
+		ToggleThePassingOfTime(true);
+		memcpy((void*)(g_libGTASA + 0x2BD618), byteClockData, 10);
+	}
+	else
+	{
+		ToggleThePassingOfTime(false);
+		memset((void*)(g_libGTASA + 0x2BD618), 0, 10);
+	}*/
 }
-
+// 0.3.7
 void CGame::EnableZoneNames(bool bEnable)
 {
 	ScriptCommand(&enable_zone_names, bEnable);
 }
-
+// 0.3.7
 void CGame::SetWorldTime(int iHour, int iMinute)
 {
     *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953143 : 0xBBBC1B)) = (uint8_t)iMinute;
     *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953142 : 0xBBBC1A)) = (uint8_t)iHour;
     ScriptCommand(&set_current_time, iHour, iMinute);
 }
-
+// 0.3.7
 void CGame::GetWorldTime(int *iHour, int *iMinute)
 {
 	*iMinute = *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953143 : 0xBBBC1B));
 	*iHour = *(uint8_t*)(g_libGTASA + (VER_x32 ? 0x00953142 : 0xBBBC1A));
 }
-
+// 0.3.7
 void CGame::PreloadObjectsAnims()
 {
 	// keep the throwable weapon models loaded
@@ -177,7 +175,7 @@ void CGame::PreloadObjectsAnims()
 	if(IsAnimationLoaded("STRIP") == 0) RequestAnimation("STRIP");
 	if(IsAnimationLoaded("WOP") == 0) RequestAnimation("WOP");
 }
-
+// 0.3.7
 void CGame::SetWorldWeather(int byteWeatherID)
 {
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005CDF88 + 1 : 0x6F24E8), byteWeatherID);
@@ -188,7 +186,7 @@ void CGame::SetWorldWeather(int byteWeatherID)
         *(uint16_t*)(g_libGTASA + (VER_x32 ? 0x00A7D134 : 0xD216F0)) = byteWeatherID;
     }
 }
-
+// 0.3.7
 void CGame::DisplayHUD(bool bDisp)
 {
 	if (bDisp)
@@ -202,7 +200,7 @@ void CGame::DisplayHUD(bool bDisp)
 		*(uint8_t*)(g_libGTASA + (VER_x32 ? 0x991FD8 : 0xC20DFC)) = 1;
 	}
 }
-
+// 0.3.7
 uint8_t CGame::GetActiveInterior()
 {
 	return CGame::currArea;
@@ -212,7 +210,7 @@ const char* CGame::GetDataDirectory()
 {
 	return ""; // StorageRootBuffer
 }
-
+// 0.3.7
 void CGame::UpdateCheckpoints()
 {
 	if (m_bCheckpointsEnabled)
@@ -256,7 +254,7 @@ void CGame::UpdateCheckpoints()
 		m_dwRaceCheckpointMarker = 0;
 	}
 }
-
+// 0.3.7
 uint8_t CGame::GetPedSlotsUsed()
 {
 	uint8_t count = 0;
@@ -269,58 +267,21 @@ uint8_t CGame::GetPedSlotsUsed()
 	return count;
 }
 
-void CGame::PlayAmbientSound(int iSound)
-{
-    uintptr_t pMgr = *(uintptr_t*)(g_libGTASA + (VER_x32 ? 0x68C398 : 0x86797C));
-    if (pMgr) ((void (*)(uintptr_t, int))(g_libGTASA + (VER_x32 ? 0x3918B7 : 0x46BC84)))(pMgr, iSound);
-}
-
-void CGame::StopAmbientSound()
-{
-    uintptr_t pMgr = *(uintptr_t*)(g_libGTASA + (VER_x32 ? 0x68C398 : 0x86797C));
-    if (pMgr) ((void (*)(uintptr_t))(g_libGTASA + (VER_x32 ? 0x3918BB : 0x46BC8C)))(pMgr);
-}
-
 void CGame::PlaySound(int iSound, float fX, float fY, float fZ)
 {
-    if (iSound) {
-        if (iSound == 1) {
-            m_sound.bDisableInteriorAmbient = true;
-        }
-        else if (iSound >= 2000) {
-            ScriptCommand(&clear_mission_audio, 1);
-            ScriptCommand(&load_mission_audio, 1, iSound);
-            ScriptCommand(&set_mission_audio_position, 1, fX, fY, fZ);
-            ScriptCommand(&play_mission_audio, 1);
-            m_sound.bMissionAudioLoaded = true;
-        }
-        else if (iSound >= 1000) {
-            ScriptCommand(&play_sound, fX, fY, fZ, iSound);
-        }
-        else {
-            PlayAmbientSound(iSound);
-        }
-    }
-    else {
-        if (m_sound.bMissionAudioLoaded) {
-            ScriptCommand(&clear_mission_audio, 1);
-            m_sound.bMissionAudioLoaded = false;
-        }
-        StopAmbientSound();
-        m_sound.bDisableInteriorAmbient = false;
-    }
+	ScriptCommand(&play_sound, fX, fY, fZ, iSound);
 }
-
+// 0.3.7
 void CGame::RefreshStreamingAt(float x, float y)
 {
 	ScriptCommand(&refresh_streaming_at, x, y);
 }
-
+// 0.3.7
 void CGame::DisableTrainTraffic()
 {
 	ScriptCommand(&enable_train_traffic, 0);
 }
-
+// 0.3.7
 void CGame::UpdateGlobalTimer(uint32_t dwTimer)
 {
 	if (!m_bClockEnabled)
@@ -328,7 +289,7 @@ void CGame::UpdateGlobalTimer(uint32_t dwTimer)
 		*(uint32_t*)(g_libGTASA + 0x96B4D8) = dwTimer & 0x3FFFFFFF;
 	}
 }
-
+// 0.3.7
 void CGame::SetGravity(float fGravity)
 {
 #if VER_x32
@@ -352,7 +313,7 @@ void CGame::DrawGangZone(float fPos[], uint32_t dwColor, uint32_t dwUnk)
 	// CRadar::DrawAreaOnRadar
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x00443C60 + 1 : 0x528EC4), fPos, &dwColor, dwUnk);
 }
-
+// 0.3.7
 uint32_t CGame::CreatePickup(int iModel, int iType, float x, float y, float z, int *pdwIndex)
 {
     uintptr hnd;
@@ -369,7 +330,7 @@ uint32_t CGame::CreatePickup(int iModel, int iType, float x, float y, float z, i
 
     return hnd;
 }
-
+// 0.3.7
 bool CGame::IsModelLoaded(int iModel)
 {
 	if (iModel > 20000 || iModel < 0) {
@@ -379,7 +340,7 @@ bool CGame::IsModelLoaded(int iModel)
 		return ScriptCommand(&is_model_available, iModel);
 	}
 }
-
+// 0.3.7
 void CGame::RequestModel(uint16_t iModelId, uint8_t iLoadingStream) 
 {
 	// CStreaming::RequestModel
@@ -387,12 +348,12 @@ void CGame::RequestModel(uint16_t iModelId, uint8_t iLoadingStream)
     //CStreaming::TryLoadModel(iModelId);
     ScriptCommand(&request_model, iModelId);
 }
-
+// 0.3.7
 void CGame::LoadRequestedModels()
 {
 	ScriptCommand(&load_requested_models);
 }
-
+// 0.3.7
 void CGame::RemoveModel(int iModel, bool bFromStreaming)
 {
 	if (iModel >= 0 && iModel < 20000)
@@ -410,13 +371,13 @@ void CGame::RemoveModel(int iModel, bool bFromStreaming)
 		}
 	}
 }
-
+// 0.3.7 (������������ 2 ��������� ��������� ��������� � 0.3DL)
 CObject* CGame::NewObject(int iModel, CVector vecPos, CVector vecRot, float fDrawDistance)
 {
 	CObject *pObjectNew = new CObject(iModel, vecPos, vecRot, fDrawDistance, 0);
 	return pObjectNew;
 }
-
+// 0.3.7 (�� ����������� ������ bIsNPC)
 CPlayerPed* CGame::NewPlayer(int iSkin, float fX, float fY, float fZ, float fRotation, bool unk, bool bIsNPC)
 {
 	uint8_t bytePedSlot = FindFirstFreePlayerPedSlot();
@@ -428,7 +389,7 @@ CPlayerPed* CGame::NewPlayer(int iSkin, float fX, float fY, float fZ, float fRot
 
     return pPed;
 }
-
+// 0.3.7
 bool CGame::RemovePlayer(CPlayerPed* pPed)
 {
 	if (!pPed) return false;
@@ -437,12 +398,12 @@ bool CGame::RemovePlayer(CPlayerPed* pPed)
 	bUsedPlayerSlots[pPed->m_bytePlayerNumber] = false;
 	return true;
 }
-
+// 0.3.7
 void CGame::DisableMarker(uint32_t dwMarker)
 {
 	ScriptCommand(&disable_marker, dwMarker);
 }
-
+// 0.3.7
 uint32_t CGame::CreateRadarMarkerIcon(uint8_t byteType, float fPosX, float fPosY, float fPosZ, uint32_t dwColor, uint8_t byteStyle)
 {
     uintptr dwMarkerID = 0;
@@ -472,33 +433,40 @@ uint32_t CGame::CreateRadarMarkerIcon(uint8_t byteType, float fPosX, float fPosY
 
     return dwMarkerID;
 }
-
+// 0.3.7
 bool CGame::IsAnimationLoaded(const char* szAnimLib)
 {
 	return ScriptCommand(&is_animation_loaded, szAnimLib);
 }
-
+// 0.3.7
 void CGame::RequestAnimation(const char* szAnimLib)
 {
 	ScriptCommand(&request_animation, szAnimLib);
 }
-
+// 0.3.7
 float CGame::FindGroundZForCoord(float fX, float fY, float fZ)
 {
     float fGroundZ;
     ScriptCommand(&get_ground_z, fX, fY, fZ, &fGroundZ);
     return fGroundZ;
 }
+// 0.3.7
+void CGame::DisableAutoAim()
+{
+	//CHook::RET(g_libGTASA + 0x4C6CF4); // CPlayerPed::FindWeaponLockOnTarget
+	//CHook::RET(g_libGTASA + 0x4C7CDC); // CPlayerPed::FindNextWeaponLockOnTarget
 
+	// CPed::SetWeaponLockOnTarget
+	//CHook::RET(g_libGTASA + 0x4A82D4/*0x438DB4*/);
+}
 
-
-
+// 0.3.7
 void CGame::EnabledAutoAim()
 {
 	CHook::RET(g_libGTASA + 0x4C6CF4); // CPlayerPed::FindWeaponLockOnTarget
 	CHook::RET(g_libGTASA + 0x4C7CDC); // CPlayerPed::FindNextWeaponLockOnTarget
 }
-
+// 0.3.7
 CVehicle* CGame::NewVehicle(int iVehicleType, float fX, float fY, float fZ, float fRotation, bool bAddSiren)
 {
 	bool bPreloaded = false;
@@ -510,7 +478,7 @@ CVehicle* CGame::NewVehicle(int iVehicleType, float fX, float fY, float fZ, floa
 
 	return pNewVehicle;
 }
-
+// 0.3.7
 void CGame::SetCheckpointInformation(CVector* vecPos, CVector* vecSize)
 {
 	m_vecCheckpointPos.x = vecPos->x;
@@ -533,7 +501,7 @@ void CGame::SetCheckpointInformation(CVector* vecPos, CVector* vecSize)
 			1005, 0);
 	}
 }
-
+// 0.3.7
 void CGame::SetRaceCheckpointInformation(uint8_t byteType, CVector* vecPos, CVector* vecNextPos, float fRadius)
 {
 	m_vecRaceCheckpointPos.x = vecPos->x;
@@ -561,7 +529,7 @@ void CGame::SetRaceCheckpointInformation(uint8_t byteType, CVector* vecPos, CVec
 
 	MakeRaceCheckpoint();
 }
-
+// 0.3.7
 void CGame::MakeRaceCheckpoint()
 {
 	DisableRaceCheckpoint();
@@ -573,7 +541,7 @@ void CGame::MakeRaceCheckpoint()
 
 	m_bRaceCheckpointsEnabled = true;
 }
-
+// 0.3.7
 void CGame::DisableRaceCheckpoint()
 {
 	if (m_dwRaceCheckpointHandle)
@@ -585,62 +553,9 @@ void CGame::DisableRaceCheckpoint()
 	m_bRaceCheckpointsEnabled = false;
 }
 
-// ตัวแปรสำหรับเก็บค่าเดิมเพื่อเอาไว้คืนค่า (Restore)
-static uint8_t originalWantedCode32[4] = {0};
-static uint8_t originalWantedCode64[4] = {0};
-static bool bIsFakeWantedActive = false;
-
 void CGame::SetWantedLevel(uint8_t level)
 {
-    if (level < 0) level = 0;
-    if (level > 6) level = 6;
-
-    // Address ของคำสั่ง LDR ที่เราจะแก้ (อ้างอิงจากไฟล์ txt ที่คุณให้มา)
-    uintptr_t addr = g_libGTASA + (VER_x32 ? 0x2BDFDC : 0x37E160);
-
-    // 1. ถ้ายังไม่เคยเก็บค่าเดิม ให้เก็บไว้ก่อน (Backup)
-    if (!bIsFakeWantedActive)
-    {
-        CHook::ReadMemory(addr, VER_x32 ? (void*)originalWantedCode32 : (void*)originalWantedCode64, 4);
-        bIsFakeWantedActive = true;
-    }
-
-    // 2. สร้างคำสั่ง Assembly ใหม่ (MOV Register, #level)
-    if (VER_x32)
-    {
-        // 32-Bit (Thumb-2): MOV.W R11, #level
-        // Opcode: F0 4F 0B 0x (x = level)
-        uint8_t patch[4] = { 0xF0, 0x4F, 0x0B, (uint8_t)level };
-        CHook::WriteMemory(addr, patch, 4);
-    }
-    else
-    {
-        // 64-Bit (ARM64): MOV W22, #level
-        // Opcode: 0x52800000 | (Rd << 0) | (Imm << 5)
-        // Rd = 22 (W22)
-        uint32_t movInstruction = 0x52800000 | (22 << 0) | ((uint32_t)level << 5);
-        CHook::WriteMemory(addr, &movInstruction, 4);
-    }
-}
-
-void CGame::GetWantedLevel()
-{
-    if (!bIsFakeWantedActive) return;
-
-    // Address เดิม
-    uintptr_t addr = g_libGTASA + (VER_x32 ? 0x2BDFDC : 0x37E160);
-
-    // คืนค่าเดิมกลับไป (Restore Original Instruction)
-    if (VER_x32)
-    {
-        CHook::WriteMemory(addr, originalWantedCode32, 4);
-    }
-    else
-    {
-        CHook::WriteMemory(addr, originalWantedCode64, 4);
-    }
-
-    bIsFakeWantedActive = false;
+	//CHook::WriteMemory(g_libGTASA+0x2BDF6E, (uintptr_t)&level, 1);
 }
 
 void CGame::EnableStuntBonus(bool bEnable)
@@ -648,7 +563,7 @@ void CGame::EnableStuntBonus(bool bEnable)
 	//CHook::UnFuck(0x7BE2A8);
 	//*(int*)(g_libGTASA+0x7BE2A8) = (int)bEnable;
 }
-
+// 0.3.7
 void CGame::DisplayGameText(const char* szStr, int iTime, int iSize)
 {
     ScriptCommand(&text_clear_all);
@@ -657,12 +572,12 @@ void CGame::DisplayGameText(const char* szStr, int iTime, int iSize)
     // CMessages::AddBigMesssage
     (( void (*)(uint16_t*, int, int))(g_libGTASA + (VER_x32 ? 0x0054C62C + 1 : 0x66C150)))(szGameTextMessage, iTime, iSize);
 }
-
+// 0.3.7
 void CGame::AddToLocalMoney(int iAmmount)
 {
 	ScriptCommand(&add_to_player_money, 0, iAmmount);
 }
-
+// 0.3.7
 void CGame::ResetLocalMoney()
 {
 	int iMoney = GetLocalMoney();
@@ -673,12 +588,12 @@ void CGame::ResetLocalMoney()
 	else
 		AddToLocalMoney(-(iMoney));
 }
-
+// 0.3.7
 int CGame::GetLocalMoney()
 {
 	return 0;
 }
-
+// 0.3.7
 void CGame::DisableEnterExits()
 {
 #if VER_x32
@@ -702,9 +617,8 @@ void CGame::ToggleCJWalk(bool bUseCJWalk)
 
 void CGame::InitialiseOnceBeforeRW() {
     CMemoryMgr::Init();
-    CHook::CallFunction<void>("_ZN14MobileSettings10InitializeEv");
+    CHook::CallFunction<void>("_ZN14MobileSettings10InitializeEv"); // впадлу реверсить т.к. меню надо вообще удалить
     CHook::CallFunction<void>("_ZN13CLocalisation10InitialiseEv");
-
     CFileMgr::Initialise();
     CdStreamInit(TOTAL_IMG_ARCHIVES); // mb use TOTAL_IMG_ARCHIVES?
     CHook::CallFunction<void>("_ZN4CPad10InitialiseEv");
@@ -725,117 +639,43 @@ void LightsCreate(RpWorld* world) {
 
 void InitGui();
 
-// Identifies THIS build in the log. Repeated crash reports were ambiguous
-// because a stale APK looks identical to a new one up to the crash point.
-#define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe (v1.8.3 baseline)"
-
 bool CGame::InitialiseRenderWare() {
-    FLog("InitialiseRenderWare .. build=%s", EASTSIDE_TEXDB_BUILD);
+    FLog("InitialiseRenderWare ..");
 
     CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));
 
     CTxdStore::Initialise();
     CVisibilityPlugins::Initialise();
 
-    // One texture format for every database: DXT. The engine's own detection
-    // picks DF_DXT unconditionally, DXT decodes in software on GPUs without
-    // S3TC and is the only variant complete for every database in the package.
-    // Mixing ETC (most databases) with DXT (`player`, which ships no ETC) made
-    // the texture upload path compute a mismatched stride and write one surface
-    // past the end of the buffer in _rwOpenGLRasterSetImage. v1.8.3 loaded DXT
-    // for all seven on the same Mali device and worked.
-    const TextureDatabaseFormat kWantFormat = TextureDatabaseFormat::DF_DXT;
+#if VER_SAMP
+    TextureDatabaseRuntime::Load("mobile", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("txd", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("gta3", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("gta_int", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("cutscene", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("player", false, TextureDatabaseFormat::DF_PVR);
+    TextureDatabaseRuntime::Load("menu", false, TextureDatabaseFormat::DF_PVR);
+#else
+    TextureDatabaseRuntime::Load("samp", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("mobile", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("txd", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("gta3", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("gta_int", false, TextureDatabaseFormat::DF_Default);
+    TextureDatabaseRuntime::Load("player", false, TextureDatabaseFormat::DF_PVR);
+    TextureDatabaseRuntime::Load("menu", false, TextureDatabaseFormat::DF_PVR);
+    //TextureDatabaseRuntime::Load("cutscene", false, TextureDatabaseFormat::DF_Default);
 
-    // Never hand the engine a database whose payload is not on disk. Load()
-    // happily returns a half-initialised database when the .dat is missing -
-    // that is exactly the state SortEntries() dereferences (fault 0x4). Skipping
-    // early turns a segfault into a missing-texture warning.
-    auto tagOfFmt = [](TextureDatabaseFormat f) {
-        switch (f) {
-            case TextureDatabaseFormat::DF_PVR: return "pvr";
-            case TextureDatabaseFormat::DF_ETC: return "etc";
-            case TextureDatabaseFormat::DF_360: return "360";
-            case TextureDatabaseFormat::DF_UNC: return "unc";
-            default:                            return "dxt";
-        }
-    };
+    /*TextureDatabaseRuntime* radar = TextureDatabaseRuntime::Load("radar", false, TextureDatabaseFormat::DF_ETC);
+    TextureDatabaseRuntime::Register(radar);
 
-    // Probe the disk instead of trusting the hint. The hint only sets the
-    // preference; the file that actually exists decides. That keeps a missing
-    // hint, a stale install, or a package that ships a single variant from ever
-    // reaching Load() with absent data - the state SortEntries() crashes on.
-    auto loadDb = [&](const char* db) {
-        auto tryOne = [&](TextureDatabaseFormat f) -> bool {
-            // Load() needs the .tmb (thumbnails), .toc (entries) and .dat
-            // (payload). A missing .tmb made SortEntries() deref an empty
-            // entry array (fault 0x1db); a missing .toc makes GetTexture()
-            // walk a NULL hash table (fault 0x110, RwTextureStreamRead ->
-            // GetTexture during model streaming). Probe all three before
-            // handing the database to the engine.
-            char dat[512];
-            char tmb[512];
-            char toc[512];
-            snprintf(dat, sizeof(dat), "%stexdb/%s/%s.%s.dat",
-                     g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
-            snprintf(tmb, sizeof(tmb), "%stexdb/%s/%s.%s.tmb",
-                     g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
-            snprintf(toc, sizeof(toc), "%stexdb/%s/%s.%s.toc",
-                     g_pszStorage ? g_pszStorage : "", db, db, tagOfFmt(f));
-            FILE* d = fopen(dat, "rb");
-            if (!d) return false;
-            fclose(d);
-            FILE* t = fopen(tmb, "rb");
-            if (!t) {
-                FLog("texture db '%s' has .%s.dat but no .%s.tmb - skipping",
-                     db, tagOfFmt(f), tagOfFmt(f));
-                return false;
-            }
-            fclose(t);
-            FILE* c = fopen(toc, "rb");
-            if (!c) {
-                FLog("texture db '%s' has .%s.dat/.tmb but no .%s.toc - skipping",
-                     db, tagOfFmt(f), tagOfFmt(f));
-                return false;
-            }
-            fclose(c);
-            FLog("texture db '%s' -> .%s", db, tagOfFmt(f));
-            TextureDatabaseRuntime::Load(db, false, f);
-            return true;
-        };
+    //skins
+    TextureDatabaseRuntime* skins = TextureDatabaseRuntime::Load("skins", false, TextureDatabaseFormat::DF_ETC);
+    TextureDatabaseRuntime::Register(skins);
 
-        const TextureDatabaseFormat want = kWantFormat;
-        if (tryOne(want)) return;
-
-        const TextureDatabaseFormat order[] = {
-            TextureDatabaseFormat::DF_DXT,
-            TextureDatabaseFormat::DF_ETC,
-            TextureDatabaseFormat::DF_PVR,
-        };
-        FLog("texture db '%s' has no .%s.dat, trying other variants",
-             db, tagOfFmt(want));
-        for (TextureDatabaseFormat f : order) {
-            if (f == want) continue;
-            if (tryOne(f)) return;
-        }
-        FLog("texture db '%s' is missing in every variant - skipping", db);
-    };
-
-    // The set v1.8.3 loaded, which is the build confirmed working on Mali.
-    // `samp` is deliberately absent: adding it here makes the texture upload
-    // path fault in _rwOpenGLRasterSetImage with a constant 0x801000 request
-    // regardless of which variant is on disk - the failure survived switching
-    // every database to .dxt, so it is the extra database, not the format.
-    //
-    // LoadTextureFromDB("samp", ...) callers in playertags.cpp tolerate a
-    // missing database: CUtil::LoadTextureFromDB checks GetDatabase() and
-    // returns nullptr with a log line.
-    loadDb("mobile");
-    loadDb("txd");
-    loadDb("gta3");
-    loadDb("gta_int");
-    loadDb("cutscene");
-    loadDb("player");
-    loadDb("menu");
+    // cars
+    TextureDatabaseRuntime* cars = TextureDatabaseRuntime::Load("cars", false, TextureDatabaseFormat::DF_ETC);
+    TextureDatabaseRuntime::Register(cars);*/
+#endif
 
 
     const auto camera = RwCameraCreate();

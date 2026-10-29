@@ -7,7 +7,8 @@
 #pragma once
 
 #include "Enums/AnimationEnums.h"
-#include "common.h"
+#define VALIDATE_SIZE(struc, size) static_assert(sizeof(struc) == size, "Invalid structure size of " #struc)
+
 
 class CRideAnimData {
 public:

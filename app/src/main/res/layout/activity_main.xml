@@ -1,140 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Shell aplikasi: viewpager + nav bawah.
-
-  Nav bukan pill berisi warna penuh. Nav adalah deretan ikon dengan
-  label mono kecil yang hanya muncul untuk tab aktif. Pemisahnya satu
-  garis tipis, bukan shadow.
--->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_gravity="center"
-    android:background="@color/es_asphalt"
+    android:background="@color/colorPrimary"
     android:keepScreenOn="true">
 
-    <com.sampmobile.xyvern.launcher.util.ViewPagerWithoutSwipe
+    <com.samp.mobile.launcher.util.ViewPagerWithoutSwipe
         android:id="@+id/fragment_place"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@+id/nav_rule"
+        app:layout_constraintBottom_toTopOf="@+id/constraintLayout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <View
-        android:id="@+id/nav_rule"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/constraintLayout"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/es_rule"
-        app:layout_constraintBottom_toTopOf="@+id/bottom_nav" />
-
-    <LinearLayout
-        android:id="@+id/bottom_nav"
-        android:layout_width="match_parent"
-        android:layout_height="@dimen/es_nav_h"
-        android:background="@color/es_surface_sunken"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:paddingHorizontal="24dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <LinearLayout
-            android:id="@+id/nav_home"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:background="?attr/selectableItemBackgroundBorderless">
-
-            <ImageView
-                android:id="@+id/iv_home"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                app:srcCompat="@drawable/ic_mainmenu"
-                app:tint="@color/es_ink_ghost" />
-
-            <TextView
-                android:id="@+id/tv_home"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:fontFamily="@font/plex_mono_semibold"
-                android:includeFontPadding="false"
-                android:letterSpacing="0.16"
-                android:text="KOTA"
-                android:textAllCaps="true"
-                android:textColor="@color/es_brass"
-                android:textSize="8sp"
-                android:visibility="gone" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_files"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:background="?attr/selectableItemBackgroundBorderless">
-
-            <ImageView
-                android:id="@+id/iv_files"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                app:srcCompat="@drawable/ic_folder_nav"
-                app:tint="@color/es_ink_ghost" />
-
-            <TextView
-                android:id="@+id/tv_files"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:fontFamily="@font/plex_mono_semibold"
-                android:includeFontPadding="false"
-                android:letterSpacing="0.16"
-                android:text="BERKAS"
-                android:textAllCaps="true"
-                android:textColor="@color/es_brass"
-                android:textSize="8sp"
-                android:visibility="gone" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/nav_settings"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:background="?attr/selectableItemBackgroundBorderless">
-
-            <ImageView
-                android:id="@+id/iv_settings"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                app:srcCompat="@drawable/ic_settingsmenu"
-                app:tint="@color/es_ink_ghost" />
-
-            <TextView
-                android:id="@+id/tv_settings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
-                android:fontFamily="@font/plex_mono_semibold"
-                android:includeFontPadding="false"
-                android:letterSpacing="0.16"
-                android:text="ATUR"
-                android:textAllCaps="true"
-                android:textColor="@color/es_brass"
-                android:textSize="8sp"
-                android:visibility="gone" />
-        </LinearLayout>
-
-    </LinearLayout>
+        android:layout_height="@dimen/_60sdp"
+        app:tabGravity="fill"
+        app:tabIndicatorGravity="top"
+        app:tabIndicatorHeight="@dimen/_5sdp"
+        android:background="@color/colorPrimary"
+        app:tabBackground="@android:color/transparent"
+        app:tabIndicatorColor="#FF0037"
+        app:tabSelectedTextColor="#FF0037"
+        app:tabTextAppearance="@style/tab_layout_title"
+        app:tabTextColor="#AAA9A9"
+        app:tabMode="fixed"
+        app:tabRippleColor="@null"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

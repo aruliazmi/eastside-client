@@ -4,9 +4,9 @@
 #include "SlideController.h"
 
 Stream::Stream(const uint32_t streamFlags, const StreamType type,
-               const uint32_t color, std::string name, const float distance) noexcept
+               const uint32_t color, std::string name) noexcept
     : streamFlags(streamFlags)
-    , streamInfo(type, color, std::move(name), distance)
+    , streamInfo(type, color, std::move(name))
 {}
 
 const StreamInfo& Stream::GetInfo() const noexcept
@@ -18,6 +18,14 @@ void Stream::Tick() noexcept
 {
     for(const auto& channel : this->channels)
     {
+        /*
+            * prevent crash from
+            * channel->SetPlayCallback(std::bind(&Stream::OnChannelPlay, this, std::placeholders::_1));
+            * channel->SetStopCallback(std::bind(&Stream::OnChannelStop, this, std::placeholders::_1));
+            
+            ? anyone can fix it?
+        */
+
         if(channel->channelplay) 
         {
             channel->channelplay = false;
@@ -29,7 +37,8 @@ void Stream::Tick() noexcept
             this->OnChannelStop(*channel);
         }
 
-        if(channel->HasSpeaker() && !channel->IsActive())
+        if(channel->HasSpeaker() && !channel->IsActive() ||
+            !channel->HasSpeaker() && channel->IsActive())
         {
             if(channel->playing) this->OnChannelStop(*channel);
             channel->Reset();
@@ -59,6 +68,7 @@ void Stream::Push(const VoicePacket& packet)
                 LogVoice("[sv:dbg:stream:push] : channel %p was occupied by player %hu "
                     "(stream:%s)", channel.get(), packet.sender, this->streamInfo.GetName().c_str());
 
+                this->OnChannelStop(*channel);
                 channel->SetSpeaker(packet.sender);
 
                 channelPtr = &channel;
@@ -101,7 +111,6 @@ void Stream::Reset() noexcept
 {
     for(const auto& channel : this->channels)
     {
-        if(channel->playing) this->OnChannelStop(*channel);
         channel->Reset();
     }
 }
@@ -194,7 +203,7 @@ void Stream::RemoveStopCallback(const std::size_t callback) noexcept
 
 void Stream::OnChannelCreate(const Channel& channel)
 {
-    BASS_ChannelSetAttribute(channel.GetHandle(), BASS_ATTRIB_VOL, 4.f);
+    BASS_ChannelSetAttribute(channel.GetHandle(), BASS_ATTRIB_VOL, 8.f);
 
     for(const auto& parameter : this->parameters)
     {

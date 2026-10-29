@@ -4,7 +4,7 @@
 
 #include "AnimBlendNode.h"
 #include "AnimBlendAssociation.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 void CAnimBlendNode::Init() {
     m_pAnimBlendAssociation = nullptr;

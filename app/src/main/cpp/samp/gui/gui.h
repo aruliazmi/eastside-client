@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unordered_set>
-
 #define DEBUG_GUI 0
 
 #include "../vendor/encoding/encoding.h"
@@ -38,17 +36,15 @@ struct BUFFERED_COMMAND_TEXTDRAW
 };
 #pragma pack(pop)
 
-class DefenseButton;
-
 class UI : public Widget, public ImGuiWrapper
 {
 public:
 	UI(const ImVec2& display_size, const std::string& font_path);
-    UI(const ImVec2& display_size, const std::vector<char>& fontData);
 
 	bool initialize() override;
 	void render() override;
 	void shutdown() override;
+
 
 	SplashScreen* splashscreen() const { return m_splashScreen; }
 	Chat* chat() const { return m_chat; }
@@ -79,12 +75,11 @@ public:
 	}
 
 	virtual void touchEvent(const ImVec2& pos, TouchType type) override;
-	void HandleDefenseTouchEvent(int type, int pointerId, int x, int y);
-	void ToggleDefenseButtonEditor();
 
 	bool OnTouchEvent(int type, bool multi, int x, int y);
 
     void renderDebug();
+
 
     void ProcessPushedTextdraws();
     void PushToBufferedQueueTextDrawPressed(uint16_t textdrawId);
@@ -93,8 +88,6 @@ protected:
 	void drawList() override;
 
 private:
-	void FinishDefenseButtonEditor(bool save);
-
 	Keyboard* m_keyboard;
 	SplashScreen* m_splashScreen;
 	Chat* m_chat;
@@ -103,23 +96,12 @@ private:
 	ButtonPanel* m_buttonPanel;
 	PlayerTabList* m_playerTabList;
 	VoiceButton* m_voiceButton;
-	DefenseButton* m_defenseButton = nullptr;
-	Button* m_defenseScaleDown = nullptr;
-	Button* m_defenseScaleUp = nullptr;
-	Button* m_defenseSave = nullptr;
-	Button* m_defenseCancel = nullptr;
-	Label* m_defenseEditorHelp = nullptr;
-	std::unordered_set<int> m_defenseTouchIds;
-	bool m_defenseEditorActive = false;
-	int m_defenseDragPointer = -1;
-	ImVec2 m_defenseDefaultPosition = ImVec2(0.0f, 0.0f);
-	ImVec2 m_defenseEditPosition = ImVec2(0.0f, 0.0f);
-	ImVec2 m_defenseLastTouch = ImVec2(0.0f, 0.0f);
-	float m_defenseEditScale = 1.0f;
 	Label* label;
     Label* label2;
     Label* label3;
     Label* label4;
+
+    float 		m_fFontSize;
 
 	bool m_bNeedClearMousePos = false;
 

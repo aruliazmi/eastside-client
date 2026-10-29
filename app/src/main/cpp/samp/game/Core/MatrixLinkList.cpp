@@ -1,6 +1,6 @@
 
 #include "MatrixLinkList.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 CMatrixLinkList gMatrixList;
 

@@ -3,7 +3,7 @@
 //
 
 #include "VisibilityPlugins.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 
 void CVisibilityPlugins::Initialise() {

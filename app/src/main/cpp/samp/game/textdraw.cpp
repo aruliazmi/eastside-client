@@ -3,13 +3,15 @@
 #include "util.h"
 #include "RW/RenderWare.h"
 #include "../gui/gui.h"
+#include "Models/ModelInfo.h"
+
 
 extern UI* pUI;
 extern CSnapShotHelper* pSnapShotHelper;
 
 extern uintptr_t TextDrawTexture[];
 
-
+// 0.3.7
 CTextDraw::CTextDraw(TEXT_DRAW_TRANSMIT* pTextDrawTransmit, const char* szText)
 {
     memset(&m_TextDrawData, 0, sizeof(TEXT_DRAW_DATA));
@@ -65,7 +67,7 @@ CTextDraw::CTextDraw(TEXT_DRAW_TRANSMIT* pTextDrawTransmit, const char* szText)
     m_dwHoverColor = 0;
 
 }
-
+// 0.3.7
 CTextDraw::~CTextDraw()
 {
     if (m_TextDrawData.iTextureSlot != -1 && m_TextDrawData.iTextureSlot != 0x0 && TextDrawTexture[m_TextDrawData.iTextureSlot]) RwTextureDestroy((RwTexture*)TextDrawTexture[m_TextDrawData.iTextureSlot]);
@@ -84,12 +86,9 @@ uintptr_t LoadFromTxdSlot(const char* szSlot, const char* szTexture)
         CallFunction<void>(g_libGTASA + 0x55BDA8 + 1);*/
     }
 
-    // 'samp' is deliberately not loaded (see CUtil::LoadTextureFromDB). Server
-    // textdraws frequently request slot "samp" (spawn timers, 0.3.DL skins...);
-    // querying that half-initialised db is what SIGSEGV'd at 0x110 after spawn.
-    static char *texdb[7] = { "mobile", "txd", "menu", "gta3", "gta_int", "player" };
+    static char *texdb[9] = { "samp", "mobile", "txd", "menu", "gta3", "gta_int", "player", "playerhi", "cutscene" };
     bool FindedLibrary = false;
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 9; i++)
     {
         if (!strcmp(texdb[i], szSlot))
         {
@@ -293,7 +292,6 @@ void CTextDraw::LoadTexture()
     }
 }
 
-#include "Models/ModelInfo.h"
 void CTextDraw::SnapshotProcess()
 {
     if (m_TextDrawData.dwStyle != 5 || m_TextDrawData.iTextureSlot != -1) {
@@ -301,7 +299,7 @@ void CTextDraw::SnapshotProcess()
     }
 
     uintptr_t snapshot = 0;
-
+    CVector offset = {0.0f, 0.0f, 0.0f};
     // PED MODEL
     if (IsValidPedModel(m_TextDrawData.wModelID))
     {
@@ -315,7 +313,7 @@ void CTextDraw::SnapshotProcess()
                 m_TextDrawData.fZoom);
     }
         // VEHICLE MODEL
-    else if (m_TextDrawData.wModelID >= 400 && m_TextDrawData.wModelID <= 611)
+    else if (m_TextDrawData.wModelID >= 400 && m_TextDrawData.wModelID <= 611 || m_TextDrawData.wModelID >= 12500 && m_TextDrawData.wModelID <= 12799)
     {
         snapshot = (uintptr_t)pSnapShotHelper->CreateVehicleSnapShot(
                 m_TextDrawData.wModelID,
@@ -327,6 +325,7 @@ void CTextDraw::SnapshotProcess()
         );
     }
         // OBJECT MODEL
+
     else
     {
         if (!CModelInfo::GetModelInfo(m_TextDrawData.wModelID))

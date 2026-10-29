@@ -3,7 +3,7 @@
 //
 
 #include "CustomBuildingRenderer.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 bool CCustomBuildingRenderer::Initialise() {
     return CHook::CallFunction<bool>("_ZN23CCustomBuildingRenderer10InitialiseEv");

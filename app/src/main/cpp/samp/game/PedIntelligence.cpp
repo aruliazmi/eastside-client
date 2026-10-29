@@ -3,7 +3,7 @@
 //
 
 #include "PedIntelligence.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 void CPedIntelligence::Process() {
 

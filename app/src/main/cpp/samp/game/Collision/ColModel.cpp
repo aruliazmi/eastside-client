@@ -2,7 +2,7 @@
 #include "ColModel.h"
 #include "main.h"
 #include "game/MemoryMgr.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 #include "Collision.h"
 
 //#define COL_EXTRA_DEBUG

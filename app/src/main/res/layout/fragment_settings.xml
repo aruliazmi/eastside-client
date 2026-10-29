@@ -1,562 +1,332 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-  Pengaturan — bukan tumpukan card abu-abu. Baris dipisah garis tipis,
-  label mono kecil sebagai judul bagian, kontrol di kanan.
--->
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/es_asphalt">
+    android:layout_height="match_parent">
 
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:fillViewport="true"
-        android:scrollbars="none"
-        app:layout_constraintTop_toTopOf="parent"
+    <EditText
+        android:id="@+id/settings_nickname"
+        android:layout_width="@dimen/_250sdp"
+        android:layout_height="@dimen/_35sdp"
+        android:background="@drawable/ic_nickname_bg"
+        android:hint="NickName"
+        android:lines="1"
+        android:ems="24"
+        android:inputType="textPersonName"
+        android:fontFamily="@font/montserrat_bold"
+        android:textColor="@color/white"
+        android:textColorHint="@color/gray"
+        android:gravity="center"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/textView9"
+        app:layout_constraintVertical_bias="0.12" />
+
+    <TextView
+        android:id="@+id/textView9"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Settings"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_25sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.497"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.076" />
+
+    <View
+        android:id="@+id/view3"
+        android:layout_width="@dimen/_200sdp"
+        android:layout_height="@dimen/_3sdp"
+        android:background="#FF0037"
+        app:layout_constraintBottom_toTopOf="@+id/settings_nickname"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView9"
+        app:layout_constraintVertical_bias="0.268" />
+
+    <TextView
+        android:id="@+id/textView14"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Copyright x1y2z"
+        android:textColor="#AEAEAE"
+        android:textSize="@dimen/_15sdp"
+        android:fontFamily="@font/montserrat_regular"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.501"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.92" />
+
+    <TextView
+        android:id="@+id/textView7"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Android Keyboard"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.165"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.11" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/keyboard_switch"
+        android:layout_width="@dimen/_50sdp"
+        android:layout_height="@dimen/_20sdp"
+        android:checked="false"
+        android:textOn=""
+        android:textOff=""
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.875"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.1" />
+
+    <TextView
+        android:id="@+id/textView28"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Voice chat"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.135"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.185" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/voice_switch"
+        android:layout_width="@dimen/_50sdp"
+        android:layout_height="@dimen/_20sdp"
+        android:checked="false"
+        android:textOn=""
+        android:textOff=""
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.875"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.175" />
+
+    <TextView
+        android:id="@+id/textView29"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Display FPS"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.135"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.26" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/fps_switch"
+        android:layout_width="@dimen/_50sdp"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:textOn=""
+        android:textOff=""
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.875"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.25" />
+
+    <TextView
+        android:id="@+id/textView46"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Modified data"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.145"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.335" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/modify_switch"
+        android:layout_width="@dimen/_50sdp"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:textOn=""
+        android:textOff=""
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.875"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.33" />
+
+    <TextView
+        android:id="@+id/textView8"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Chat messages"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.155"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.410" />
+
+    <androidx.appcompat.widget.AppCompatSeekBar
+        android:id="@+id/messages_seekbar"
+        android:layout_width="@dimen/_100sdp"
+        android:layout_height="wrap_content"
+        android:max="3"
+        android:progress="1"
+        android:progressDrawable="@drawable/seekbar_drawable"
+        android:splitTrack="false"
+        android:thumb="@drawable/seekbar_thumb"
+        android:thumbTint="@android:color/transparent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.846"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.415" />
+
+    <TextView
+        android:id="@+id/messages_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:textColor="@color/white"
+        android:fontFamily="@font/montserrat_bold"
+        android:textSize="@dimen/_9sdp"
+        app:layout_constraintBottom_toBottomOf="@+id/messages_seekbar"
+        app:layout_constraintEnd_toEndOf="@+id/messages_seekbar"
+        app:layout_constraintStart_toStartOf="@+id/messages_seekbar"
+        app:layout_constraintTop_toTopOf="@+id/messages_seekbar" />
+
+    <TextView
+        android:id="@+id/textView35"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="FPS Limit"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.137"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.49" />
+
+    <androidx.appcompat.widget.AppCompatSeekBar
+        android:id="@+id/fps_seekbar"
+        android:layout_width="@dimen/_100sdp"
+        android:layout_height="wrap_content"
+        android:max="3"
+        android:progress="1"
+        android:progressDrawable="@drawable/seekbar_drawable"
+        android:splitTrack="false"
+        android:thumb="@drawable/seekbar_thumb"
+        android:thumbTint="@android:color/transparent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.846"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.495" />
+
+    <TextView
+        android:id="@+id/fps_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="30"
+        android:textColor="@color/white"
+        android:fontFamily="@font/montserrat_bold"
+        android:textSize="@dimen/_9sdp"
+        app:layout_constraintBottom_toBottomOf="@+id/fps_seekbar"
+        app:layout_constraintEnd_toEndOf="@+id/fps_seekbar"
+        app:layout_constraintStart_toStartOf="@+id/fps_seekbar"
+        app:layout_constraintTop_toTopOf="@+id/fps_seekbar" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/monet_switch"
+        android:layout_width="@dimen/_50sdp"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:textOn=""
+        android:textOff=""
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.875"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.56" />
+
+    <TextView
+        android:id="@+id/textView1868"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/montserrat_bold"
+        android:text="Monet Loader"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.155"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.565" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Version"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_12sdp"
+        android:fontFamily="@font/montserrat_bold"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.135"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.635"/>
+
+    <Spinner
+        android:id="@+id/spinner"
+        android:layout_width="@dimen/_130sdp"
+        android:layout_height="@dimen/_25sdp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.82"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/settings_nickname"
+        app:layout_constraintVertical_bias="0.64"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+    </Spinner>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingHorizontal="@dimen/es_gutter"
-            android:paddingTop="30dp"
-            android:paddingBottom="40dp">
 
-            <!-- ===== JUDUL ===== -->
-            <TextView
-                style="@style/EsDisplay"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Pengaturan" />
-
-            <View
-                android:id="@+id/view3"
-                android:layout_width="28dp"
-                android:layout_height="2dp"
-                android:layout_marginTop="14dp"
-                android:background="@color/es_brass" />
-
-            <!-- ===== TAMPILAN ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="34dp"
-                android:layout_marginStart="2dp"
-                android:text="Tampilan" />
-
-            <View style="@style/EsRule" android:layout_marginTop="10dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="CEF WebView"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/cef_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/es_switch_thumb"
-                    app:trackTint="@color/es_switch_track" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Keyboard Android"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/keyboard_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/es_switch_thumb"
-                    app:trackTint="@color/es_switch_track" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Tampilkan FPS"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/fps_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/es_switch_thumb"
-                    app:trackTint="@color/es_switch_track" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Batas FPS"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <FrameLayout
-                    android:layout_width="132dp"
-                    android:layout_height="wrap_content">
-
-                    <androidx.appcompat.widget.AppCompatSeekBar
-                        android:id="@+id/fps_seekbar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:max="3"
-                        android:progress="1"
-                        android:progressDrawable="@drawable/seekbar_drawable"
-                        android:splitTrack="false"
-                        android:thumb="@drawable/seekbar_thumb" />
-
-                    <TextView
-                        android:id="@+id/fps_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:fontFamily="@font/plex_mono_semibold"
-                        android:text="30"
-                        android:textColor="@color/es_ink"
-                        android:textSize="11sp" />
-                </FrameLayout>
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Baris chat"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <FrameLayout
-                    android:layout_width="132dp"
-                    android:layout_height="wrap_content">
-
-                    <androidx.appcompat.widget.AppCompatSeekBar
-                        android:id="@+id/messages_seekbar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:max="3"
-                        android:progress="1"
-                        android:progressDrawable="@drawable/seekbar_drawable"
-                        android:splitTrack="false"
-                        android:thumb="@drawable/seekbar_thumb" />
-
-                    <TextView
-                        android:id="@+id/messages_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:fontFamily="@font/plex_mono_semibold"
-                        android:text="1"
-                        android:textColor="@color/es_ink"
-                        android:textSize="11sp" />
-                </FrameLayout>
-            </LinearLayout>
-
-            <!-- ===== MOD & AUDIO ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="34dp"
-                android:layout_marginStart="2dp"
-                android:text="Mod &amp; audio" />
-
-            <View style="@style/EsRule" android:layout_marginTop="10dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/aml_label"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Android Mod Loader"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/aml_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/es_switch_thumb"
-                    app:trackTint="@color/es_switch_track" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/cleo_label"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="CLEO + MonetLoader"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <TextView
-                    android:id="@+id/cleo_hint"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:text="via Mod Loader"
-                    android:textColor="@color/es_ink_dim"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Voice chat"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/voice_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/es_switch_thumb"
-                    app:trackTint="@color/es_switch_track" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/montserrat_medium"
-                    android:text="Data termodifikasi"
-                    android:textColor="@color/es_ink"
-                    android:textSize="14sp" />
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/modify_switch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:thumbTint="@color/es_switch_thumb"
-                    app:trackTint="@color/es_switch_track" />
-            </LinearLayout>
-
-            <!-- ===== VERSI ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="34dp"
-                android:layout_marginStart="2dp"
-                android:text="Versi game" />
-
-            <View style="@style/EsRule" android:layout_marginTop="10dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="60dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:text="0.3.DL-R1"
-                    android:textColor="@color/es_ink_dim"
-                    android:textSize="12sp" />
-
-                <Spinner
-                    android:id="@+id/spinner"
-                    android:layout_width="132dp"
-                    android:layout_height="40dp"
-                    android:background="@drawable/es_input"
-                    android:paddingHorizontal="10dp" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <!-- ===== PEMBARUAN ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="34dp"
-                android:layout_marginStart="2dp"
-                android:text="Versi aplikasi" />
-
-            <View style="@style/EsRule" android:layout_marginTop="10dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingVertical="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_client_version"
-                        style="@style/EsFigure"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="1.6.4" />
-
-                    <TextView
-                        android:id="@+id/tv_update_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="@font/plex_mono_medium"
-                        android:text="Belum diperiksa"
-                        android:textColor="@color/es_ink_ghost"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/btn_check_update"
-                    android:layout_width="wrap_content"
-                    android:layout_height="42dp"
-                    android:background="@drawable/es_btn_primary"
-                    android:fontFamily="@font/plex_mono_semibold"
-                    android:letterSpacing="0.08"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="18dp"
-                    android:text="CEK UPDATE"
-                    android:textAllCaps="true"
-                    android:textColor="@color/es_asphalt"
-                    android:textSize="10sp"
-                    android:stateListAnimator="@null" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <!-- Progres unduhan APK, hanya tampil saat mengunduh -->
-            <LinearLayout
-                android:id="@+id/layout_update_progress"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingVertical="12dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/tv_update_progress"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:text="Mengunduh 0%"
-                    android:textColor="@color/es_brass"
-                    android:textSize="10sp" />
-
-                <ProgressBar
-                    android:id="@+id/pb_update"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="3dp"
-                    android:layout_marginTop="8dp"
-                    android:indeterminate="false"
-                    android:max="100"
-                    android:progress="0"
-                    android:progressDrawable="@drawable/download_progress"
-                    android:progressTint="@color/es_brass" />
-            </LinearLayout>
-
-            <!-- ===== RESOURCE GAME ===== -->
-            <TextView
-                style="@style/EsLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="34dp"
-                android:layout_marginStart="2dp"
-                android:text="Data resource" />
-
-            <View style="@style/EsRule" android:layout_marginTop="10dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingVertical="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/tv_resource_status"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/plex_mono_medium"
-                        android:text="Belum diperiksa"
-                        android:textColor="@color/es_ink_dim"
-                        android:textSize="12sp" />
-
-                    <TextView
-                        android:id="@+id/tv_resource_detail"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:fontFamily="@font/plex_mono_medium"
-                        android:text="Periksa kelengkapan file game"
-                        android:textColor="@color/es_ink_ghost"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/btn_check_resource"
-                    android:layout_width="wrap_content"
-                    android:layout_height="42dp"
-                    android:background="@drawable/es_btn_primary"
-                    android:fontFamily="@font/plex_mono_semibold"
-                    android:letterSpacing="0.08"
-                    android:minWidth="0dp"
-                    android:paddingHorizontal="18dp"
-                    android:text="CEK DATA"
-                    android:textAllCaps="true"
-                    android:textColor="@color/es_asphalt"
-                    android:textSize="10sp"
-                    android:stateListAnimator="@null" />
-            </LinearLayout>
-
-            <View style="@style/EsRule" />
-
-            <!-- Progres perbaikan data, hanya tampil saat memperbaiki -->
-            <LinearLayout
-                android:id="@+id/layout_repair_progress"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingVertical="12dp"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/tv_repair_progress"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:text="Memperbaiki 0%"
-                    android:textColor="@color/es_brass"
-                    android:textSize="10sp" />
-
-                <ProgressBar
-                    android:id="@+id/pb_repair"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="3dp"
-                    android:layout_marginTop="8dp"
-                    android:indeterminate="false"
-                    android:max="100"
-                    android:progress="0"
-                    android:progressDrawable="@drawable/download_progress"
-                    android:progressTint="@color/es_brass" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="30dp"
-                android:fontFamily="@font/plex_mono_medium"
-                android:letterSpacing="0.1"
-                android:text="EASTSIDE CLIENT  ·  163.52.135.25:7777"
-                android:textColor="@color/es_ink_ghost"
-                android:textSize="9sp" />
-
-        </LinearLayout>
-    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -9,11 +9,9 @@ extern UI* pUI;
 extern CNetGame* pNetGame;
 extern CGame *pGame;
 
-
-
+bool bNeedEnterVehicle = false;
 bool OpenButton = false;
 int Tab = 0;
-
 ButtonPanel::ButtonPanel()
 	: Layout(Orientation::HORIZONTAL)
 {

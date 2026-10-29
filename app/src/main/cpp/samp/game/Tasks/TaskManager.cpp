@@ -7,7 +7,7 @@
 
 #include "../common.h"
 #include "TaskManager.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 static void DeleteTaskAndNull(CTask*& task) {
     delete task;

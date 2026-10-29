@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-# Canonical Android 15/16 release pipeline:
-#   1. Gradle produces app-release.apk (useLegacyPackaging=false)
-#   2. zipalign -P 16 page-aligns every uncompressed .so to 16 KB
-#   3. apksigner (build-tools 35) signs v1+v2+v3
-# Never sign with the Debian /usr/bin/apksigner (0.9) - it corrupts v1.
 set -euo pipefail
 BT="${BT:-/opt/android-sdk/build-tools/35.0.0}"
 ROOT="$(cd "$(dirname "$0")" && pwd)"

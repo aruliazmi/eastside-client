@@ -140,7 +140,6 @@ int RPC_ScrUpdate3DTextLabel = 58;
 int RPC_ScrInterpolateCamera = 82;
 int RPC_ScrRemoveBuilding = 43;
 int RPC_ScrSetObjectMaterial = 84;
-int RPC_ScrEditObject = 27;
 int RPC_ScrSelectTextDraw = 83;
 int RPC_ScrSetVehicleTireStatus = 98;
 int RPC_ScrSetArmedWeapon = 67;
@@ -151,11 +150,3 @@ int RPC_ScrPlayAudioStream = 41;
 int RPC_ScrStopAudioStream = 42;
 int RPC_ScrAttachCameraToObject = 81;
 int RPC_SetPlayerSkillLevel = 34;
-
-// SA-MP 0.3.DL Artwork / Custom Models RPC
-int RPC_ModelRequest = 179;
-int RPC_RequestDff = 181;
-int RPC_RequestTxd = 182;
-int RPC_ModelFile = 183;
-int RPC_FinishDownload = 184;
-int RPC_DownloadCompleted = 185;

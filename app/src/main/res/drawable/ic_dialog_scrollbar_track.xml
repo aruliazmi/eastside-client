@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Track scrollbar: hampir tak terlihat, hanya penanda jalur. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/es_rule" />
-    <corners android:radius="@dimen/_100sdp" />
+<shape xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:aapt="http://schemas.android.com/aapt">
+    <solid android:color="#4d616161"/>
+    <corners android:radius="@dimen/_100sdp"/>
 </shape>

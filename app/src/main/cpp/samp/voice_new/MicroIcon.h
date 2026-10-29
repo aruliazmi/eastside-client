@@ -1,9 +1,8 @@
 #pragma once
+
 #include "../gui/gui.h"
 
 class MicroIcon {
-    friend class CGUI;
-    
     MicroIcon() = delete;
     ~MicroIcon() = delete;
     MicroIcon(const MicroIcon&) = delete;
@@ -12,7 +11,7 @@ class MicroIcon {
     MicroIcon& operator=(MicroIcon&&) = delete;
 
 public:
-    static constexpr float kBaseIconSize = 30.f;
+    static constexpr float kBaseIconSize = 25.f;
 
 public:
     static bool Init() noexcept;

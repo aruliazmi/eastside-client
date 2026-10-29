@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include "MemoryMgr.h"
 #include "common.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 void CMemoryMgr::Init() {
     CHook::CallFunction<void>("_ZN10CMemoryMgr4InitEv");

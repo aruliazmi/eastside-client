@@ -41,11 +41,7 @@ public:
 	void UpdateCheckpoints();
 	uint8_t GetActiveInterior();
 	uint8_t GetPedSlotsUsed();
-
-	void PlayAmbientSound(int iSound);
-	void StopAmbientSound();
 	void PlaySound(int iSound, float fX, float fY, float fZ);
-
 	void RefreshStreamingAt(float x, float y);
 	void DisableTrainTraffic();
 	void UpdateGlobalTimer(uint32_t dwTime);
@@ -76,7 +72,7 @@ public:
 
 	static const char* GetDataDirectory();
 
-	
+	// 0.3.7
 	CPlayerPed* FindPlayerPed() {
 		if (m_pGamePlayer == nullptr) {
 			m_pGamePlayer = new CPlayerPed();
@@ -86,10 +82,9 @@ public:
 
 	bool IsGamePaused();
 	bool IsGameLoaded();
+	void DisableAutoAim();
 	void EnabledAutoAim();
 	void SetWantedLevel(uint8_t level);
-	void GetWantedLevel();
-	
 	void EnableStuntBonus(bool bEnable);
 	void DisplayGameText(const char* szStr, int iTime, int iSize);
 	void AddToLocalMoney(int iAmmount);
@@ -126,15 +121,9 @@ public:
     static inline std::queue<std::function<void()>> tasks;
     static inline std::mutex mtx;
     static void Process();
-
 public:
 	bool m_bCheckpointsEnabled;
 	bool m_bRaceCheckpointsEnabled;
-
-	struct {
-		bool 					bDisableInteriorAmbient; 
-		bool 					bMissionAudioLoaded;
-	} m_sound;
 
 private:
 	CPlayerPed* m_pGamePlayer;

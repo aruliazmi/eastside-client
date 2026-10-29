@@ -95,7 +95,7 @@ CPedGTA::CPedGTA(ePedType pedType) : CPhysical(), m_pedIK{CPedIK(this)} {
 
     m_nWeaponSkill = eWeaponSkill::STD;
     m_nFightingStyle = STYLE_STANDARD;
-    m_nAllowedAttackMoves = (char)0xFF; // allow all standard melee moves (fix: was 0 = no melee)
+    m_nAllowedAttackMoves = 0;
 
     // GiveWeapon(WEAPON_UNARMED, 0, true);
 

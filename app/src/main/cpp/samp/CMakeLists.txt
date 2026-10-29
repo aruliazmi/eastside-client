@@ -5,24 +5,29 @@ set(CMAKE_CXX_STANDARD 20)
 
 if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
     add_definitions(-DVER_x32=true)
-    set(GLOSSHOOK_ABI "ARM")
 elseif(${ANDROID_ABI} STREQUAL "arm64-v8a")
     add_definitions(-DVER_x32=false)
-    set(GLOSSHOOK_ABI "ARM64")
 endif()
 
 # Add source files
 file(GLOB_RECURSE SOURCES
-        ${CMAKE_CURRENT_LIST_DIR}/*.c
-        ${CMAKE_CURRENT_LIST_DIR}/*.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/*.cc
+        ${CMAKE_CURRENT_LIST_DIR}/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/**/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/**/**/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/**/**/**/**/**/*.c*
+        ${CMAKE_CURRENT_LIST_DIR}/**/**/**/**/**/**/**/**/**/*.c*
         )
 
 # Add include directories
 include_directories(
         ${CMAKE_CURRENT_LIST_DIR}
         ${CMAKE_CURRENT_LIST_DIR}/util/
-        ${CMAKE_CURRENT_LIST_DIR}/vendor/shadowhook
+        ${CMAKE_CURRENT_LIST_DIR}/vendor/armhook
         ${CMAKE_CURRENT_LIST_DIR}/vendor/imgui
         ${CMAKE_CURRENT_LIST_DIR}/vendor/
         ${CMAKE_CURRENT_LIST_DIR}/game/RW/
@@ -34,31 +39,9 @@ include_directories(
 #set_target_properties(libopus PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/vendor/opus/libopus.a)
 
 add_library(samp SHARED ${SOURCES})
-add_library(glosshook SHARED IMPORTED)
-set_target_properties(glosshook PROPERTIES
-        IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/vendor/GlossHook/libs/${GLOSSHOOK_ABI}/libGlossHook.so
-)
-
-target_link_libraries(samp 
-        log 
-        android
-        EGL 
-        GLESv3 
-        opus 
-        shadowhook::shadowhook 
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bass/libs/${ANDROID_ABI}/libbass.so
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bass/libs/${ANDROID_ABI}/libbass_ssl.so
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/GlossHook/libs/${GLOSSHOOK_ABI}/libGlossHook.a
-        glosshook
-        )
+target_link_libraries(samp log EGL GLESv3 opus shadowhook::shadowhook ${CMAKE_CURRENT_SOURCE_DIR}/vendor/bass/libs/${ANDROID_ABI}/libbass.so)
 
 # Set compilation flags
-# Debug: default symbol visibility for easier JNI and debugging
-# Release: hidden symbol visibility for smaller binary and encapsulation
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -s -g -pthread -Wall -O3 -fexceptions")
-target_compile_options(samp PRIVATE
-        $<$<CONFIG:Debug>:-fvisibility=default>
-        $<$<CONFIG:Release>:-fvisibility=hidden>
-)
-target_link_options(samp PRIVATE "-Wl,-z,max-page-size=16384")
+#
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w -s -g -fvisibility=hidden -pthread -Wall -O3 -fexceptions")
 

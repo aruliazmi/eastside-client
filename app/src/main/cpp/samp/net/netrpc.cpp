@@ -4,8 +4,6 @@
 #include "../gui/gui.h"
 #include "../vendor/encoding/encoding.h"
 #include "../settings.h"
-#include "dl/dlmanager.h"
-#include <cstdio>
 
 extern UI* pUI;
 extern CGame *pGame;
@@ -28,7 +26,7 @@ int g_iLagCompensationMode = 0;
 void ProcessIncommingEvent(PLAYERID playerID, int iEventType,
 	uint32_t dwParam1, uint32_t dwParam2, uint32_t dwParam3);
 
-
+void DisableAutoAim();
 void InitGame(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] InitGame");
@@ -176,7 +174,7 @@ void InitGame(RPCParameters* rpcParams)
 		pUI->chat()->addInfoMessage(u8"{ff0000}Voice chat not inited. Please allow the app to access the microphone!");
 	}*/
 }
-
+// 0.3.7
 #include "java/jniutil.h"
 extern CJavaWrapper* pJavaWrapper;
 int Button2Show;
@@ -221,11 +219,11 @@ void DialogBox(RPCParameters *rpcParams)
 	Log::addParameter("szButton2", szButton2);
 	Log::addParameter("szMessage", szMessage);
 	
-	if (wDialogID == 65535 || wDialogID < 0) //Fix Blank Dialog
+	/*if (wDialogID == 65535 || wDialogID < 0) //Fix Blank Dialog
 	{
 		pNetGame->SendDialogResponse(wDialogID, 1, -1, " ");
 		return;
-	}
+	}*/
 
 	DialogStyle style;
 	switch (byteDialogStyle)
@@ -263,13 +261,12 @@ void DialogBox(RPCParameters *rpcParams)
 			//MyLog("lol2 %s", szButton2);
 		}
 		//pUI->dialog()->show(wDialogID, style, Encoding::cp2utf(szTitle), Encoding::cp2utf(szMessage), Encoding::cp2utf(szButton1), Encoding::cp2utf(szButton2));
-		if (pJavaWrapper)
-		    pJavaWrapper->ShowDialog(byteDialogStyle, wDialogID, (char*)Encoding::cp2utf(szTitle).c_str(), (char*) Encoding::cp2utf(szMessage).c_str(), (char*) Encoding::cp2utf(szButton1).c_str(), (char*) Encoding::cp2utf(szButton2).c_str());
+		pJavaWrapper->ShowDialog(byteDialogStyle, wDialogID, (char*)Encoding::cp2utf(szTitle).c_str(), (char*) Encoding::cp2utf(szMessage).c_str(), (char*) Encoding::cp2utf(szButton1).c_str(), (char*) Encoding::cp2utf(szButton2).c_str());
 	}
 
 	return;
 }
-
+// 0.3.7
 void Chat(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Chat");
@@ -306,7 +303,7 @@ void Chat(RPCParameters *rpcParams)
 		}
 	}
 }
-
+// 0.3.7
 void ClientMessage(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Client message ");
@@ -333,7 +330,7 @@ void ClientMessage(RPCParameters *rpcParams)
 		if (pUI) pUI->chat()->addClientMessage(Encoding::cp2utf(szMsg), UI::fixcolor(dwColor));
 	}
 }
-
+// 0.3.7
 void RequestClass(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Request class");
@@ -347,38 +344,7 @@ void RequestClass(RPCParameters *rpcParams)
 	CLocalPlayer *pLocalPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer();
 
 	bsData.Read(byteRequestOutcome);
-	if (bsData.GetNumberOfUnreadBits() >= (50 * 8)) {
-		uint8_t byteTeam;
-		int iSkin;
-		uint32_t dCustomSkinID;
-		uint8_t unk;
-		CVector vecPos;
-		float fRotation;
-		int iSpawnWeapons[3];
-		int iSpawnWeaponsAmmo[3];
-
-		bsData.Read(byteTeam);
-		bsData.Read(iSkin);
-		bsData.Read(dCustomSkinID);
-		bsData.Read(unk);
-		bsData.Read(vecPos.x);
-		bsData.Read(vecPos.y);
-		bsData.Read(vecPos.z);
-		bsData.Read(fRotation);
-		bsData.Read((char*)iSpawnWeapons, sizeof(iSpawnWeapons));
-		bsData.Read((char*)iSpawnWeaponsAmmo, sizeof(iSpawnWeaponsAmmo));
-
-		SpawnInfo.byteTeam = byteTeam;
-		int actualSkin = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID) : iSkin;
-		SpawnInfo.iSkin = IsValidPedModel(actualSkin) ? actualSkin : iSkin;
-		SpawnInfo.unk = unk;
-		SpawnInfo.vecPos = vecPos;
-		SpawnInfo.fRotation = fRotation;
-		memcpy(SpawnInfo.iSpawnWeapons, iSpawnWeapons, sizeof(iSpawnWeapons));
-		memcpy(SpawnInfo.iSpawnWeaponsAmmo, iSpawnWeaponsAmmo, sizeof(iSpawnWeaponsAmmo));
-	} else {
-		bsData.Read((char*)&SpawnInfo, sizeof(PLAYER_SPAWN_INFO));
-	}
+	bsData.Read((char*)&SpawnInfo, sizeof(PLAYER_SPAWN_INFO));
 
 	Log::addParameter("byteRequestOutcome", byteRequestOutcome);
 	Log::addParameter("SpawnInfo.byteTeam", SpawnInfo.byteTeam);
@@ -399,7 +365,7 @@ void RequestClass(RPCParameters *rpcParams)
 		pLocalPlayer->HandleClassSelectionOutcome(false);
 	}
 }
-
+// 0.3.7
 void RequestSpawn(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Request spawn");
@@ -421,7 +387,7 @@ void RequestSpawn(RPCParameters *rpcParams)
 		pLocalPlayer->m_bWaitingForSpawnRequestReply = false;
 	}
 }
-
+// 0.3.7
 void ToggleClock(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Toggle clock");
@@ -444,7 +410,7 @@ void ToggleClock(RPCParameters *rpcParams)
 			(int*)&pNetGame->m_pNetSet->byteWorldTime_Minute);
 	}
 }
-
+// 0.3.7
 void SetTimeEx(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] SetTimeEx");
@@ -466,7 +432,7 @@ void SetTimeEx(RPCParameters *rpcParams)
 	pNetGame->m_pNetSet->byteWorldTime_Hour = byteHour;
 	pNetGame->m_pNetSet->byteWorldTime_Minute = byteMinute;
 }
-
+// 0.3.7
 void Weather(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Weather");
@@ -484,7 +450,7 @@ void Weather(RPCParameters *rpcParams)
 	pNetGame->m_pNetSet->byteWeather = byteWeather;
 	pGame->SetWorldWeather(byteWeather);
 }
-
+// 0.3.7
 void WorldTime(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] World time");
@@ -500,7 +466,7 @@ void WorldTime(RPCParameters *rpcParams)
 
 	pNetGame->m_pNetSet->byteWorldTime_Hour = byteWorldTIme;
 }
-
+// 0.3.7
 void ConnectionRejected(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Connection rejected");
@@ -538,14 +504,14 @@ void ConnectionRejected(RPCParameters *rpcParams)
 
 	pNetGame->GetRakClient()->Disconnect(500);
 }
-
+// 0.3.7
 void GameModeRestart(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Gamemode restart");
 
 	pNetGame->ShutdownForGameModeRestart();
 }
-
+// 0.3.7
 void ServerJoin(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Server join");
@@ -587,7 +553,7 @@ void ServerJoin(RPCParameters *rpcParams)
 		pRemotePlayer->SetPlayerColor(dwMarkerColor);
 	}
 }
-
+// 0.3.7
 void ServerQuit(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Server quit");
@@ -606,7 +572,7 @@ void ServerQuit(RPCParameters *rpcParams)
 
 	pNetGame->GetPlayerPool()->Delete(playerId, byteReason);
 }
-
+// 0.3.7
 void WorldPlayerAdd(RPCParameters *rpcParams)
 {
 	FLog("[RPC-IN] World player add");
@@ -630,16 +596,6 @@ void WorldPlayerAdd(RPCParameters *rpcParams)
 	bsData.Read(playerId);
 	bsData.Read(byteTeam);
 	bsData.Read(iSkin);
-	if (bsData.GetNumberOfUnreadBits() >= (47 * 8)) {
-		uint32_t dCustomSkinID = 0;
-		bsData.Read(dCustomSkinID);
-		if (dCustomSkinID > 0) {
-			int16_t virtId = DLManager::Instance().GetVirtualModelId(dCustomSkinID);
-			if (IsValidPedModel(virtId)) {
-				iSkin = virtId;
-			}
-		}
-	}
 	bsData.Read(vecPos.x);
 	bsData.Read(vecPos.y);
 	bsData.Read(vecPos.z);
@@ -697,7 +653,7 @@ void WorldPlayerAdd(RPCParameters *rpcParams)
 		}
 	}
 }
-
+// 0.3.7
 void WorldPlayerRemove(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] World player remove");
@@ -720,7 +676,7 @@ void WorldPlayerRemove(RPCParameters *rpcParams)
 		}
 	}
 }
-
+// 0.3.7
 void WorldPlayerDeath(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] World player death");
@@ -743,7 +699,7 @@ void WorldPlayerDeath(RPCParameters *rpcParams)
 		}
 	}
 }
-
+// 0.3.7
 void WorldVehicleAdd(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] World vehicle add");
@@ -829,7 +785,7 @@ void WorldVehicleAdd(RPCParameters* rpcParams)
 		pVehicle->SetColor(VehicleInfo.iBodyColor1, VehicleInfo.iBodyColor2);
 	}*/
 }
-
+// 0.3.7
 void WorldVehicleRemove(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] World vehicle remove");
@@ -909,7 +865,7 @@ void WorldVehicleRemove(RPCParameters* rpcParams)
 		pVehiclePool->Delete(VehicleID + 3);
 	}
 }
-
+// 0.3.7
 void TimerUpdate(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Timer update");
@@ -925,7 +881,7 @@ void TimerUpdate(RPCParameters *rpcParams)
 
 	//pGame->UpdateGlobalTimer(dwTime);
 }
-
+// 0.3.7
 void ScmEvent(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] SCM event");
@@ -952,7 +908,7 @@ void ScmEvent(RPCParameters *rpcParams)
 	
 	ProcessIncommingEvent(playerId, iEvent, dwParam1, dwParam2, dwParam3);
 }
-
+// 0.3.7
 void UpdateScoresPingsIPs(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Update scores and pings");
@@ -977,7 +933,7 @@ void UpdateScoresPingsIPs(RPCParameters *rpcParams)
 		pPlayerPool->UpdatePlayerPing(playerId, iPlayerPing);
 	}
 }
-
+// 0.3.7
 void Pickup(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Pickup");
@@ -996,7 +952,7 @@ void Pickup(RPCParameters *rpcParams)
 		pPickupPool->New(&Pickup, iIndex);
 	}
 }
-
+// 0.3.7
 void DestroyPickup(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Destroy pickup");
@@ -1013,7 +969,7 @@ void DestroyPickup(RPCParameters *rpcParams)
 		pPickupPool->Destroy(iIndex);
 	}
 }
-
+// 0.3.7
 void Create3DTextLabel(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Create 3D text label");
@@ -1047,7 +1003,7 @@ void Create3DTextLabel(RPCParameters* rpcParams)
 		pTextLabelPool->NewLabel(wLabelId, &label);
 	}
 }
-
+// 0.3.7
 void Update3DTextLabel(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Update 3D text label");
@@ -1066,7 +1022,7 @@ void Update3DTextLabel(RPCParameters* rpcParams)
 			pTextLabelPool->ClearLabel(wLabelId);
 	}
 }
-
+// 0.3.7
 void SetCheckpoint(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Set checkpoint");
@@ -1090,14 +1046,14 @@ void SetCheckpoint(RPCParameters* rpcParams)
 	pGame->SetCheckpointInformation(&vecPos, &vecSize);
 	pGame->m_bCheckpointsEnabled = true;
 }
-
+// 0.3.7
 void DisableCheckpoint(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Disable checkpoint");
 
 	pGame->m_bCheckpointsEnabled = false;
 }
-
+// 0.3.7
 void SetRaceCheckpoint(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Set race checkpoint");
@@ -1122,14 +1078,14 @@ void SetRaceCheckpoint(RPCParameters* rpcParams)
 	pGame->SetRaceCheckpointInformation(byteType, &vecPos, &vecNextPos, fRadius);
 	pGame->m_bRaceCheckpointsEnabled = true;
 }
-
+// 0.3.7
 void DisableRaceCheckpoint(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Disable race checkpoint");
 
 	pGame->m_bRaceCheckpointsEnabled = false;
 }
-
+// 0.3.7
 void DamageVehicle(RPCParameters *rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Damage vehicle");
@@ -1181,7 +1137,7 @@ void SetVehicleTireStatus(RPCParameters* rpcParams)
 	}
 }
 
-
+// 0.3.7
 void EnterVehicle(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Enter vehicle");
@@ -1212,7 +1168,7 @@ void EnterVehicle(RPCParameters* rpcParams)
 		pRemotePlayer->EnterVehicle(VehicleID, bytePassenger);
 	}
 }
-
+// 0.3.7
 void ExitVehicle(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Exit vehicle");
@@ -1232,7 +1188,7 @@ void ExitVehicle(RPCParameters* rpcParams)
 			pRemotePlayer->ExitVehicle();
 	}
 }
-
+// 0.3.7
 void VehicleParamsEx(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] VehicleParamsEx");
@@ -1400,7 +1356,7 @@ void VehicleParamsEx(RPCParameters* rpcParams)
 		pVehicle->OpenWindow(9);
 	}
 }
-
+// 0.3.7
 void ShowActor(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Show actor");
@@ -1413,34 +1369,14 @@ void ShowActor(RPCParameters* rpcParams)
 
 	NEW_ACTOR newActor;
 	RakNet::BitStream bsData(Data, (iBitLength / 8) + 1, false);
-
-	if (bsData.GetNumberOfUnreadBits() >= (31 * 8)) {
-		bsData.Read(newActor.ActorID);
-		bsData.Read(newActor.iSkin);
-		uint32_t dCustomSkinID = 0;
-		bsData.Read(dCustomSkinID);
-		if (dCustomSkinID > 0) {
-			int16_t virtId = DLManager::Instance().GetVirtualModelId(dCustomSkinID);
-			if (IsValidPedModel(virtId)) {
-				newActor.iSkin = virtId;
-			}
-		}
-		bsData.Read(newActor.vecPos.x);
-		bsData.Read(newActor.vecPos.y);
-		bsData.Read(newActor.vecPos.z);
-		bsData.Read(newActor.fAngle);
-		bsData.Read(newActor.fHealth);
-		bsData.Read(newActor.bInvulnerable);
-	} else {
-		bsData.Read((char*)& newActor, sizeof(NEW_ACTOR));
-	}
+	bsData.Read((char*)& newActor, sizeof(NEW_ACTOR));
 
 	if (IsValidPedModel(newActor.iSkin))
 	{
 		pActorPool->New(&newActor);
 	}
 }
-
+// 0.3.7
 void HideActor(RPCParameters* rpcParams)
 {
 	Log::traceLastFunc("[RPC-IN] Hide actor");
@@ -1556,32 +1492,6 @@ void EditObject(RPCParameters *rpcParams) {
 	FLog("RPC: EditObject %d", objectId);
 }
 
-void DL_ModelRequest(RPCParameters* rpcParams)
-{
-	DLManager::Instance().OnModelRequest(rpcParams);
-}
-
-void DL_ModelFile(RPCParameters* rpcParams)
-{
-	int idx = DLManager::Instance().Next183DumpIndex();
-	if (idx >= 0 && idx < 3) {
-		char hex[128];
-		int len = (rpcParams && rpcParams->input) ? static_cast<int>((rpcParams->numberOfBitsOfData + 7) / 8) : 0;
-		int n = (len > 12) ? 12 : len;
-		int pos = snprintf(hex, sizeof(hex), "183 raw:");
-		for (int i = 0; i < n && pos < (int)sizeof(hex) - 4; ++i) {
-			pos += snprintf(hex + pos, sizeof(hex) - pos, " %02X", rpcParams->input[i]);
-		}
-		DLManager::Instance().PushChat(hex);
-	}
-	DLManager::Instance().OnModelFile(rpcParams);
-}
-
-void DL_DownloadCompleted(RPCParameters* rpcParams)
-{
-	DLManager::Instance().OnDownloadCompleted(rpcParams);
-}
-
 void RegisterRPCs(RakClientInterface *pRakClient)
 {
 	Log::traceLastFunc("Registering RPC's..");
@@ -1637,22 +1547,12 @@ void RegisterRPCs(RakClientInterface *pRakClient)
 	pRakClient->RegisterAsRemoteProcedureCall(&RPC_ShowActor, ShowActor);							// DONE
 	pRakClient->RegisterAsRemoteProcedureCall(&RPC_HideActor, HideActor);							// DONE
 	pRakClient->RegisterAsRemoteProcedureCall(&RPC_ChatBubble, ChatBubble);
-
-	// 0.3.DL Artwork
-	pRakClient->RegisterAsRemoteProcedureCall(&RPC_ModelRequest, DL_ModelRequest);
-	pRakClient->RegisterAsRemoteProcedureCall(&RPC_ModelFile, DL_ModelFile);
-	pRakClient->RegisterAsRemoteProcedureCall(&RPC_DownloadCompleted, DL_DownloadCompleted);
 }
 
 void UnregisterRPCs(RakClientInterface *pRakClient)
 {
 	Log::traceLastFunc("Unregistering RPC's..");
     pRakClient->UnregisterAsRemoteProcedureCall(&RPC_InitGame);
-
-	// 0.3.DL Artwork
-	pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ModelRequest);
-	pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ModelFile);
-	pRakClient->UnregisterAsRemoteProcedureCall(&RPC_DownloadCompleted);
 
 	pRakClient->UnregisterAsRemoteProcedureCall(&RPC_SetPlayerSkillLevel);
 	pRakClient->UnregisterAsRemoteProcedureCall(&RPC_ScrCreate3DTextLabel);

@@ -3,7 +3,6 @@
 #include "RW/RenderWare.h"
 #include <cmath>
 #include "../net/netgame.h"
-#include "../net/dl/dlmanager.h"
 #include "World.h"
 
 extern CNetGame* pNetGame;
@@ -1897,7 +1896,7 @@ CVehicleGTA* GamePool_Vehicle_GetAt(int iID)
 	return ((CVehicleGTA* (*)(int))(g_libGTASA + (VER_x32 ? 0x00483D9E + 1 : 0x575CE8)))(iID);
 }
 
-
+// 0.3.7
 int GetVehicleSubtype(CVehicleGTA* pGtaVehicle)
 {
     if (pGtaVehicle) {
@@ -1953,24 +1952,17 @@ bool IsValidModel(int iModelID)
 
 	return false;
 }
-
+// 0.3.7
 int GetModelRefCounts(int iModel)
 {
 	uint16_t* p = (uint16_t*)(GetModelInfoByID(iModel) + (VER_x32 ? 30:30*2));
 	return *p;
 }
-
+// 0.3.7
 bool IsValidPedModel(uint modelID)
 {
-    // 0.3.DL virtual custom model range: only valid if actually registered
-    // with the game engine (via DLManager::RegisterCustomModels). An
-    // unregistered virtual ID must fall back to the base model, never crash.
-    if (modelID >= 18631 && modelID < 20000) {
-        return DLManager::Instance().IsModelRegistered((int16_t)modelID);
-    }
-    if (modelID > 20000) return false;
+    if(modelID < 0 || modelID > 20000) return false;
     auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
-    if (!dwModelArray) return false;
 
     uintptr_t ModelInfo = reinterpret_cast<uintptr_t>(dwModelArray[modelID]);
     if(ModelInfo && *(uintptr_t*)ModelInfo == (uintptr_t)g_libGTASA + (VER_x32 ? 0x00667658 : 0x82F310))
@@ -2004,9 +1996,7 @@ uintptr_t LoadTexture(const char* texname)
 
 uintptr_t LoadTexture(const char* texname)
 {
-    // 'samp' is not loaded (see CUtil::LoadTextureFromDB / game.cpp) - do not
-    // query it here or the half-initialised db handle gets Register'd.
-    static char* texdb[] = { "gta3", "gta_int", "player", "txd"};
+    static char* texdb[] = { "samp", "gta3", "gta_int", "player", "txd"};
 
     for (int i = 0; i < sizeof(texdb) / sizeof(const char*); i++)
     {
@@ -2021,9 +2011,9 @@ uintptr_t LoadTexture(const char* texname)
     return 0;
 }
 
- 
+// 0.3.7 
 #include "sprite2d.h"
-#include "shadowhook/patch.h"
+#include "armhook/patch.h"
 #include <algorithm>
 
 RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
@@ -2061,33 +2051,33 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
 
     return tex;
 }
- 
+// 0.3.7 
 int FindTxdSlot(const char* txdname)
 {
 	// CTxdStore::FindTxdSlot 
 	return ((int(*)(const char*))(g_libGTASA + 0x5D3E60 + 1))(txdname);
 }
- 
+// 0.3.7 
 void PushCurrentTxd()
 {
 	// CTxdStore::PushCurrentTxd 
 	((void (*)())(g_libGTASA + 0x5D4184 + 1))();
 
 }
- 
+// 0.3.7 
 void SetCurrentTxd(int slot)
 {
 	// CTxdStore::SetCurrentTxd 
 	((void (*)(int, int))(g_libGTASA + 0x5D40F4 + 1))(slot, 0);
 }
- 
+// 0.3.7 
 void PopCurrentTxd()
 {
 	// CTxdStore::PopCurrentTxd 
 	((void (*)())(g_libGTASA + 0x5D41C4 + 1))();
 
 }
- 
+// 0.3.7 
 uintptr_t SetTexture(const char* texturename)
 {
 	uintptr_t thiz = 0;
@@ -2113,7 +2103,7 @@ float DegToRad(float fDegrees)
 	if (fDegrees > 180.0f) return (float)(-(PI - (((fDegrees - 180.0f) * PI) / 180.0f)));
 	else return (float)((fDegrees * PI) / 180.0f);
 }
-
+// 0.3.7
 float fixAngle(float angle)
 {
 	if (angle > 180.0f)	angle -= 360.0f;
@@ -2121,7 +2111,7 @@ float fixAngle(float angle)
 
 	return angle;
 }
-
+// 0.3.7
 float subAngle(float a1, float a2)
 {
 	return fixAngle(fixAngle(a2) - a1);
@@ -2132,18 +2122,131 @@ void HideEntity(CEntityGTA *pEntity)
     pEntity->m_placement.m_vPosn.z -= 2000.0;
 }
 
+/* =========== RemoveBuildings ============= */
+int iBuildingToRemoveCount;
+REMOVEBUILDING_DATA BuildingToRemove[1000];
+
+std::list<REMOVE_BUILDING_DATA> RemoveBuildingData;
+
+void RemoveBuilding(uint32_t dwModel, RwV3d vecPos, float fRange)
+{
+    /*if(dwModel == 19300) return; // We cant delete technical models!
+
+    if(iBuildingToRemoveCount >= 1000)
+        return;
+
+    RemoveObjectInRange(dwModel, vecPos, fRange);
+
+    BuildingToRemove[iBuildingToRemoveCount].dwModel = dwModel;
+    BuildingToRemove[iBuildingToRemoveCount].vecPos.x = vecPos.x;
+    BuildingToRemove[iBuildingToRemoveCount].vecPos.y = vecPos.y;
+    BuildingToRemove[iBuildingToRemoveCount].vecPos.z = vecPos.z;
+    BuildingToRemove[iBuildingToRemoveCount].fRange = fRange;
+    iBuildingToRemoveCount++;*/
+
+    REMOVE_BUILDING_DATA entry;
+    entry.usModelIndex = dwModel;
+    entry.fRange = fRange;
+    entry.vecPos = vecPos;
+
+    iBuildingToRemoveCount++;
+
+    RemoveBuildingData.push_back(entry);
+}
+
+#include "Pools.h"
+void RemoveObjectInRange(int iModel, RwV3d vecPos, float fRange)
+{
+    RemoveOccludersInRadius(vecPos, 500.0);
+
+    for(int i = 0; i < GetBuildingPool()->m_nSize; i++)
+    {
+        CEntityGTA *pEntity = GetBuildingPool()->GetAt(i);
+        if(pEntity)
+        {
+            if(iModel == -1 || pEntity->m_nModelIndex == iModel)
+            {
+                float fDistance = GetDistance(pEntity->GetPosition(), vecPos);
+                if(fDistance <= fRange) {
+                    HideEntity(pEntity);
+                    //pEntity->m_nModelIndex = 19300;
+                }
+            }
+        }
+    }
+
+    // CPools::ms_pDummyPool
+    for(int i = 0; i < GetDummyPool()->m_nSize; i++)
+    {
+        CEntityGTA *pEntity = GetDummyPool()->GetAt(i);
+        if(pEntity)
+        {
+            if(iModel == -1 || pEntity->m_nModelIndex == iModel)
+            {
+                float fDistance = GetDistance(pEntity->GetPosition(), vecPos);
+                if(fDistance <= fRange) {
+                    HideEntity(pEntity);
+                    //pEntity->m_nModelIndex = 19300;
+                }
+            }
+        }
+    }
+
+    // CPools::ms_pObjectPool
+    for(int i = 0; i < GetObjectPoolGta()->m_nSize; i++)
+    {
+        CEntityGTA *pEntity = GetObjectPoolGta()->GetAt(i);
+        if(pEntity)
+        {
+            if(iModel == -1 || pEntity->m_nModelIndex == iModel)
+            {
+                float fDistance = GetDistance(pEntity->GetPosition(), vecPos);
+                if(fDistance <= fRange) {
+                    HideEntity(pEntity);
+                    //pEntity->m_nModelIndex = 19300;
+                }
+            }
+        }
+    }
+}
+#include "COcclusion.h"
+void RemoveOccludersInRadius(RwV3d vecPos, float fRadius)
+{
+    if(COcclusion::NumOccludersOnMap >= 1)
+    {
+        for(int i = 0; i <= COcclusion::NumOccludersOnMap; i++)
+        {
+            CVector vecOccluderPos;
+            vecOccluderPos.x = (float)COcclusion::aOccluders[i].fMidX * 0.25;
+            vecOccluderPos.y = (float)COcclusion::aOccluders[i].fMidY * 0.25;
+            vecOccluderPos.z = (float)COcclusion::aOccluders[i].fMidZ * 0.25;
+
+            float fDistance = GetDistance(vecOccluderPos, vecPos);
+            if(fDistance <= fRadius)
+            {
+                COcclusion::aOccluders[i].fMidX = 0;
+                COcclusion::aOccluders[i].fMidY = 0;
+                COcclusion::aOccluders[i].fMidZ = 0;
+                COcclusion::aOccluders[i].fWidthX = 0;
+                COcclusion::aOccluders[i].fWidthY = 0;
+                COcclusion::aOccluders[i].fHeight = 0;
+            }
+        }
+    }
+}
+
 /* =========== TexturedTextDraw ============= */
 
 bool bTextDrawTextureSlotState[200];
 uintptr_t TextDrawTexture[200];
 
-
+// 0.3.7
 void ResetTextDrawTextures()
 {
 	memset(bTextDrawTextureSlotState, 0, sizeof(bTextDrawTextureSlotState));
 	memset(TextDrawTexture, 0, sizeof(TextDrawTexture));
 }
-
+// 0.3.7
 int GetFreeTextDrawTextureSlot()
 {
 	for (int i = 0; i < 200; i++)
@@ -2156,7 +2259,7 @@ int GetFreeTextDrawTextureSlot()
 
 	return -1;
 }
-
+// 0.3.7
 void DestroyTextDrawTexture(int index)
 {
 	uintptr_t pTexture;
@@ -2492,7 +2595,7 @@ void GameResetStats()
 
 }
 
-
+// 0.3.7
 void ProjectMatrix(CVector* vecOut, CMatrix* mat, CVector* vecPos)
 {
     if(vecOut == nullptr || mat == nullptr || vecPos == nullptr)
@@ -2513,12 +2616,12 @@ static CVector _axis[3] = {
 		{0.0f, 0.0f, 1.0f}
 };
 
-
+// 0.3.7
 void RwMatrixRotate(RwMatrix* mat, int axis, float angle)
 {
 	((void (*) (RwMatrix*, RwV3d*, float, int))(g_libGTASA + (VER_x32 ? 0x001E38F4 + 1 : 0x27E710)))(mat, &_axis[axis], angle, 1);
 }
-
+// 0.3.7
 void RwMatrixScale(RwMatrix* matrix, RwV3d* scale)
 {
 	matrix->right.x *= scale->x;
@@ -2540,8 +2643,8 @@ const char* getGameDataFolderDirectory()
 {
 	return "";
 }
-
-
+// 0.3.7
+// 0.3.7
 
 int LineOfSight(RwV3d* start, RwV3d* end, void* colpoint, uintptr_t ent, char buildings, char vehicles, char peds, char objects, char dummies, bool seeThrough, bool camera, bool unk)
 {
@@ -2709,7 +2812,7 @@ RpAtomic* ObjectMaterialCallBack(RpAtomic* rpAtomic, CObject* pObject)
 
 RpAtomic* ObjectMaterialTextCallBack(RpAtomic* rpAtomic, CObject* pObject)
 {
-    if(rpAtomic->object.object.type != 1) return rpAtomic;
+    if(!pObject->m_MaterialTextTexture || rpAtomic->object.object.type != 1) return rpAtomic;
 
     int iTotalEntries = rpAtomic->geometry->matList.numMaterials;
     if (iTotalEntries > 16) iTotalEntries = 16; // fix fucking bug :|

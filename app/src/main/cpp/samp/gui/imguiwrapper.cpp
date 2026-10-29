@@ -9,7 +9,6 @@
 #include "../voice_new/MicroIcon.h"
 #include "../voice_new/SpeakerList.h"
 #include "../voice_new/include/util/Render.h"
-#include "../net/dl/dlmanager.h"
 
 
 extern UI* pUI;
@@ -22,18 +21,6 @@ ImGuiWrapper::ImGuiWrapper(const ImVec2& display_size, const std::string& font_p
 	m_renderer = 0;
 	m_fontRaster = nullptr;
 	m_fontPath = font_path;
-
-	m_vertexBuffer = nullptr;
-	m_vertexBufferSize = 10000;
-}
-
-ImGuiWrapper::ImGuiWrapper(const ImVec2& display_size, const std::vector<char>& fontData)
-{
-	m_displaySize = display_size;
-	m_renderer = 0;
-	m_fontRaster = nullptr;
-    m_fontData = fontData;
-    m_fontPath = "";
 
 	m_vertexBuffer = nullptr;
 	m_vertexBufferSize = 10000;
@@ -63,22 +50,15 @@ bool ImGuiWrapper::initialize()
     {
         0x0020, 0x00FF, // Basic Latin + Latin Supplement
         0x0400, 0x04FF, // Cyrillic + Cyrillic Supplement
-		0x0E00, 0x0E5B, // Thai
+		0x0E00, 0x0E7F, // Thai
         0x2DE0, 0x2DFF, // Cyrillic Extended-A
         0xA640, 0xA69F, // Cyrillic Extended-B
         0xF020, 0xF0FF,
 		0
     };
 	
-    ImFont* font = nullptr;
-    if (!m_fontData.empty()) {
-        fontCfg.FontDataOwnedByAtlas = false;
-        font = io.Fonts->AddFontFromMemoryTTF((void*)m_fontData.data(), m_fontData.size(),
-            UISettings::fontSize(), &fontCfg, ranges);
-    } else {
-	    font = io.Fonts->AddFontFromFileTTF(m_fontPath.c_str(),
-		    UISettings::fontSize(), &fontCfg, ranges);
-    }
+	ImFont* font = io.Fonts->AddFontFromFileTTF(m_fontPath.c_str(),
+		UISettings::fontSize(), &fontCfg, ranges);
 
 	if (font == nullptr)
 	{
@@ -91,11 +71,11 @@ bool ImGuiWrapper::initialize()
 	m_renderer = new ImGuiRenderer(ImGui::GetBackgroundDrawList(), font);
 
 	// voice 
-	for (const auto& deviceInitCallback : CVoiceRender::deviceInitCallbacks) {
+	/*for (const auto& deviceInitCallback : Render::deviceInitCallbacks) {
 		if (deviceInitCallback != nullptr) {
 			deviceInitCallback();
 		}
-	}
+	}*/
 
 	return true;
 }
@@ -106,7 +86,7 @@ void ImGuiWrapper::render()
 
 
 	// voice
-	if (pNetGame) {
+	/*if (pNetGame) {
 
 		if (pUI->dialog()->visible() || pUI->playertablist()->visible() || pNetGame->GetTextDrawPool()->GetState()) {
 			SpeakerList::Hide();
@@ -117,14 +97,12 @@ void ImGuiWrapper::render()
 			MicroIcon::Show();
 		}
 
-		for (const auto& renderCallback : CVoiceRender::renderCallbacks) {
+		for (const auto& renderCallback : Render::renderCallbacks) {
 			if (renderCallback != nullptr) {
 				renderCallback();
 			}
 		}
-	}
-
-	DLManager::Instance().RenderImGui();
+	}*/
 
 	drawList();
 	ImGui::EndFrame();
@@ -137,11 +115,11 @@ void ImGuiWrapper::shutdown()
 	Log::traceLastFunc("ImGuiWrapper::shutdown");
 
 	// voice
-	for (const auto& deviceFreeCallback : CVoiceRender::deviceFreeCallbacks) {
+	/*for (const auto& deviceFreeCallback : Render::deviceFreeCallbacks) {
 		if (deviceFreeCallback != nullptr) {
 			deviceFreeCallback();
 		}
-	}
+	}*/
 
 	destroyFontTexture();
 }

@@ -4,7 +4,7 @@
 
 #include "RenderWare.h"
 #include "game/common.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 RpClump* RpClumpForAllAtomics(RpClump* clump, RpAtomicCallBack callback, void* data) {
     if(clump)

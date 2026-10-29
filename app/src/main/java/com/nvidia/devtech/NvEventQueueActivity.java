@@ -53,7 +53,7 @@ import android.widget.FrameLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.joom.paranoid.Obfuscate;
-import com.sampmobile.xyvern.R;
+import com.samp.mobile.R;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -140,7 +140,7 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
     	fixedHeight = fh;
     }
 
-    private int mUseFullscreen = 1;
+    private int mUseFullscreen = 0;
 
     private void processCutout()
     {
@@ -205,6 +205,8 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
     }
 
     public native void togglePlayer(int toggle);
+
+    public native void onEventBackPressed();
 
     /**
      * Helper class used to pass raw data around.
@@ -1187,7 +1189,7 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
         byte[] toReturn = null;
         try
         {
-            toReturn = retn.getBytes("windows-874");
+            toReturn = retn.getBytes("windows-1251");
         }
         catch(UnsupportedEncodingException e)
         {

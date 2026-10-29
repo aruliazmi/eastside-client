@@ -3,7 +3,7 @@
 //
 
 #include "TimeCycle.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 void CTimeCycle::InjectHooks() {
     CHook::Write(g_libGTASA + (VER_x32 ? 0x00676BB8 : 0x84B7D0), &CTimeCycle::m_CurrentColours);

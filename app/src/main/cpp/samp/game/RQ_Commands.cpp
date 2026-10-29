@@ -8,7 +8,7 @@
 #include <GLES3/gl3ext.h>
 
 #include "RQ_Commands.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 bool RQCaps[16];
 

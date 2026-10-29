@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Field input dialog: hitam lebih dalam, tanpa aksen biru. -->
 <layer-list
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:aapt="http://schemas.android.com/aapt">
     <item>
         <shape>
-            <corners android:radius="@dimen/_2sdp" />
-            <solid android:color="@color/es_surface_sunken" />
+            <corners
+                android:radius="@dimen/_2sdp" />
+            <solid
+                android:color="#4d000000" />
         </shape>
     </item>
 </layer-list>

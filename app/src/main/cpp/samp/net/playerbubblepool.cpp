@@ -1,7 +1,6 @@
 #include "../main.h"
 #include "../game/game.h"
 #include "netgame.h"
-#include "../game/Timer.h"
 #include "../game/RW/RenderWare.h"
 #include "../gui/gui.h"
 #include "playerbubblepool.h"
@@ -95,7 +94,7 @@ PlayerBubbleStruct *CPlayerBubblePool::New(PLAYERID playerId, const char *text, 
     strcpy(playerBubbleStruct->szText, GText.c_str());
 
     playerBubbleStruct->fDistance = distance;
-    playerBubbleStruct->uiExpireTime = CTimer::m_snTimeInMillisecondsNonClipped + time;
+    playerBubbleStruct->uiExpireTime = GetTickCount() + time;
     playerBubbleStruct->dwLineCount = WrapText(playerBubbleStruct->szText, 36, 12) - 1;
     playerBubbleStruct->uiColor = color;
 
@@ -125,7 +124,7 @@ void CPlayerBubblePool::Draw(ImGuiRenderer* renderer)
     {
         if(m_bSlotState[i] && m_pPlayerBubble[i])
         {   
-            if(CTimer::m_snTimeInMillisecondsNonClipped >= m_pPlayerBubble[i]->uiExpireTime)
+            if(GetTickCount() >= m_pPlayerBubble[i]->uiExpireTime)
             {
                 Delete(i);
                 continue;

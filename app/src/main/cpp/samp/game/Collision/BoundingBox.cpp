@@ -1,6 +1,6 @@
 
 #include "BoundingBox.h"
-#include "../vendor/shadowhook/patch.h"
+#include "../vendor/armhook/patch.h"
 
 // 0x49C300
 bool CBoundingBox::IsPointWithin(const CVector& point) const {
