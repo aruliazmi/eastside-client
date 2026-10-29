@@ -41,7 +41,7 @@ public class HomeFragment extends Fragment {
     // Direct download URL untuk data pack resmi GTA SA / SAMP
     // Di-host di repo sendiri, bukan release repo pihak ketiga.
     private static final String DATA_ZIP_URL =
-            "https://github.com/aruliazmi/eastside-client/releases/download/data-v2/files.zip";
+            "https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip";
     private static final String SERVER_IP = "163.52.135.25";
     private static final int SERVER_PORT = 7777;
 
@@ -371,9 +371,9 @@ public class HomeFragment extends Fragment {
 
         executor.execute(() -> {
             try {
-                long expectedTotal = 664401280L;
+                long expectedTotal = 1957396608L;
                 if (!zipFile.exists() || zipFile.length() != expectedTotal) {
-                    mainHandler.post(() -> tvDataDesc.setText("Mengunduh paket aset (~635 MB)..."));
+                    mainHandler.post(() -> tvDataDesc.setText("Mengunduh paket aset (~1.8 GB)..."));
 
                     long existingBytes = partFile.exists() ? partFile.length() : 0;
                     URL url = new URL(DATA_ZIP_URL);
