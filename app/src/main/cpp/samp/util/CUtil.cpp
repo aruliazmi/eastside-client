@@ -42,6 +42,19 @@ RwTexture* CUtil::LoadTextureFromDB(const char* dbname, const char* texture)
         return nullptr;
     }
 
+    // GetDatabase() returns a NON-NULL EMPTY object for names that were never
+    // loaded (server material names like 'gtasavectormap1', 'sign', ...). The
+    // engine allocates the slot but leaves entries/hashOffsets null; Register +
+    // GetTexture then walk that empty state - usually "texture not found", but
+    // if the lazy stream file is also garbage it is SIGSEGV 0x110 in
+    // _rwStreamReadChunkHeader (tombstone_05/08/01). A db that was really
+    // Loaded() has its own name set; an empty placeholder does not match.
+    if (!db_handle->name || strcmp(db_handle->name, dbname) != 0)
+    {
+        FLog("Error: Database '%s' is not loaded (empty slot) - skipping", dbname);
+        return nullptr;
+    }
+
     TextureDatabaseRuntime::Register(db_handle);
 
     auto tex = CUtil::GetTexture(texture);
