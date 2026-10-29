@@ -53,8 +53,21 @@
             android:id="@+id/attach_mode_save"
             android:layout_width="@dimen/_48sdp"
             android:layout_height="@dimen/_48sdp"
+            android:layout_marginEnd="8dp"
             android:background="@drawable/attach_black_round_rect"
             android:text="💾"
+            android:textColor="#FFFFFF"
+            android:textSize="@dimen/_20sdp" />
+
+        <!-- Cancel/abort: native Exit() JNI existed but no view ever triggered it,
+             so EDIT_RESPONSE_CANCEL was unreachable and a player could not back
+             out of an edit without applying it. -->
+        <Button
+            android:id="@+id/attach_mode_cancel"
+            android:layout_width="@dimen/_48sdp"
+            android:layout_height="@dimen/_48sdp"
+            android:background="@drawable/attach_black_round_rect"
+            android:text="✕"
             android:textColor="#FFFFFF"
             android:textSize="@dimen/_20sdp" />
 

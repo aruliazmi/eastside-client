@@ -222,38 +222,39 @@ void (*CObject_Render)(CObjectGta* thiz);
 void CObject_Render_hook(CObjectGta* thiz)
 {
 	CObjectGta *object = thiz;
-	if(pNetGame && object != 0)
+	if (object)
 	{
-		CObject *pObject = pNetGame->GetObjectPool()->FindObjectFromGtaPtr(object);
-		if(pObject && pObject->m_pEntity)
+		CObject *pObject = (pNetGame && pNetGame->GetObjectPool())
+				? pNetGame->GetObjectPool()->FindObjectFromGtaPtr(object)
+				: nullptr;
+
+		if (pObject && pObject->m_pEntity)
 		{
 			RwObject* rwObject = (RwObject*)pObject->m_pEntity->m_pRwObject;
-			if(rwObject)
+			// rwObject->parent was dereferenced without a check; an object whose
+			// frame was not created yet (or already torn down) crashed here.
+			RwFrame* rwFrame = rwObject ? (RwFrame*)rwObject->parent : nullptr;
+			if (rwFrame)
 			{
 				// SetObjectMaterial
-				if(pObject->m_bHasMaterial || pObject->m_bHasMaterialText)
+				if (pObject->m_bHasMaterial || pObject->m_bHasMaterialText)
 				{
-					RwFrameForAllObjects((RwFrame*)rwObject->parent, (RwObject *(*)(RwObject *, void *))ObjectMaterialCallBack, pObject);
-					//RpAtomic* atomic = (RpAtomic*)object->m_pRwAtomic;
-					//RpGeometryForAllMaterials(atomic->geometry, ObjectMaterialCallBack, (void*)pObject);
+					RwFrameForAllObjects(rwFrame, (RwObject *(*)(RwObject *, void *))ObjectMaterialCallBack, pObject);
 				}
 				// SetObjectMaterialText
-				if(pObject->m_bHasMaterialText)
-                {
-                    RwFrameForAllObjects((RwFrame*)rwObject->parent, (RwObject *(*)(RwObject *, void *))ObjectMaterialTextCallBack, pObject);
-                    //RpAtomic* atomic = (RpAtomic*)object->m_pRwAtomic;
-                    //RpGeometryForAllMaterials(atomic->geometry, ObjectMaterialTextCallBack, (void*)pObject);
-                }
+				if (pObject->m_bHasMaterialText)
+				{
+					RwFrameForAllObjects(rwFrame, (RwObject *(*)(RwObject *, void *))ObjectMaterialTextCallBack, pObject);
+				}
 			}
-
-
 		}
 
-        CObject_Render(object);
+		// BUG FIX: CObject_Render used to be called only when pNetGame was non-null
+		// AND the object was found in the SA-MP object pool. Every engine-side object
+		// that is not ours (world objects, objects owned by another subsystem) was
+		// therefore never rendered, which showed up as randomly invisible objects.
+		CObject_Render(object);
 	}
-
-    //((void (*)(void))(g_libGTASA + (VER_x32 ? 0x005D1F98 + 1 : 0x6F6664)))();
-    //((void (*)(void))(g_libGTASA + 0x5D1F5C + 1))();
 }
 
 /*((void (*)(void))(g_libGTASA + 0x5D1F48 + 1))();

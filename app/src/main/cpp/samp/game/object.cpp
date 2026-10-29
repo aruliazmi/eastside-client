@@ -449,6 +449,10 @@ void CObject::SetMaterialText(int index, char* text, int materialSize, char* fon
 
 void CObject::ProcessMaterialText()
 {
+	// Only objects that actually carry a pending material text need work. This loop
+	// runs every frame over the whole pool, so bail out on the first cheap check.
+	if (!m_bHasMaterialText || !pMaterialTextGenerator) return;
+
 	for (int i = 0; i < 16; i++)
 	{
 		if (m_iMaterialType[i] == MATERIAL_TYPE_TEXT && m_MaterialTextTexture[i] == 0)
@@ -456,11 +460,16 @@ void CObject::ProcessMaterialText()
 			// Do NOT scale m_iMaterialFontSize in place: this runs every frame and
 			// the old "*= 0.75f" compounded, shrinking the text to nothing.
 			float renderSize = m_iMaterialFontSize[i] * 0.75f;
-			m_MaterialTextTexture[i] = reinterpret_cast<uintptr_t>(pMaterialTextGenerator->Generate(
-                    m_szMaterialText[i], m_iMaterialSize[i], (int)renderSize,
-                    m_bMaterialFontBold[i], m_dwMaterialFontColor[i], m_dwMaterialBackColor[i],
-                    m_iMaterialTextAlign[i]));
-			m_bHasMaterialText = true;
+			RwTexture* tex = pMaterialTextGenerator->Generate(
+					m_szMaterialText[i], m_iMaterialSize[i], (int)renderSize,
+					m_bMaterialFontBold[i], m_dwMaterialFontColor[i], m_dwMaterialBackColor[i],
+					m_iMaterialTextAlign[i]);
+			// If generation failed (raster alloc failure) leave it 0 so the next
+			// frame retries instead of storing a bogus non-null pointer.
+			if (tex)
+				m_MaterialTextTexture[i] = reinterpret_cast<uintptr_t>(tex);
+			else
+				break;
 		}
 	}
 }

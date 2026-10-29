@@ -115,6 +115,15 @@ public class AttachEdit {
             Save();
         });
 
+        Button attach_mode_cancel = activity.findViewById(R.id.attach_mode_cancel);
+        attach_mode_cancel.setOnClickListener(view -> {
+            Util.HideLayout(attach_main_layot, true);
+            isShow = false;
+            // Aborts the edit: native Exit() sends EDIT_RESPONSE_CANCEL so the server
+            // keeps the object at its previous position/rotation.
+            Exit();
+        });
+
         attach_main_layot = activity.findViewById(R.id.attach_main_layot);
 
         isShow = false;

@@ -19,7 +19,11 @@ extern CNetGame *pNetGame;
 
 void CObjectEditor::startEditPlayerAttach(int slot)
 {
-    if(!pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed()->GetAttachedObject(slot)){
+    if (!pNetGame || !pNetGame->GetPlayerPool()) return;
+    if (!pNetGame->GetPlayerPool()->GetLocalPlayer()) return;
+
+    CPlayerPed* pPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed();
+    if (!pPlayer || !pPlayer->GetAttachedObject(slot)) {
         pUI->chat()->addDebugMessage("Invalid attach slot %d", slot);
         return;
     }
@@ -32,8 +36,10 @@ void CObjectEditor::startEditPlayerAttach(int slot)
 
 void CObjectEditor::startEditObject(uint16_t objectId)
 {
+    if (!pNetGame || !pNetGame->GetObjectPool()) return;
+
     auto pObject = pNetGame->GetObjectPool()->GetAt(objectId);
-    if(!pObject) {
+    if (!pObject || !pObject->m_pEntity) {
         pUI->chat()->addDebugMessage("Invalid object id %d", objectId);
         return;
     }
@@ -56,21 +62,28 @@ void CObjectEditor::showGui() {
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_sampmobile_xyvern_game_ui_AttachEdit_Exit(JNIEnv *env, jobject thiz) {
-    CPlayerPed* pPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed();
+    if (!pNetGame) { CObjectEditor::bIsToggle = false; return; }
+
     int slot = CObjectEditor::iEditedId;
 
-    CObjectEditor::iEditedId = INVALID_EDITED_SLOT;
-    if(CObjectEditor::editType == CObjectEditor::TYPE_PLAYER_ATTACH) {
-        auto attach = pPlayer->GetAttachedObject(slot);
-        CObjectEditor::SendOnEditAttach(
-                0,
-                slot,
-                attach->dwModelId,
-                attach->dwSampBone,
-                attach->vecOffset,
-                attach->vecRotation,
-                attach->vecScale
-        );
+    // BUG FIX: iEditedId used to be cleared to INVALID_EDITED_SLOT *before* the
+    // object branch below read it, so GetAt() always got 0xFFFF and the CANCEL
+    // reply for a plain object was never sent. Clear it at the end instead.
+    if (CObjectEditor::editType == CObjectEditor::TYPE_PLAYER_ATTACH) {
+        CPlayerPed* pPlayer = (pNetGame->GetPlayerPool() && pNetGame->GetPlayerPool()->GetLocalPlayer())
+                ? pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed() : nullptr;
+        auto attach = pPlayer ? pPlayer->GetAttachedObject(slot) : nullptr;
+        if (attach) {
+            CObjectEditor::SendOnEditAttach(
+                    0,
+                    slot,
+                    attach->dwModelId,
+                    attach->dwSampBone,
+                    attach->vecOffset,
+                    attach->vecRotation,
+                    attach->vecScale
+            );
+        }
     }
 
     if(CObjectEditor::editType == CObjectEditor::TYPE_OBJECT)
@@ -310,11 +323,16 @@ Java_com_sampmobile_xyvern_game_ui_AttachEdit_AttachClick(JNIEnv *env, jobject t
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_sampmobile_xyvern_game_ui_AttachEdit_Save(JNIEnv *env, jobject thiz) {
-    CPlayerPed* pPlayer = pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed();
-    int slot = CObjectEditor::iEditedId;
-    auto attach = pPlayer->GetAttachedObject(slot);
+    if (!pNetGame) return;
 
-    if(CObjectEditor::editType == CObjectEditor::TYPE_PLAYER_ATTACH) {
+    CPlayerPed* pPlayer = (pNetGame->GetPlayerPool() && pNetGame->GetPlayerPool()->GetLocalPlayer())
+            ? pNetGame->GetPlayerPool()->GetLocalPlayer()->GetPlayerPed() : nullptr;
+    int slot = CObjectEditor::iEditedId;
+    // `attach` was dereferenced unconditionally below; if the attachment was
+    // removed while the editor was open this crashed on save.
+    auto attach = pPlayer ? pPlayer->GetAttachedObject(slot) : nullptr;
+
+    if(CObjectEditor::editType == CObjectEditor::TYPE_PLAYER_ATTACH && attach) {
         CObjectEditor::SendOnEditAttach(
                 1,
                 slot,

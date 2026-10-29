@@ -33,40 +33,49 @@ void MaterialTextGenerator::SetUpScene()
 }
 
 void MaterialTextGenerator::Render(const char* text, const ImVec2& size, int font_size, bool bold,
-								   const ImColor& font_color, const ImColor& background_color, int text_align)
+							   const ImColor& font_color, const ImColor& background_color, int text_align)
 {
-	if (pUI) {
-		ImGui::NewFrame();
+	if (!pUI || !pUI->renderer()) return;
 
-		std::string utfText = Encoding::cp2utf(text);
-		const char* info = utfText.c_str();
+	// Generate() runs from the game's Process phase, not from the ImGui frame that
+	// ImGuiWrapper::render() opens. Beginning a second frame while one is already
+	// active corrupts ImGuiContext (assert spam / garbage draw lists), so only open
+	// our own frame when none is in flight and close it only in that case.
+	ImGuiContext* ctx = ImGui::GetCurrentContext();
+	bool ownFrame = (ctx && !ctx->FrameScopeActive);
 
-		pUI->renderer()->drawRect(ImVec2(0.0f, 0.0f), size, background_color, true);
-		ImVec2 text_size = pUI->renderer()->calculateTextSize(info, font_size);
+	if (ownFrame) ImGui::NewFrame();
 
-		ImVec2 text_pos;
-		switch (text_align)
-		{
-			case 0: // LEFT
-				text_pos = ImVec2(0.0f, 0.0f);
-				break;
-			case 1: // CENTER
-				text_pos = ImVec2((size.x - text_size.x) / 2, (size.y - text_size.y) / 2);
-				break;
-			case 2: // RIGHT
-				text_pos = ImVec2(size.x - text_size.x, 0.0f);
-				break;
-		}
+	std::string utfText = Encoding::cp2utf(text ? text : "");
+	const char* info = utfText.c_str();
 
-		pUI->renderer()->drawText(text_pos, font_color, info, false, font_size);
-		// ImGuiRenderer::drawText's 4th argument is "outlined", not "bold", so the
-		// bold flag from SetObjectMaterialText was silently dropped. Fake it with a
-		// 1px double-draw, which is what a bold glyph effectively looks like.
-		if (bold) {
-			pUI->renderer()->drawText(ImVec2(text_pos.x + 1.0f, text_pos.y), font_color, info, false, font_size);
-		}
+	pUI->renderer()->drawRect(ImVec2(0.0f, 0.0f), size, background_color, true);
+	ImVec2 text_size = pUI->renderer()->calculateTextSize(info, font_size);
 
-        ImGui::EndFrame();
+	ImVec2 text_pos = ImVec2(0.0f, 0.0f);
+	switch (text_align)
+	{
+		case 0: // LEFT
+			text_pos = ImVec2(0.0f, 0.0f);
+			break;
+		case 1: // CENTER
+			text_pos = ImVec2((size.x - text_size.x) / 2, (size.y - text_size.y) / 2);
+			break;
+		case 2: // RIGHT
+			text_pos = ImVec2(size.x - text_size.x, 0.0f);
+			break;
+	}
+
+	pUI->renderer()->drawText(text_pos, font_color, info, false, (float)font_size);
+	// ImGuiRenderer::drawText's 4th argument is "outlined", not "bold", so the
+	// bold flag from SetObjectMaterialText was silently dropped. Fake it with a
+	// 1px double-draw, which is what a bold glyph effectively looks like.
+	if (bold) {
+		pUI->renderer()->drawText(ImVec2(text_pos.x + 1.0f, text_pos.y), font_color, info, false, (float)font_size);
+	}
+
+	if (ownFrame) {
+		ImGui::EndFrame();
 		ImGui::Render();
 		pUI->renderDrawData(ImGui::GetDrawData());
 	}
@@ -118,12 +127,18 @@ RwTexture* MaterialTextGenerator::Generate(const char* text, int size, int font_
 
 void MaterialTextGenerator::GetMaterialSize(int size, int* x, int* y)
 {
-	int sizes[14][2] = {
+	// SA-MP's materialsize is a direct index into this table (0..13).
+	// The old code did `(size / 10) - 1`, which maps sizes 0-9 to -1 (read one entry
+	// BEFORE the array) and sizes >= 140 past the end - every material text with a
+	// normal size got a garbage raster width/height.
+	static const int sizes[14][2] = {
 			{ 32, 32 } , { 64, 32 }, { 64, 64 }, { 128, 32 }, { 128, 64 }, { 128,128 }, { 256, 32 },
 			{ 256, 64 } , { 256, 128 } , { 256, 256 } , { 512, 64 } , { 512,128 } , { 512,256 } , { 512,512 }
 	};
 
-	int del = (size / 10) - 1;
-	*x = sizes[del][0];
-	*y = sizes[del][1];
+	if (size < 0) size = 0;
+	if (size > 13) size = 13;
+
+	*x = sizes[size][0];
+	*y = sizes[size][1];
 }

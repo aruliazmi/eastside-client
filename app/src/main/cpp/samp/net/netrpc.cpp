@@ -1527,12 +1527,14 @@ void SetPlayerSkillLevel(RPCParameters *rpcParams)
 void EditAttachedObject(RPCParameters *rpcParams) {
 	unsigned char * Data = reinterpret_cast<unsigned char *>(rpcParams->input);
 	int iBitLength = rpcParams->numberOfBitsOfData;
+	if (!Data || !pNetGame) return;
 
 	RakNet::BitStream bsData(Data,(iBitLength/8)+1,false);
 
 	uint32_t index;
 
-	bsData.Read(index);
+	if (!bsData.Read(index)) return;
+	if (!pNetGame->GetPlayerPool()->GetLocalPlayer()) return;
 
 	CObjectEditor::startEditPlayerAttach(index);
 
@@ -1542,18 +1544,24 @@ void EditAttachedObject(RPCParameters *rpcParams) {
 void EditObject(RPCParameters *rpcParams) {
 	unsigned char * Data = reinterpret_cast<unsigned char *>(rpcParams->input);
 	int iBitLength = rpcParams->numberOfBitsOfData;
+	if (!Data) return;
 
 	RakNet::BitStream bsData(Data,(iBitLength/8)+1,false);
 
 	bool bPlayerObj;
 	uint16_t objectId;
 
-	bsData.Read(bPlayerObj);
-	bsData.Read(objectId);
+	if (!bsData.Read(bPlayerObj)) return;
+	if (!bsData.Read(objectId)) return;
+
+	// bPlayerObj says whether the server considers this a per-player object. It used
+	// to be read and then thrown away, so every RPC_EditObject reply was sent with
+	// bPlayerObj == false and the server rejected/ignored edits on player objects.
+	CObjectEditor::bPlayerObj = bPlayerObj;
 
 	CObjectEditor::startEditObject(objectId);
 
-	FLog("RPC: EditObject %d", objectId);
+	FLog("RPC: EditObject %d (playerObj=%d)", objectId, (int)bPlayerObj);
 }
 
 void DL_ModelRequest(RPCParameters* rpcParams)
