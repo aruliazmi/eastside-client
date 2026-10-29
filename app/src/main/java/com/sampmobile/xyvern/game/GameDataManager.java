@@ -132,21 +132,16 @@ public final class GameDataManager {
                 String installed = activity.getSharedPreferences(PREFS, Activity.MODE_PRIVATE)
                         .getString(KEY_DATA_VERSION, "");
                 if (info.version.equals(installed) && isInstalled(activity, info)) {
-                    // Data is already on disk, so extraction will not run and the
-                    // engine hint would never be written. Existing installs hit
-                    // exactly that gap and kept loading a .dxt database that is
-                    // not there. Write it on every ready path instead.
-                    final boolean[] ready = {false};
+                    // Data is already on disk. The native loadDb() probes the
+                    // disk per database, so no hint file is needed - just make
+                    // sure the cached GPU family exists for the verifier.
                     try {
                         int fmt = GpuTextureFormat.get(activity);
                         if (fmt == 0) fmt = GpuTextureFormat.detect(activity);
                         GpuTextureFormat.set(activity, fmt);
-                        GpuTextureFormat.writeEngineHint(activity);
-                        ready[0] = true;
                     } catch (Throwable t) {
-                        android.util.Log.w("GameDataManager", "engine hint failed", t);
+                        android.util.Log.w("GameDataManager", "gpu family cache failed", t);
                     }
-                    android.util.Log.i("GameDataManager", "data ready, texture hint written=" + ready[0]);
                     MAIN.post(() -> { dismissLoading(); if (!activity.isFinishing()) callback.onReady(); });
                     return;
                 }
@@ -400,10 +395,10 @@ public final class GameDataManager {
 
     private static void extractWithProgress(Activity a, File zipFile, ProgressUi ui) throws Exception {
         sTextureFormat = GpuTextureFormat.detect(a);
-        // The engine cannot detect this itself on this build - it loads DF_DXT
-        // unconditionally. Publish the answer where C++ can read it.
-        GpuTextureFormat.writeEngineHint(a);
-        android.util.Log.i("GameDataManager", "extracting texture variant: "
+        // Informational only: the native side (game.cpp InitialiseRenderWare)
+        // probes the disk and falls back dxt -> etc -> pvr per database, so the
+        // engine never depends on this value matching what extraction kept.
+        android.util.Log.i("GameDataManager", "gpu texture family: "
                 + GpuTextureFormat.tagOf(sTextureFormat));
         File root = a.getExternalFilesDir(null);
         if (root == null) throw new Exception("Penyimpanan tidak tersedia.");

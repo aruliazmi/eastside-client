@@ -11,13 +11,15 @@ import java.util.List;
 public class GameDataVerifier {
 
     /**
-     * Texture databases the game boots. Each ships a .dat plus a .toc/.tmb pair
-     * for the GPU variant. The old list checked "texdb/gta3.img", which the
-     * published package does not contain at all — verification therefore always
-     * reported "incomplete" and never protected against anything real.
+     * Texture databases the game boots (InitialiseRenderWare's load set).
+     * `samp` is deliberately absent: the engine faults in
+     * _rwOpenGLRasterSetImage when it is loaded, and the texture lookup
+     * fallback no longer queries it (see hooks.cpp TxdStoreFindCB). Listing it
+     * here made verification demand samp.dxt.dat forever - a file the game
+     * never opens - and blocked the play button on a healthy install.
      */
     private static final String[] TEXDB = {
-            "gta3", "gta_int", "menu", "mobile", "player", "samp", "txd"
+            "gta3", "gta_int", "menu", "mobile", "player", "txd"
     };
 
     /** Non-texture files required for the engine to boot. */

@@ -56,6 +56,10 @@ public final class GpuTextureFormat {
     private static final java.util.Set<String> DXT_PVR_ONLY =
             new java.util.HashSet<>(java.util.Arrays.asList("player", "playerhi"));
 
+    /** Databases the engine never loads (see CGame::InitialiseRenderWare). */
+    private static final java.util.Set<String> NEVER_LOADED =
+            new java.util.HashSet<>(java.util.Arrays.asList("samp"));
+
     /**
      * The variant that is actually on disk for {@code db} given the detected GPU
      * format. Both the extractor and the verifier MUST use this: they drifted
@@ -64,6 +68,8 @@ public final class GpuTextureFormat {
      * was pushed into a full 634 MB re-download.
      */
     public static String variantFor(String db, int fmt) {
+        if (NEVER_LOADED.contains(db)) return "dxt"; // unused, keep a stable answer
+
         // DXT wins on every device, including Mali and PowerVR.
         //
         // History: this used to return the GPU's native family, so a Mali device
@@ -192,9 +198,14 @@ public final class GpuTextureFormat {
         String rnd = renderer == null ? "" : renderer.toUpperCase();
 
         // PowerVR first: it advertises PVRTC and nothing else useful here.
+        // The engine's own GL check may still land on DXT (it prefers S3TC when
+        // the ANGLE driver exposes it, which PowerVR's GLES layer does), but the
+        // native loadDb() probes the disk before Load(), so a PVR device loads
+        // the .pvr files that actually exist either way. This classification
+        // only decides which variants extraction keeps on disk.
         if (ext.contains("GL_IMG_TEXTURE_COMPRESSION_PVRTC")) return FMT_PVR;
 
-        // DXT/S3TC: Adreno, and most desktop-class / emulated GL.
+        // Adreno and desktop-class / emulated GL: S3TC/DXT1/ATC.
         if (ext.contains("GL_EXT_TEXTURE_COMPRESSION_S3TC")
                 || ext.contains("GL_EXT_TEXTURE_COMPRESSION_DXT1")
                 || ext.contains("GL_AMD_COMPRESSED_ATC_TEXTURE")) {
