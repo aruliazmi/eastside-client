@@ -1,70 +1,63 @@
-# Eastside Stories — Android Client Release
+# Eastside Stories Android client
 
-Official Android Client Launcher & Game Engine untuk server **Eastside Stories** (SA-MP / open.mp 0.3.DL).
+Launcher dan game engine Android buat server Eastside Stories (SA-MP / open.mp 0.3.DL).
 
 [![Release](https://img.shields.io/github/v/release/aruliazmi/eastside-client?color=D4A548&label=Latest%20Version)](https://github.com/aruliazmi/eastside-client/releases/latest)
 [![Android Compatibility](https://img.shields.io/badge/Android-8.0%20%E2%80%94%2016%20(16%20KB)-brightgreen)](https://github.com/aruliazmi/eastside-client/releases)
 [![Architecture](https://img.shields.io/badge/ABI-arm64--v8a%20%7C%20armeabi--v7a-blue)](https://github.com/aruliazmi/eastside-client/releases)
 
----
+## Unduh client dan data game
 
-## 📥 Unduh Client & Data Game
-
-| Berkas | Deskripsi | Link Download |
+| Berkas | Deskripsi | Link |
 |---|---|:---:|
-| **APK Client Terbaru (v1.0.1b)** | Installer aplikasi Android (16 KB page-aligned & signed) | [⬇️ Unduh APK](https://github.com/aruliazmi/eastside-client/releases/download/v1.0.1b/EastsideStories.apk) |
-| **Paket Data Game (v3)** | Aset GTA SA lengkap + audio + texture multi-GPU (±1.95 GB) | [📦 Unduh Data Pack](https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip) |
-| **Daftar Semua Rilis** | Riwayat versi, changelog lengkap, dan arsip build | [📋 Lihat Rilis](https://github.com/aruliazmi/eastside-client/releases) |
+| APK client terbaru (v1.0.1b) | Installer Android, sudah ditandatangani dan siap dipasang di Android 15/16 | [Unduh APK](https://github.com/aruliazmi/eastside-client/releases/download/v1.0.1b/EastsideStories.apk) |
+| Paket data game (v3) | Aset GTA SA lengkap, audio, tekstur multi-GPU (±1.95 GB) | [Unduh data pack](https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip) |
+| Daftar semua rilis | Riwayat versi, changelog, arsip build | [Lihat rilis](https://github.com/aruliazmi/eastside-client/releases) |
 
----
+## Cara pasang
 
-## 🚀 Panduan Pemasangan
+1. Pasang APK. Unduh dan install `EastsideStories.apk` (v1.0.1b) di HP Android. Kasih izin
+   penyimpanan dan notifikasi kalau diminta.
 
-1. **Install APK**:
-   * Unduh dan pasang berkas `EastsideStories.apk` (v1.0.1b) di HP Android kamu.
-   * Berikan izin penyimpanan (*Storage Permission*) dan notifikasi jika diminta.
+2. Ekstrak data game. Unduh `files.zip` dari rilis
+   [data-v3](https://github.com/aruliazmi/eastside-client/releases/tag/data-v3), lalu ekstrak
+   pakai aplikasi pengelola berkas (ZArchiver, misalnya) ke:
 
-2. **Ekstrak Data Game**:
-   * Unduh paket data `files.zip` pada rilis [data-v3](https://github.com/aruliazmi/eastside-client/releases/tag/data-v3).
-   * Ekstrak file zip tersebut menggunakan aplikasi pengelola berkas (misal: ZArchiver) ke direktori:
-     ```
-     /Android/data/com.eastside.samp/files/
-     ```
-   * Pastikan folder `SAMP`, `data`, `models`, dan `audio` berada tepat di dalam folder `files/`.
+   ```
+   /Android/data/com.eastside.samp/files/
+   ```
 
-3. **Mulai Bermain**:
-   * Buka launcher **Eastside Stories**.
-   * Masukkan Nickname karakter Roleplay kamu (format: `Nama_Keluarga`).
-   * Tekan tombol **MASUK KOTA / LOGIN** untuk terhubung langsung ke server!
+   Folder `SAMP`, `data`, `models`, dan `audio` harus berada langsung di dalam `files/`.
 
----
+3. Buka launcher Eastside Stories. Isi nickname karakter roleplay kamu dengan format
+   `Nama_Keluarga`, lalu tekan tombol MASUK KOTA / LOGIN.
 
-## ✨ Fitur & Keunggulan Client
+## Fitur
 
-* **Kompatibilitas Penuh Android 15 & 16**:
-  Seluruh pustaka native (`libsamp.so`, `libGTASA.so`, engine mod loader) telah di-*page-align* ke **16 KB (16384 bytes)** sesuai standar ketat Google Android 15/16.
-* **Dukungan Multi-Touch 5 Jari**:
-  Mendukung kontrol sentuh hingga 5 jari secara bersamaan untuk gameplay *claw* (kemudi analog + kontrol kamera + sprint + jump + aim/tembak) tanpa sentuhan terputus.
-* **SA-MP 0.3.DL Custom Asset Engine**:
-  Dukungan penuh skin dan object kustom server dengan *streaming engine* instan, auto-download CDN, dan *color correction* tekstur uncompressed BGRA 32-bit & DXT.
-* **Modern HUD & Tactile Buttons**:
-  Desain tombol virtual *semi-transparent* modern yang bersih dengan aksen tactile feedback kuningan (`#D4A548`) saat ditekan, serta tata letak HUD ala PC (radar kiri bawah & chat log kiri atas).
-* **Quick Action Button Panel**:
-  Bilah panel aksi atas modern dengan ikon visual (`ESC`, `TAB Scoreboard`, `ALT Walk`, `SPC Jump`, `Enter Car`, `Klakson`, dll.).
-* **Overhead Status Indicators**:
-  Ikon status melayang di atas karakter saat pemain sedang *AFK* (badge pause) dan saat mengetik pesan percakapan (*chat bubble*).
-* **CEF Web-Based UI & Voice Chat**:
-  Integrasi antarmuka HTML/CSS/JS Chromium Embedded Framework (CEF) transparan dan sistem suara spatial 3D Voice Chat BASS.
+Client ini jalan di Android 15 dan 16. Semua library bawaannya sudah disiapkan buat page size
+16 KB yang dipakai Android 15/16, jadi nggak kena blokir pas instal.
 
----
+Kontrol sentuh sanggup 5 jari bersamaan, jadi main claw (kemudi analog, kamera, sprint, jump,
+aim) nggak bikin sentuhan lain keputus.
 
-## 🌐 Informasi Server
+Skin dan object kustom dari server ke-load langsung dan diunduh otomatis, warnanya juga nggak
+pecah.
 
-* **Nama Server**: Eastside Stories Roleplay
-* **Server Address**: `play.stateside.id:7777`
-* **Port**: `7777` (UDP)
-* **Website / Komunitas**: Hubungi pengelola komunitas Eastside Stories untuk pendaftaran whitelist dan Discord role.
+Tampilan HUD-nya ala PC, radar di kiri bawah dan chat log di kiri atas. Tombol virtualnya
+semi-transparan dengan feedback warna kuningan (`#D4A548`) waktu ditekan. Ada panel aksi atas
+berisi ikon `ESC`, `TAB Scoreboard`, `ALT Walk`, `SPC Jump`, `Enter Car`, `Klakson`, dan
+sejenisnya. Di atas karakter pemain muncul badge pause waktu AFK dan bubble waktu sedang
+mengetik.
 
----
+UI-nya HTML/CSS/JS lewat Chromium Embedded Framework transparan, dan voice chat-nya spatial 3D
+pakai BASS.
 
-*Repository ini khusus mempublikasikan rilis biner, pembaruan data, dan dokumentasi client Eastside Stories.*
+## Informasi server
+
+- Nama server: Eastside Stories Roleplay
+- Alamat: `play.stateside.id:7777`
+- Port: `7777` (UDP)
+- Website dan komunitas: hubungi pengelola Eastside Stories buat pendaftaran whitelist dan
+  Discord role
+
+Repo ini cuma buat publikasi rilis biner, pembaruan data, dan dokumentasi client.
