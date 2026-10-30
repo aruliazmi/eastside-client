@@ -181,26 +181,35 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
     @Override
     public boolean onTouch(View view, MotionEvent event) {
         int x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0;
+        int x4 = 0, y4 = 0, x5 = 0, y5 = 0;
         // marshal up the data.
         int numEvents = event.getPointerCount();
         for (int i = 0; i < numEvents; i++) {
-            // only use pointers 0 and 1, 2, 3
+            // support up to 5 simultaneous touch pointers (0..4)
             int pointerId = event.getPointerId(i);
+            int px = (int) event.getX(i);
+            int py = (int) event.getY(i);
             if (pointerId == 0) {
-                x1 = (int) event.getX(i);
-                y1 = (int) event.getY(i);
+                x1 = px;
+                y1 = py;
             } else if (pointerId == 1) {
-                x2 = (int) event.getX(i);
-                y2 = (int) event.getY(i);
+                x2 = px;
+                y2 = py;
             } else if (pointerId == 2) {
-                x3 = (int) event.getX(i);
-                y3 = (int) event.getY(i);
+                x3 = px;
+                y3 = py;
+            } else if (pointerId == 3) {
+                x4 = px;
+                y4 = py;
+            } else if (pointerId == 4) {
+                x5 = px;
+                y5 = py;
             }
         }
 
         int pointerId = event.getPointerId(event.getActionIndex());
         int action = event.getActionMasked();
-        customMultiTouchEvent(action, pointerId, x1, y1, x2, y2, x3, y3);
+        customMultiTouchEvent(action, pointerId, x1, y1, x2, y2, x3, y3, x4, y4, x5, y5);
         return true;
     }
 
@@ -395,7 +404,7 @@ public abstract class NvEventQueueActivity extends AppCompatActivity implements 
     public native boolean multiTouchEvent4(int i, int i2, int i3, int i4, int i5, int i6, int i7, int i8, int i9, int i10, MotionEvent motionEvent);
 
     public native boolean customMultiTouchEvent(int action, int count, int x1, int y1, int x2, int y2,
-                                                int x3, int y3);
+                                                int x3, int y3, int x4, int y4, int x5, int y5);
 	/**
 	 * END indented block, see in comment at top of block
 	 */

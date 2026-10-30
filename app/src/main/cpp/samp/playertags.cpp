@@ -199,11 +199,23 @@ void CPlayerTags::Draw(ImGuiRenderer* renderer, CVector* vec, const char* szNick
 		ImGui::GetBackgroundDrawList()->AddImage((ImTextureID)m_pMicroIconTexture->raster, a, b);
 	}
 
-	// AFK icon
-	if (bAfk && m_pAFKIconTexture && m_pAFKIconTexture->raster)
+	// AFK icon (modern vector badge with pause bars)
+	if (bAfk)
 	{
-		ImVec2 a = ImVec2(HealthBarBDR1.x - ((UISettings::fontSize() / 2) * 1.4f), HealthBarBDR1.y);
-		ImVec2 b = ImVec2(a.x + ((UISettings::fontSize() / 2) * 1.3f), a.y + ((UISettings::fontSize() / 2) * 1.3f));
-		ImGui::GetBackgroundDrawList()->AddImage((ImTextureID)m_pAFKIconTexture->raster, a, b);
+		ImDrawList* dl = ImGui::GetBackgroundDrawList();
+		float badgeH = (UISettings::fontSize() / 2) * 1.1f;
+		float badgeW = badgeH * 2.2f;
+		ImVec2 b0 = ImVec2(HealthBarBDR1.x - badgeW - 6.0f, HealthBarBDR1.y);
+		ImVec2 b1 = ImVec2(b0.x + badgeW, b0.y + badgeH);
+
+		dl->AddRectFilled(b0, b1, ImColor(0xD4, 0x7A, 0x18, 0xEE), 3.0f);
+		dl->AddRect(b0, b1, ImColor(0xFF, 0xBD, 0x45, 0xFF), 3.0f, 0, 1.0f);
+
+		float barW = 2.0f;
+		float barH = badgeH * 0.55f;
+		float padY = (badgeH - barH) / 2.0f;
+		float midX = (b0.x + b1.x) / 2.0f;
+		dl->AddRectFilled(ImVec2(midX - 3.0f, b0.y + padY), ImVec2(midX - 3.0f + barW, b0.y + padY + barH), ImColor(0xFF, 0xFF, 0xFF));
+		dl->AddRectFilled(ImVec2(midX + 1.5f, b0.y + padY), ImVec2(midX + 1.5f + barW, b0.y + padY + barH), ImColor(0xFF, 0xFF, 0xFF));
 	}
 }

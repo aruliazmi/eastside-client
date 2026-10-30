@@ -273,6 +273,10 @@ typedef struct NVEventMultiTouch
 	/** The window-relative Y position of the second pointer (in pixels)
 		only valid if bit 3 of the pointer bits is set */
 	float   m_y4;
+	/** The window-relative X position of the fifth pointer (in pixels) */
+	float   m_x5;
+	/** The window-relative Y position of the fifth pointer (in pixels) */
+	float   m_y5;
 } NVEventMultiTouch;
 
 /** Key down/up event data

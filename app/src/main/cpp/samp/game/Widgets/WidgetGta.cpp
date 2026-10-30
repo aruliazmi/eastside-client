@@ -226,6 +226,16 @@ void CWidgetButton__Update_hook(CWidgetButton* thiz) {
         }
     }
 
+    // Modern flat translucent styling with signature brass press feedback
+    CVector2D vOut;
+    if (thiz->IsTouched(&vOut)) {
+        // Pressed: Signature Eastside brass accent (#D4A548)
+        thiz->m_Color = CRGBA(212, 165, 72, 225);
+    } else {
+        // Idle: Clean modern semi-transparent (alpha ~135)
+        thiz->m_Color = CRGBA(255, 255, 255, 135);
+    }
+
     CWidgetButton__Update(thiz);
 }
 

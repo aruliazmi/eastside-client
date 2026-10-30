@@ -69,7 +69,7 @@ extern "C"
 	}
 
 	JNIEXPORT jboolean JNICALL Java_com_nvidia_devtech_NvEventQueueActivity_customMultiTouchEvent(JNIEnv* env, jobject thiz, jint action,
-		jint pointer, jint x1, jint y1, jint x2, jint y2, jint x3, jint y3)
+		jint pointer, jint x1, jint y1, jint x2, jint y2, jint x3, jint y3, jint x4, jint y4, jint x5, jint y5)
 	{
 		InitMotionEventCache(env);
 
@@ -111,6 +111,10 @@ extern "C"
 			ev.m_data.m_multi.m_y2 = y2;
 			ev.m_data.m_multi.m_x3 = x3;
 			ev.m_data.m_multi.m_y3 = y3;
+			ev.m_data.m_multi.m_x4 = x4;
+			ev.m_data.m_multi.m_y4 = y4;
+			ev.m_data.m_multi.m_x5 = x5;
+			ev.m_data.m_multi.m_y5 = y5;
 			NVEventInsertNewest(ev);
 		}
 

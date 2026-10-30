@@ -2,6 +2,21 @@
 
 #include <functional>
 
+enum class ButtonIcon {
+	NONE = 0,
+	TOGGLE_BAR,
+	ESC,
+	TAB,
+	ALT,
+	SPC,
+	ENTER_CAR,
+	HORN,
+	SUBMISSION,
+	YES,
+	NO,
+	PASSENGER
+};
+
 class Button : public Widget
 {
 public:
@@ -17,6 +32,9 @@ public:
 	void setColorFocused(const ImColor& color) { m_colorFocused = color; }
 	void setCaptionColor(const ImColor& color) { m_label->setColor(color); }
 
+	void setIcon(ButtonIcon icon) { m_icon = icon; }
+	ButtonIcon icon() const { return m_icon; }
+
 	virtual void performLayout() override;
 
 	virtual void draw(ImGuiRenderer* renderer) override;
@@ -29,6 +47,7 @@ private:
 
 	ImColor m_color;
 	ImColor m_colorFocused;
+	ButtonIcon m_icon{ButtonIcon::NONE};
 };
 
 class CButton : public Widget
@@ -45,6 +64,9 @@ public:
 	void setColor(const ImColor& color) { m_color = color; }
 	void setColorFocused(const ImColor& color) { m_colorFocused = color; }
 
+	void setIcon(ButtonIcon icon) { m_icon = icon; }
+	ButtonIcon icon() const { return m_icon; }
+
 	virtual void performLayout() override;
 
 	virtual void draw(ImGuiRenderer* renderer) override;
@@ -57,6 +79,7 @@ private:
 
 	ImColor m_color;
 	ImColor m_colorFocused;
+	ButtonIcon m_icon{ButtonIcon::NONE};
 };
 
 //>> Button

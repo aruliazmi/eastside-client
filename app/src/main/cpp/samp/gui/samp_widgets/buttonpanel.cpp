@@ -39,23 +39,42 @@ ButtonPanel::ButtonPanel()
 
 	/* ---- toggle bar ---- */
 	m_bToggle = new Button(">>", fs);
+	m_bToggle->setIcon(ButtonIcon::TOGGLE_BAR);
 	m_bToggle->setCallback([this]() {
 		OpenButton = !OpenButton;
-		m_bToggle->setCaption(OpenButton ? "<<" : ">>");
 		applyBarVisibility();
 	});
 
 	/* ---- kendali keyboard ---- */
 	CButton* m_bEsc = new CButton("ESC", fs);
+	m_bEsc->setIcon(ButtonIcon::ESC);
+
 	CButton* m_bTab = new CButton("TAB", fs);
+	m_bTab->setIcon(ButtonIcon::TAB);
+
 	CButton* m_bAlt = new CButton("ALT", fs);
+	m_bAlt->setIcon(ButtonIcon::ALT);
+
 	CButton* m_bSpc = new CButton("SPC", fs);
+	m_bSpc->setIcon(ButtonIcon::SPC);
+
 	CButton* m_bF   = new CButton("F", fs);
+	m_bF->setIcon(ButtonIcon::ENTER_CAR);
+
 	m_bH            = new CButton("H", fs);
+	m_bH->setIcon(ButtonIcon::HORN);
+
 	CButton* m_b2   = new CButton("2", fs);
+	m_b2->setIcon(ButtonIcon::SUBMISSION);
+
 	CButton* m_bY   = new CButton("Y", fs);
+	m_bY->setIcon(ButtonIcon::YES);
+
 	CButton* m_bN   = new CButton("N", fs);
+	m_bN->setIcon(ButtonIcon::NO);
+
 	CButton* m_bG   = new CButton("G", fs);
+	m_bG->setIcon(ButtonIcon::PASSENGER);
 
 	/* ---- dibuat tapi tidak ditampilkan; callback tetap dipasang ---- */
 	CButton* m_bP    = new CButton("+", fs);

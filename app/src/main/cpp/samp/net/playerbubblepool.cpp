@@ -184,6 +184,17 @@ void CPlayerBubblePool::Draw(ImGuiRenderer* renderer)
                                                            m_pPlayerBubble[i]->uiColor | (0x000000FF)),
                                                    std::string(m_pPlayerBubble[i]->szText), true,
                                                    UISettings::fontSize() / 2);
+
+                                // Modern chat bubble icon floating right above the text
+                                ImDrawList* dl = ImGui::GetBackgroundDrawList();
+                                float textW = renderer->calculateTextSize(m_pPlayerBubble[i]->szText, UISettings::fontSize() / 2).x;
+                                ImVec2 bCenter = ImVec2(pos.x + textW * 0.5f, pos.y - 12.0f);
+                                dl->AddCircleFilled(bCenter, 7.5f, ImColor(0x11, 0x18, 0x27, 0xEE));
+                                dl->AddCircle(bCenter, 7.5f, ImColor(0xD4, 0xA5, 0x48, 0xEE), 0, 1.2f);
+                                // 3 conversation dots inside
+                                dl->AddCircleFilled(bCenter - ImVec2(3.5f, 0.0f), 1.0f, ImColor(0xFF, 0xFF, 0xFF));
+                                dl->AddCircleFilled(bCenter, 1.0f, ImColor(0xFF, 0xFF, 0xFF));
+                                dl->AddCircleFilled(bCenter + ImVec2(3.5f, 0.0f), 1.0f, ImColor(0xFF, 0xFF, 0xFF));
                             }
                         }
                     }
