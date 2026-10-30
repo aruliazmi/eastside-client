@@ -289,6 +289,9 @@ void DialogBox(RPCParameters *rpcParams)
 			}
 
 			pJavaWrapper->ShowDialog(byteDialogStyle, wDialogID, (char*)Encoding::cp2utf(szTitle).c_str(), (char*) Encoding::cp2utf(szMessage).c_str(), (char*) Encoding::cp2utf(szButton1).c_str(), (char*) Encoding::cp2utf(szButton2).c_str());
+			if (pUI && pUI->keyboard() && pUI->keyboard()->visible()) {
+				pUI->keyboard()->hide();
+			}
 		}
 	}
 
@@ -1115,6 +1118,16 @@ void SetCheckpoint(RPCParameters* rpcParams)
 
 	pGame->SetCheckpointInformation(&vecPos, &vecSize);
 	pGame->m_bCheckpointsEnabled = true;
+
+	if (pGame) {
+		pGame->EnableGameInput(true);
+		if (pGame->FindPlayerPed()) {
+			pGame->FindPlayerPed()->TogglePlayerControllable(true);
+		}
+	}
+	if (pUI && pUI->keyboard() && pUI->keyboard()->visible()) {
+		pUI->keyboard()->hide();
+	}
 }
 
 void DisableCheckpoint(RPCParameters* rpcParams)
@@ -1147,6 +1160,16 @@ void SetRaceCheckpoint(RPCParameters* rpcParams)
 
 	pGame->SetRaceCheckpointInformation(byteType, &vecPos, &vecNextPos, fRadius);
 	pGame->m_bRaceCheckpointsEnabled = true;
+
+	if (pGame) {
+		pGame->EnableGameInput(true);
+		if (pGame->FindPlayerPed()) {
+			pGame->FindPlayerPed()->TogglePlayerControllable(true);
+		}
+	}
+	if (pUI && pUI->keyboard() && pUI->keyboard()->visible()) {
+		pUI->keyboard()->hide();
+	}
 }
 
 void DisableRaceCheckpoint(RPCParameters* rpcParams)

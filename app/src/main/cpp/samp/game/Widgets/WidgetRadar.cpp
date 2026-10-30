@@ -9,10 +9,16 @@
 void (*CWidgetRadar__Update)(CWidgetRadar* thiz);
 void CWidgetRadar__Update_hook(CWidgetRadar* thiz)
 {
+    // Force radar to bottom-left corner (PC layout)
+    thiz->m_fOriginX = 76.0f;
+    thiz->m_fOriginY = 370.0f;
+    thiz->m_fScaleX = 44.0f;
+    thiz->m_fScaleY = 44.0f;
     thiz->m_fTapHoldTime = 999.f;
+
     CWidgetRadar__Update(thiz);
 }
 
 void CWidgetRadar::InjectHooks() {
-    //CHook::InlineHook("_ZN12CWidgetRadar10IsHeldDownEv", &CWidgetRadar__Update_hook, &CWidgetRadar__Update);
+    CHook::InlineHook("_ZN12CWidgetRadar6UpdateEv", &CWidgetRadar__Update_hook, &CWidgetRadar__Update);
 }

@@ -88,6 +88,15 @@ ButtonPanel::ButtonPanel()
 			pUI->playertablist()->hide();
 			Tab = 0;
 		}
+		if (pUI->keyboard() && pUI->keyboard()->visible()) {
+			pUI->keyboard()->hide();
+		}
+		if (pGame) {
+			pGame->EnableGameInput(true);
+			if (pGame->FindPlayerPed()) {
+				pGame->FindPlayerPed()->TogglePlayerControllable(true);
+			}
+		}
 		if (pNetGame) {
 			CTextDrawPool* pTextDrawPool = pNetGame->GetTextDrawPool();
 			if (pTextDrawPool) {

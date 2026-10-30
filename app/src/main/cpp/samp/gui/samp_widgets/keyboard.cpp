@@ -173,12 +173,12 @@ void Keyboard::hide()
 
 void Keyboard::send()
 {
-	//if (m_caller) m_caller->keyboardEvent(this->input()->inputString());
 	const std::string input = this->input()->inputString();
 
 	m_history->add(input);
-	if (m_caller) m_caller->keyboardEvent(input);
+	Widget* caller = m_caller;
 	this->hide();
+	if (caller) caller->keyboardEvent(input);
 }
 
 void Keyboard::sendForGB(JNIEnv *pEnv, jobject thiz, jbyteArray str)
@@ -190,8 +190,9 @@ void Keyboard::sendForGB(JNIEnv *pEnv, jobject thiz, jbyteArray str)
 	memcpy(buffer, elements, v8);
 	buffer[v8] = 0;
 	std::string input = std::string(buffer);
-	if (m_caller) m_caller->keyboardEvent(input);
+	Widget* caller = m_caller;
 	hide();
+	if (caller) caller->keyboardEvent(input);
 	pEnv->ReleaseByteArrayElements(str, elements, JNI_ABORT);
 }
 

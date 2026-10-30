@@ -1751,6 +1751,7 @@ void CAEWeatherAudioEntity__UpdateParameter_hook(uintptr_t thiz, uintptr_t a1, u
 }
 
 #include "Widgets/TouchInterface.h"
+#include "Widgets/WidgetRadar.h"
 
 void InjectHooks()
 {
@@ -1817,7 +1818,7 @@ void InjectHooks()
     TextureDatabaseRuntime::InjectHooks();
     TextureDatabaseRuntime::InstallLoadGate();
     CCustomBuildingDNPipeline::InjectHooks();
-    //CWidgetRadar::InjectHooks();
+    CWidgetRadar::InjectHooks();
 
     //CRealTimeShadowManager::InjectHooks();
     COcclusion::InjectHooks();

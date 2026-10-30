@@ -324,6 +324,11 @@ extern "C" {
 		{
 			if(pSettings->Get().iAndroidKeyboard)
 				pJavaWrapper->HideKeyboard();
+			else if (pUI && pUI->keyboard() && pUI->keyboard()->visible())
+				pUI->keyboard()->hide();
+		}
+		if (pGame) {
+			pGame->EnableGameInput(true);
 		}
 	}
 	JNIEXPORT void JNICALL Java_com_sampmobile_xyvern_game_ui_dialog_DialogManager_sendDialogResponse(JNIEnv* pEnv, jobject thiz, jint i3, jint i, jint i2, jbyteArray str)
@@ -337,7 +342,16 @@ extern "C" {
 		
 		if(pNetGame) {
 			pNetGame->SendDialogResponse(i, i3, i2, (char*)szStr.c_str());
-			//pGame->FindPlayerPed()->TogglePlayerControllableWithoutLock(true);
+		}
+
+		if (pGame) {
+			pGame->EnableGameInput(true);
+			if (pGame->FindPlayerPed()) {
+				pGame->FindPlayerPed()->TogglePlayerControllable(true);
+			}
+		}
+		if (pUI && pUI->keyboard()) {
+			pUI->keyboard()->hide();
 		}
 
 		pEnv->ReleaseByteArrayElements(str, pMsg, JNI_ABORT);

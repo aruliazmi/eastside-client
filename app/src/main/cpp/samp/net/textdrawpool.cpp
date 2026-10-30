@@ -96,6 +96,13 @@ void CTextDrawPool::SetSelectState(bool bState, uint32_t dwColor)
         m_dwHoverColor = 0;
         m_wClickedTextDrawID = 0xFFFF;
 
+        if (pGame) {
+            pGame->EnableGameInput(true);
+            if (pGame->FindPlayerPed()) {
+                pGame->FindPlayerPed()->TogglePlayerControllable(true);
+            }
+        }
+
         // SendClick() used to be called here with 0xFFFF as the id (no textdraw
         // was actually clicked), which the server saw as a click on a
         // non-existent textdraw. Only send when a real id is pending.
