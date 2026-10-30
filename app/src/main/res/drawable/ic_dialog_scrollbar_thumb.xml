@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Thumb scrollbar: garis kuningan, bukan gradient biru-ungu. -->
-<shape
-    xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="@color/es_brass_dim" />
-    <corners android:radius="@dimen/_100sdp" />
-</shape>

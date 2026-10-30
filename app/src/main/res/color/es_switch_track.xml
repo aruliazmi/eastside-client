@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Track switch: redup saat off, tapi tetap terbaca sebagai kontrol. -->
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_checked="true" android:color="@color/es_brass_dim" />
-    <item android:color="@color/es_control_off" />
-</selector>
