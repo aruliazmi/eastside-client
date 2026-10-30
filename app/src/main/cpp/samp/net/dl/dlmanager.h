@@ -30,7 +30,7 @@ enum class DLModelType : uint8_t {
 static const size_t DL_RPC179_WIRE_BYTES   = 39u;   // fixed ModelRequest payload
 static const size_t DL_RPC183_MIN_BYTES    = 7u;    // arg+type+crc+urlLen(1)+>=0
 static const size_t DL_MAX_URL_BYTES       = 511u;  // dynstr8 is <=255 but be safe
-static const size_t DL_MAX_HTTP_HEADER     = 8192u; // cap on response header buffer
+static const size_t DL_MAX_HTTP_HEADER     = 65536u; // cap on response header buffer
 static const size_t DL_MAX_REDIRECTS       = 3;
 static const uint32_t DL_HTTP_STALL_MS     = 15000; // no bytes for this long => fail
 static const uint32_t DL_CONNECT_TIMEOUT_MS= 8000;

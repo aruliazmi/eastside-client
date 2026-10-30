@@ -472,9 +472,23 @@ bool DLManager::RegisterCustomModels() {
         snprintf(msg, sizeof(msg), "Failed to pack custom IMG: %s",
                  packError.c_str());
         PushChat(msg);
+        FLog("[DL] pack FAILED entries=%zu error=%s (cap=%llu MB) - all models "
+             "will fall back to base; /dlr re-arms after a fix",
+             entries.size(), packError.c_str(),
+             (unsigned long long)(DLImgPack::IMG_MAX_TOTAL / (1024ull * 1024ull)));
         std::lock_guard<std::mutex> lock(m_mutex);
         m_bModelsRegistered = true;
         return false;
+    }
+    {
+        struct stat imgStat;
+        unsigned long long imgSize = 0;
+        if (stat(imgFullPath.c_str(), &imgStat) == 0) {
+            imgSize = (unsigned long long)imgStat.st_size;
+        }
+        FLog("[DL] packed %zu files into IMG: %llu bytes (%.1f MB), cap %llu MB",
+             entries.size(), imgSize, (double)imgSize / (1024.0 * 1024.0),
+             (unsigned long long)(DLImgPack::IMG_MAX_TOTAL / (1024ull * 1024ull)));
     }
 
     // Register IMG with the streaming system using relative path.
@@ -1655,6 +1669,12 @@ void DLManager::RequestRetryFailed() {
             m_bFinishSent = false;
             m_bDownloadFinished = false;
             m_finishTime = 0;
+            // A previous registration may have failed (e.g. the IMG pack hit a
+            // size cap). Without clearing this flag the deferred finalisation
+            // would skip RegisterCustomModels() forever, so /dlr could never
+            // recover and every custom model would stay on its base fallback.
+            m_bModelsRegistered = false;
+            m_registerDoneTick = 0;
         }
     }
     if (rearmed > 0) {

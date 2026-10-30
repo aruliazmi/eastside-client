@@ -34,7 +34,16 @@ using LayoutMap = std::unordered_map<std::string, SectorSpan>;
 static const size_t IMG_SECTOR_SIZE = 2048;
 static const size_t IMG_MAX_NAME    = 24;   // incl. NUL
 static const size_t IMG_MAX_ENTRIES = 4096; // sanity cap
-static const uint64_t IMG_MAX_TOTAL = 512ULL * 1024ULL * 1024ULL; // 512 MB cap
+// VER2 stores a sector offset and count as uint32, so the real format limit is
+// 2^32 * 2048 bytes (~8 TiB). The old 512 MB figure was an arbitrary cap and it
+// rejected a real server: State Side ships 79 DFF + 91 TXD totalling 537 MB
+// (the largest single TXD is 17 MB), so PackImgV2 failed with "archive exceeds
+// size cap", registerCustomModels reported registered=0, and every custom model
+// fell back to a base model even though all 169 files had downloaded fine.
+//
+// 2 GiB keeps the whole archive inside a signed 32-bit byte offset too, which
+// matters because parts of the streaming code store sizes in int32.
+static const uint64_t IMG_MAX_TOTAL = 2048ULL * 1024ULL * 1024ULL; // 2 GiB cap
 
 // Packs files into a VER2 IMG at outPath.
 // Returns true on success, false on any error (outError filled).

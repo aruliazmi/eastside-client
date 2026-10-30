@@ -2020,12 +2020,17 @@ uintptr_t LoadTexture(const char* texname)
     // Negative cache: the server re-sends SetObjectMaterial for every object that
     // streams back in, so a genuinely absent texture used to emit ~30 lines per
     // frame and drown the log. Report each distinct missing name once per 30 s.
+    //
+    // 64 slots, not 16: a reported State Side session had 184 distinct missing
+    // names, so a 16-entry ring was overwritten before it could ever suppress
+    // anything and the log still carried 1565 lines of texture spam.
     {
-        static char s_miss[16][32] = {{0}};
-        static uint32_t s_missAt[16] = {0};
+        static const int kMissSlots = 64;
+        static char s_miss[kMissSlots][32] = {{0}};
+        static uint32_t s_missAt[kMissSlots] = {0};
         uint32_t now = CTimer::m_snTimeInMillisecondsNonClipped;
         int slot = -1;
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < kMissSlots; i++) {
             if (s_miss[i][0] == 0) { slot = i; break; }
             if (strncmp(s_miss[i], texname, 31) == 0) {
                 if (now - s_missAt[i] < 30000) return 0;
@@ -2033,7 +2038,7 @@ uintptr_t LoadTexture(const char* texname)
                 return 0;
             }
         }
-        if (slot < 0) slot = static_cast<int>(now % 16);
+        if (slot < 0) slot = static_cast<int>(now % kMissSlots);
         strncpy(s_miss[slot], texname, 31);
         s_miss[slot][31] = 0;
         s_missAt[slot] = now;
@@ -2080,13 +2085,14 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
     // skip the whole probe set for 30 s.
     if (!tex && texturename && texturename[0])
     {
-        static char s_missTxd[16][32] = {{0}};
-        static char s_missTex[16][32] = {{0}};
-        static uint32_t s_missAt[16] = {0};
+        static const int kMissSlots = 64;
+        static char s_missTxd[kMissSlots][32] = {{0}};
+        static char s_missTex[kMissSlots][32] = {{0}};
+        static uint32_t s_missAt[kMissSlots] = {0};
         const uint32_t now = CTimer::m_snTimeInMillisecondsNonClipped;
 
         int slot = -1;
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < kMissSlots; i++) {
             if (s_missTex[i][0] == 0) { slot = i; break; }
             if (strncmp(s_missTex[i], texturename, 31) == 0 &&
                 strncmp(s_missTxd[i], txdname ? txdname : "", 31) == 0) {
@@ -2113,7 +2119,7 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
         }
 
         if (!tex) {
-            if (slot < 0) slot = static_cast<int>(now % 16);
+            if (slot < 0) slot = static_cast<int>(now % kMissSlots);
             strncpy(s_missTex[slot], texturename, 31);
             s_missTex[slot][31] = '\0';
             strncpy(s_missTxd[slot], txdname ? txdname : "", 31);
