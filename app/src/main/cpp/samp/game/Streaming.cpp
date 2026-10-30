@@ -413,7 +413,20 @@ void CStreaming::RequestModel(int32 modelId, int32 streamingFlags) {
                 }
                 case eModelType::DFF: { // Request TXD and (if any) IFP
                     CBaseModelInfo* modelInfo = CModelInfo::GetModelInfo(modelId);
-                  //  RequestTxdModel(modelInfo->m_nTxdIndex, streamingFlags);
+                    // Request the model's texture dictionary. Without this the
+                    // DFF streams in but never receives its TXD, so the model
+                    // renders with no texture at all: a custom skin appeared as a
+                    // plain white figure and custom objects showed as untextured
+                    // geometry. Nothing else in the client requested it - the
+                    // only other call site (the DFF branch in the request-list
+                    // drain) is commented out too.
+                    if (modelInfo) {
+                        const int32 txdModelId = TXDToModelId(modelInfo->m_nTxdIndex);
+                        if (txdModelId >= RESOURCE_ID_TXD && txdModelId < RESOURCE_ID_COL &&
+                            !GetInfo(txdModelId).IsLoadedOrBeingRead()) {
+                            RequestModel(txdModelId, streamingFlags);
+                        }
+                    }
 
                     if (modelInfo) {
                         const int32 animFileIndex = modelInfo->GetAnimFileIndex();
