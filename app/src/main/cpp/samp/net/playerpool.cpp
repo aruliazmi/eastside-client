@@ -9,6 +9,9 @@ CPlayerPool::CPlayerPool()
 		m_bPlayerSlotState[playerId] = false;
 	}
 
+	memset(m_iPlayerScores, 0, sizeof(m_iPlayerScores));
+	memset(m_dwPlayerPings, 0, sizeof(m_dwPlayerPings));
+
 	m_pLocalPlayer = new CLocalPlayer();
 	m_iLocalPlayerScore = 0;
 	m_iLocalPlayerPing = 0;
@@ -92,6 +95,8 @@ bool CPlayerPool::Delete(PLAYERID playerId, uint8_t byteReason)
 		m_pLocalPlayer->ToggleSpectating(false);
 	}
 	m_bPlayerSlotState[playerId] = false;
+	m_iPlayerScores[playerId] = 0;
+	m_dwPlayerPings[playerId] = 0;
 
 	if (m_pPlayers[playerId]) {
 		delete m_pPlayers[playerId];

@@ -1005,6 +1005,10 @@ void UpdateScoresPingsIPs(RPCParameters *rpcParams)
 		pPlayerPool->UpdatePlayerScore(playerId, iPlayerScore);
 		pPlayerPool->UpdatePlayerPing(playerId, iPlayerPing);
 	}
+
+	if (pUI && pUI->playertablist() && pUI->playertablist()->visible()) {
+		pUI->playertablist()->assemble();
+	}
 }
 
 void Pickup(RPCParameters *rpcParams)

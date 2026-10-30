@@ -501,6 +501,8 @@ void CNetGame::ProcessPools()
 	if (GetPickupPool()) {
 		GetPickupPool()->Process();
 	}
+
+	UpdatePlayerScoresAndPings();
 }	
 
 void CNetGame::ProcessLoadingScreen()
