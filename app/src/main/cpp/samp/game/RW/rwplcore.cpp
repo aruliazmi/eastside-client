@@ -40,8 +40,12 @@ RwTexture* RwTextureStreamRead(RwStream* stream) {
 }
 
 // Sets the dictionary RenderWare writes new textures into.
+// Address verified against the dynamic symbol table:
+//   _Z25RwTexDictionarySetCurrentP15RwTexDictionary @ 0x27425C
+// (0x2742B8 was wrong - it is not this function, so the wrong dictionary
+//  stayed current and every TXD parse wrote into the wrong place.)
 void* RwTexDictionarySetCurrent(void* dict) {
-    return CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x001DBB50 + 1 : 0x2742B8), dict);
+    return CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x001DBB3C + 1 : 0x27425C), dict);
 }
 
 RwBool RwStreamClose(RwStream* stream, void* data) {

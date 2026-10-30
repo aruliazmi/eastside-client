@@ -4,6 +4,7 @@
 #include "../../gui/gui.h"
 #include "../../game/Streaming.h"
 #include "../../game/TxdStore.h"
+#include "../../game/RW/RenderWare.h"
 #include "../../game/Models/ModelInfo.h"
 #include "../../vendor/imgui/imgui.h"
 #include "../../vendor/raknet/SAMP/SAMPRPC.h"
@@ -520,6 +521,7 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
     }
 
     int installed = 0, failed = 0;
+    int failNoModel = 0, failSlot = 0, failStream = 0, failDict = 0, failRead = 0;
     std::vector<int16_t> virtualIds;
     std::vector<uint32_t> txdCrcs;
     {
@@ -538,40 +540,46 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
         if (it == layout.end()) continue;
 
         CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualIds[i]);
-        if (!pInfo) { ++failed; continue; }
+        if (!pInfo) { ++failed; ++failNoModel; continue; }
 
         const int32 slot = pInfo->m_nTxdIndex;
-        if (slot < 0 || slot >= (int32)TOTAL_TXD_MODEL_IDS) { ++failed; continue; }
+        if (slot < 0 || slot >= (int32)TOTAL_TXD_MODEL_IDS) { ++failed; ++failSlot; continue; }
 
         if (fseek(fp, (long)((uint64_t)it->second.offset * 2048ull), SEEK_SET) != 0) {
-            ++failed; continue;
+            ++failed; ++failRead; continue;
         }
         const size_t byteLen = (size_t)it->second.count * 2048u;
         std::vector<uint8_t> buf(byteLen);
-        if (fread(buf.data(), 1, byteLen, fp) != byteLen) { ++failed; continue; }
+        if (fread(buf.data(), 1, byteLen, fp) != byteLen) { ++failed; ++failRead; continue; }
 
-        // RenderWare reads from memory: open a memory stream over the entry.
-        RwStream* stream = RwStreamOpen(rwSTREAMMEMORY, rwSTREAMREAD, buf.data());
-        if (!stream) { ++failed; continue; }
+        // rwSTREAMMEMORY takes a RwMemory descriptor ({start,length}), NOT a raw
+        // pointer. Handing it the bare buffer pointer made RwStreamOpen build a
+        // stream over garbage, so every textdraw dictionary failed to parse.
+        RwMemory mem{};
+        mem.start  = buf.data();
+        mem.length = (RwUInt32)byteLen;
+        RwStream* stream = RwStreamOpen(rwSTREAMMEMORY, rwSTREAMREAD, &mem);
+        if (!stream) { ++failed; ++failStream; continue; }
 
-        // Ensure the slot owns a dictionary, then read the TXD into it.
         if (!CTxdStore::GetTxd(slot)) {
             CTxdStore::Create(slot);
         }
         void* dict = CTxdStore::GetTxd(slot);
-        if (dict) {
+        if (!dict) {
+            ++failed; ++failDict;
+        } else {
             RwTexDictionarySetCurrent(dict);
             if (RwTextureStreamRead(stream)) ++installed;
-            else ++failed;
-        } else {
-            ++failed;
+            else ++failed, ++failRead;
         }
         RwStreamClose(stream, nullptr);
     }
 
     fclose(fp);
-    FLog("[TXD] installed %d custom TXDs from IMG slot %d (%d failed)",
-         installed, imgIndex, failed);
+    FLog("[TXD] installed %d custom TXDs from IMG slot %d (failed=%d: noModel=%d "
+         "slot=%d stream=%d dict=%d read=%d)",
+         installed, imgIndex, failed, failNoModel, failSlot, failStream,
+         failDict, failRead);
 }
 
 bool DLManager::RegisterCustomModels() {
