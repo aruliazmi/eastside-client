@@ -1,4 +1,6 @@
 #include "dlmanager.h"
+#include "custom_txd.h"
+#include "custom_txd_install.h"
 #include "dl_imgpack.h"
 #include "../../main.h"
 #include "../../gui/gui.h"
@@ -573,44 +575,86 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
 // land in CTxdStore as they are parsed, so the player can already see the first
 // skins while the rest are still being installed.
 bool DLManager::ProcessCustomTxdBatch() {
-    // DISABLED while the TXD path is reworked.
-    //
-    // Two things came out of the v2.8.6 run:
-    //
-    //  1. The engine never reads a CTxdStore dictionary when it looks up a
-    //     texture. CTxdStore::TxdStoreFindCB is hooked to
-    //     TextureDatabaseRuntime::CleanRegisteredDatabases() + GetTexture(name),
-    //     and this build's databases come from .dat/.tmb/.toc - never from an
-    //     IMG. So parking an RwTexDictionary in a slot could not have made a
-    //     skin draw textured, even if the parse had succeeded. The v2.8.0-v2.8.6
-    //     work all fed that unused path.
-    //
-    //  2. Driving RwTexDictionaryStreamRead by hand crashes the process inside
-    //     the parser: the log stops at "[TXD] 5/93 ... A6AE02FE", a 374 KB file,
-    //     so it is not memory pressure. This server's TXDs are a mobile variant
-    //     whose native-texture header does not match the desktop layout the
-    //     reader expects, and my own decoder is not correct for it either.
-    //
-    // Installing a dictionary therefore buys nothing and costs a crash. Custom
-    // models keep their base-model fallback, which is the documented behaviour
-    // for models that cannot be streamed - the game stays playable.
-    //
-    // Re-enabling this requires building a real TextureDatabaseRuntime from the
-    // downloaded TXDs and registering it, not writing into CTxdStore.
-    if (!m_bTxdActive.exchange(false)) return true;
+    if (!m_bTxdActive.load()) return true;
 
-    if (!m_txdWork.empty()) {
-        FLog("[TXD] install disabled: engine looks textures up in "
-             "TextureDatabaseRuntime, not CTxdStore (%zu entries skipped)",
-             m_txdWork.size());
+    const size_t total = m_txdWork.size();
+    size_t cursor = m_txdCursor.load();
+    if (cursor >= total) {
+        FinishCustomTxds();
+        return true;
     }
-    {
-        std::lock_guard<std::mutex> lock(m_txdMutex);
-        m_txdWork.clear();
-        m_txdSpans.clear();
-        m_txdImgPath.clear();
+
+    FILE* fp = fopen(m_txdImgPath.c_str(), "rb");
+    if (!fp) {
+        FLog("[TXD] cannot open %s", m_txdImgPath.c_str());
+        FinishCustomTxds();
+        return true;
     }
-    return true;
+
+    // One TXD per frame. Each dictionary can be 16-17 MB compressed, and its
+    // decoded textures stay resident, so even two per frame was a visible stall.
+    const size_t kTxdsPerFrame = 1;
+    for (size_t n = 0; n < kTxdsPerFrame && cursor < total; ++n, ++cursor) {
+        const int16_t virtualId = m_txdWork[cursor].first;
+        const uint32_t txdCrc = m_txdWork[cursor].second;
+
+        // Written before the work so a failure names the file instead of leaving
+        // the log silent.
+        FLog("[TXD] %zu/%zu virtual=%d crc=%08X", cursor + 1, total,
+             (int)virtualId, txdCrc);
+
+        auto spanIt = m_txdSpans.find(txdCrc);
+        if (spanIt == m_txdSpans.end()) { ++cursor; continue; }
+
+        if (fseek(fp, (long)((uint64_t)spanIt->second.offset * 2048ull), SEEK_SET) != 0) {
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+        }
+        const size_t byteLen = (size_t)spanIt->second.count * 2048u;
+        std::vector<uint8_t> buf(byteLen);
+        if (fread(buf.data(), 1, byteLen, fp) != byteLen) {
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+        }
+
+        // Decode the TXD ourselves. RenderWare's dictionary reader is a dead end
+        // on this build (CTxdStore::LoadTxd is a bare "ret") and calling it by
+        // hand killed the process on a 374 KB file.
+        std::vector<CustomTxd::Texture> textures;
+        int skipped = 0;
+        if (!CustomTxd::Parse(buf.data(), byteLen, textures, skipped) || textures.empty()) {
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+        }
+
+        // Pin the decoded textures onto the model's materials. This is what makes
+        // the skin draw with colour: the renderer honours material textures even
+        // though the name-based lookup cannot see a downloaded TXD.
+        CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualId);
+        if (!pInfo) { m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1); continue; }
+
+        void* rwObject = pInfo->m_pRwObject;
+        if (!rwObject) {
+            // Not streamed in yet; leave the entry for the next frame.
+            --cursor;
+            break;
+        }
+
+        CustomTxdInstall::Stats st = CustomTxdInstall::ApplyToModel(rwObject, textures);
+        if (st.texturesCreated > 0 || st.materialsPatched > 0) {
+            m_txdInstalled.fetch_add(1);
+            FLog("[TXD] virtual=%d: %zu textures, %d patched, %d materials",
+                 (int)virtualId, textures.size(), st.texturesCreated, st.materialsPatched);
+        } else {
+            m_txdFailed.fetch_add(1); m_txdFailDict.fetch_add(1);
+        }
+    }
+
+    fclose(fp);
+    m_txdCursor.store(cursor);
+
+    if (cursor >= total) {
+        FinishCustomTxds();
+        return true;
+    }
+    return false;
 }
 
 // Logs the totals once and releases the work list.
