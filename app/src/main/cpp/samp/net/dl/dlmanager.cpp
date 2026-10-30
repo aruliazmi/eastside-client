@@ -246,6 +246,8 @@ void DLManager::Reset() {
     m_bDownloadFinished = false;
     m_bFinishRequested = false;
     m_bFinishSent = false;
+    m_finishQueueTick = 0;
+    m_registerDoneTick = 0;
     m_bSawAnyModel = false;
     m_bShutdown = false;
     m_activeWorkers = 0;
@@ -570,9 +572,20 @@ bool DLManager::RegisterCustomModels() {
             pInfo->SetModelName(dffBase);
             pInfo->SetTexDictionary(txdBase, "custom_dl");
 
+            // SetTexDictionary -> FindOrAddTxdSlot -> AddTxdSlot can fail and
+            // return -1 when the txd store is full. TXDToModelId(-1) would then
+            // be 19999, which is a DFF slot, and the block below would clobber a
+            // world model's CStreamingInfo. Validate the slot before using it.
+            const int32 txdSlot = pInfo->m_nTxdIndex;
+            const bool txdSlotValid = (txdSlot >= 0 && txdSlot < (int32)TOTAL_TXD_MODEL_IDS);
+            if (!txdSlotValid) {
+                FLog("RegisterCustomModels: txd slot invalid (%d) for model %d, "
+                     "streaming range left unset", txdSlot, (int)mf.virtualId);
+            }
+
             // Direct streaming setup: tell CStreaming exactly where the DFF is in custom_dl.img
             auto dffIt = layoutMap.find(mf.dffArcName);
-            if (dffIt != layoutMap.end()) {
+            if (dffIt != layoutMap.end() && IsModelDFF(mf.virtualId)) {
                 CStreamingInfo& dffInfo = CStreaming::GetInfo(mf.virtualId);
                 dffInfo.m_nImgId = static_cast<uint8>(imgIndex);
                 dffInfo.SetCdPosnAndSize(dffIt->second.offset, dffIt->second.count);
@@ -580,8 +593,8 @@ bool DLManager::RegisterCustomModels() {
 
             // Direct streaming setup: tell CStreaming exactly where the TXD is in custom_dl.img
             auto txdIt = layoutMap.find(mf.txdArcName);
-            if (txdIt != layoutMap.end()) {
-                int32 txdModelId = TXDToModelId(pInfo->m_nTxdIndex);
+            if (txdIt != layoutMap.end() && txdSlotValid) {
+                const int32 txdModelId = TXDToModelId(txdSlot);
                 if (txdModelId >= RESOURCE_ID_TXD && txdModelId < RESOURCE_ID_COL) {
                     CStreamingInfo& txdInfo = CStreaming::GetInfo(txdModelId);
                     txdInfo.m_nImgId = static_cast<uint8>(imgIndex);
@@ -1411,14 +1424,17 @@ void DLManager::ProcessTick() {
     const bool allSettled = (queued == 0 && active == 0);
     const bool haveManifest = (m_totalModels.load() > 0);
 
+    // NOTE: m_bDownloadFinished stays false until the deferred finalisation
+    // below has registered the models and sent RPC 184. Setting it here would
+    // make the early-return above skip that step entirely, leaving the client
+    // hung in class selection forever.
     if (haveManifest && allSettled && !m_bFinishRequested.load()) {
         // Every task settled: downloaded or skipped-after-failures. A failed
         // package NEVER holds the player on the download screen — it is
         // skipped (the game falls back to base models) and /dlr stays
         // available for a manual retry pass.
         m_bFinishRequested = true;
-        m_finishTime = now;
-        m_bDownloadFinished = true;
+        m_finishQueueTick = now;
         if (failed > 0) {
             char msg[128];
             snprintf(msg, sizeof(msg),
@@ -1426,19 +1442,56 @@ void DLManager::ProcessTick() {
                      done, failed);
             PushChat(msg);
         }
-        // Register downloaded models with the game engine BEFORE telling the
-        // server we're ready. Must run on the game thread (ProcessTick is
-        // called from CNetGame::Process).
-        RegisterCustomModels();
-        SendFinishDownload();
+        // NOTE: registration + RPC 184 are deliberately NOT done here.
+        // RegisterCustomModels() rewrites engine tables (CTxdStore slots via
+        // SetTexDictionary, CModelInfo entries, CStreamingInfo ranges). Running
+        // it in the same frame that we tell the server "ready" meant the server
+        // replied with TogglePlayerSpectating(false) and CLocalPlayer::Spawn()
+        // started touching the ped/streaming state while it was still being
+        // rewritten. On 0.3.DL servers that ended in
+        // CPed::Teleport -> CPedIntelligence::FlushImmediately reading a null
+        // pointer (fault 0x0). Defer to the drain step below so every engine
+        // mutation has settled before the server is told we are ready.
     } else if (!haveManifest && !m_bSawAnyModel &&
                (now - m_connectTime > 6000) && !m_bFinishRequested.load()) {
         // No manifest at all: do not hold the player in class selection. Gated on
         // "no RPC 179 ever" so a slow manifest cannot race us (audit A6).
+        // Nothing to register here, so mark registration done immediately and
+        // let the shared block below send RPC 184 after its settle delay.
         m_bFinishRequested = true;
-        m_finishTime = now;
-        m_bDownloadFinished = true;
-        SendFinishDownload();
+        m_finishQueueTick = now;
+        m_bModelsRegistered = true;
+        m_registerDoneTick = now;
+    }
+
+    // ---- Deferred finalisation -------------------------------------------
+    // Two separate gaps, because RegisterCustomModels() itself sets
+    // m_bModelsRegistered. Checking the flag in the same pass would send 184 in
+    // the very frame the engine tables were rewritten, which is the race this
+    // whole block exists to avoid.
+    if (m_bFinishRequested && !m_bFinishSent) {
+        const uint32_t settledFor = now - m_finishQueueTick;
+
+        // 1. Engine tables are rewritten once, after the download has stopped.
+        if (!m_bModelsRegistered && settledFor >= DL_REGISTER_DELAY_MS) {
+            RegisterCustomModels();
+            m_registerDoneTick = now;
+        }
+
+        // 2. Only tell the server we are ready after the registration result has
+        //    been through at least one more frame. The server answers 184 with
+        //    TogglePlayerSpectating(false) -> CLocalPlayer::Spawn(), and spawn
+        //    must not overlap the streaming/TXD mutations above.
+        if (m_bModelsRegistered &&
+            (now - m_registerDoneTick) >= DL_READY_DELAY_MS) {
+            SendFinishDownload();
+            // Only now is the download officially over: marks the state that
+            // makes ProcessTick return early and drives the "Models ready"
+            // overlay. Previously only set by RPC 185, which this path never
+            // receives.
+            m_bDownloadFinished = true;
+            if (m_finishTime == 0) m_finishTime = now;
+        }
     }
 }
 
@@ -1526,13 +1579,20 @@ void DLManager::RenderImGui() {
     size_t queued = 0, active = 0, done = 0, failed = 0;
     GetProgressStats(queued, active, done, failed);
 
-    const int      total    = m_totalModels.load();
     const bool     finished = m_bDownloadFinished.load();
     const uint32_t now      = GetCurrentTick();
 
+    // Denominator is the number of FILES QUEUED (DFF + TXD tasks), never the
+    // manifest's model count. m_totalModels is overwritten by every incoming
+    // RPC 179 while m_tasks accumulates across all of them, so dividing the
+    // accumulated numerator by the latest per-packet count produced impossible
+    // labels like "153/93". Both sides of the fraction now come from m_tasks.
+    const size_t taskTotal = queued + active + done + failed;
+    const int      total   = static_cast<int>(taskTotal);
+
     const bool waiting  = (total == 0) && !finished && (now - m_connectTime) < 6000;
     const bool showDone = (m_finishTime > 0) && (now - m_finishTime) < 4000;
-    const bool busy     = !finished && (active > 0 || queued > 0 || (total > 0 && done < (size_t)total));
+    const bool busy     = !finished && (active > 0 || queued > 0);
 
     // Visible while there is real work, while the manifest is still expected,
     // or for a beat after finishing. The /dl command pins it open.
@@ -1559,11 +1619,13 @@ void DLManager::RenderImGui() {
         showBar = total > 0;
     } else if (total > 0) {
         fraction = std::clamp(static_cast<float>(settled) / static_cast<float>(total), 0.0f, 1.0f);
+        // One number for both branches: "settled" already includes failures, so
+        // the label never changes basis between the failed and clean paths.
         if (failed > 0) {
             snprintf(label, sizeof(label), "Downloading models %zu/%d (%zu skipped)",
                      settled, total, failed);
         } else {
-            snprintf(label, sizeof(label), "Downloading models %zu/%d", done, total);
+            snprintf(label, sizeof(label), "Downloading models %zu/%d", settled, total);
         }
         showBar = true;
     } else {

@@ -159,12 +159,16 @@ void CPedGTA::GiveWeapon(int iWeaponID, int iAmmo)
 {
     int iModelID = 0;
     iModelID = GameGetWeaponModelIDFromWeaponID(iWeaponID);
-    FLog("GiveWeapon, iModelID %d, iWeaponID %d", iModelID, iWeaponID);
 
+    // iModelID == -1 means "no model" and is the normal answer for weapon 0
+    // (fists). Logging it on every call produced nine noise lines per session;
+    // only report actual failures (the -1 path already returns below).
     if (iModelID == -1 || iModelID == 350 || iModelID == 365) return;
 
     if (!CStreaming::TryLoadModel(iModelID))
         return;
+
+    FLog("GiveWeapon: weapon %d -> model %d", iWeaponID, iModelID);
 
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x0049F588 + 1 : 0x59525C), this, iWeaponID, iAmmo); // CPed::GiveWeapon(thisptr, weapoid, ammo)
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x004A521C + 1 : 0x59B86C), this, iWeaponID);	// CPed::SetCurrentWeapon(thisptr, weapid)

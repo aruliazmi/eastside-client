@@ -68,7 +68,12 @@ RwTexture* CUtil::LoadTextureFromDB(const char* dbname, const char* texture)
 
     if(!tex)
     {
-        FLog("Error: Texture (%s) not found in database (%s)", texture, dbname);
+        // Deliberately silent. This function is called once per database (four
+        // of them) for every SetObjectMaterial the server re-sends, and on
+        // 0.3.DL servers most mapping textures legitimately do not exist. It
+        // produced 19k of the 23k lines in one reported session (80% of the
+        // file) and buried the real crash evidence. LoadTexture() in util.cpp
+        // already reports each missing name once per 30 s, which is enough.
         return nullptr;
     }
 

@@ -8,6 +8,9 @@
 #include <cstdint>
 #include <cstdio>
 
+/** True for files the engine probes but that never exist on Android. */
+bool IsOptionalMissingFile(const char* path);
+
 // For backward compatibility
 
 constexpr size_t DIRNAMELENGTH = 128;

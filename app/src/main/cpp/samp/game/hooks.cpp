@@ -1380,7 +1380,7 @@ stFile* NvFOpen(const char* r0, const char* r1, int r2, int r3)
     {
         char absPath[512]{};
         sprintf(absPath, "%s%s", g_pszStorage, useRel);
-        if (!strstr(absPath, ".idx") && !strstr(absPath, "gta_sa.set") && !strstr(absPath, "gtasatelem.set") && !strstr(absPath, "gta3.ini") && !strstr(absPath, "CINFO.BIN") && !strstr(absPath, "MINFO.BIN") && !strstr(absPath, "GTASAsf") && !strstr(absPath, "Adjustable.cfg")) {
+        if (!IsOptionalMissingFile(absPath)) {
             FLog("NVFOpen hook | Error: file not found (%s)", absPath);
         }
         free(st);

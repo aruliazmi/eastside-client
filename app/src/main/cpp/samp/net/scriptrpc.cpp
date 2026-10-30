@@ -432,14 +432,21 @@ void ScrSetObjectMaterial(RPCParameters* rpcParams)
 	{
 		bsData.Read(byteMaterialIndex);
 		bsData.Read(wModelID);
+		// wModelID==65535 is INVALID_MODEL. The server only uses it as a
+		// placeholder; passing it to SetMaterial made the client look up a
+		// non-existent model and log "unavailable (model 65535)" forever.
 		bsData.Read(byteLength);
+		// byteLength comes straight off the wire. Writing txdname[byteLength]
+		// with an unclamped value overflows the 256-byte stack buffer.
+		if (byteLength >= sizeof(txdname)) byteLength = sizeof(txdname) - 1;
 		bsData.Read(txdname, byteLength);
 		txdname[byteLength] = '\0';
 		bsData.Read(byteLength);
+		if (byteLength >= sizeof(texname)) byteLength = sizeof(texname) - 1;
 		bsData.Read(texname, byteLength);
 		texname[byteLength] = '\0';
 		bsData.Read(dwColor);
-		if (strlen(txdname) < 32 && strlen(texname) < 32)
+		if (wModelID != 0xFFFF && strlen(txdname) < 32 && strlen(texname) < 32)
 		{
 			if (pObject)
 				pObject->SetMaterial(wModelID, byteMaterialIndex, txdname, texname, dwColor);
@@ -450,7 +457,11 @@ void ScrSetObjectMaterial(RPCParameters* rpcParams)
 		bsData.Read(byteMaterialIndex);
 		bsData.Read(byteMaterialSize);
 		bsData.Read(byteLength);
+		// Same clamp as above; fontname is 256 bytes and byteLength is 8-bit,
+		// but the NUL write happens at the wire-provided index.
+		if (byteLength >= sizeof(fontname)) byteLength = sizeof(fontname) - 1;
 		bsData.Read(fontname, byteLength);
+		fontname[byteLength] = '\0';
 		bsData.Read(byteFontSize);
 		bsData.Read(byteBold);
 		bsData.Read(dwFontColor);

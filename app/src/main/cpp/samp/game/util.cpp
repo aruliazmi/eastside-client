@@ -2071,8 +2071,31 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
     // The slot is often not registered yet for a mapping txd ("mroadhelix1");
     // the engine creates it lazily. Search the archive texture databases by the
     // TEXTURE name (not the txd name) and the usual name permutations.
-    if(!tex && texturename && texturename[0])
+    //
+    // Negative cache: on 0.3.DL servers the server re-sends SetObjectMaterial
+    // for every object that streams in, and most mapping textures genuinely do
+    // not exist in any database. Each miss used to cost 5 permutations x 4
+    // databases = 20 probes and 20 log lines, which is how one session produced
+    // 19k of 23k log lines. Remember the (txd, texture) pair that failed and
+    // skip the whole probe set for 30 s.
+    if (!tex && texturename && texturename[0])
     {
+        static char s_missTxd[16][32] = {{0}};
+        static char s_missTex[16][32] = {{0}};
+        static uint32_t s_missAt[16] = {0};
+        const uint32_t now = CTimer::m_snTimeInMillisecondsNonClipped;
+
+        int slot = -1;
+        for (int i = 0; i < 16; i++) {
+            if (s_missTex[i][0] == 0) { slot = i; break; }
+            if (strncmp(s_missTex[i], texturename, 31) == 0 &&
+                strncmp(s_missTxd[i], txdname ? txdname : "", 31) == 0) {
+                if (now - s_missAt[i] < 30000) return nullptr;
+                s_missAt[i] = now;
+                return nullptr;
+            }
+        }
+
         tex = (RwTexture*)LoadTexture(std::string(std::string(texturename) + "_" + txdname).c_str());
         if(!tex) tex = (RwTexture*)LoadTexture(std::string(std::string(txdname) + "_" + texturename).c_str());
         if(!tex) tex = (RwTexture*)LoadTexture(texturename);
@@ -2087,6 +2110,15 @@ RwTexture* LoadTextureFromTxd(const char* txdname, const char* texturename)
             std::string str = texturename;
             std::transform(str.begin(), str.end(), str.begin(), ::toupper);
             tex = (RwTexture*)LoadTexture(std::string(str + "_" + txdname).c_str());
+        }
+
+        if (!tex) {
+            if (slot < 0) slot = static_cast<int>(now % 16);
+            strncpy(s_missTex[slot], texturename, 31);
+            s_missTex[slot][31] = '\0';
+            strncpy(s_missTxd[slot], txdname ? txdname : "", 31);
+            s_missTxd[slot][31] = '\0';
+            s_missAt[slot] = now;
         }
     }
 

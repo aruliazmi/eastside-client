@@ -16,6 +16,23 @@
 
 extern AAssetManager* g_pAssetManager;
 
+/* Files the engine probes for but that never ship on Android. Missing them is
+ * normal and must not be reported as an error; listing them in one place keeps
+ * CFileMgr and the NVFOpen hook from drifting apart (they used to duplicate the
+ * allowlist and both forgot KeyboardMappings.cfg). */
+bool IsOptionalMissingFile(const char* path) {
+    if (!path) return true;
+    static const char* kOptional[] = {
+        ".idx", "gta_sa.set", "gtasatelem.set", "gta3.ini",
+        "CINFO.BIN", "MINFO.BIN", "GTASAsf", "Adjustable.cfg",
+        "KeyboardMappings.cfg",
+    };
+    for (const char* needle : kOptional) {
+        if (strstr(path, needle)) return true;
+    }
+    return false;
+}
+
 static int asset_read(void* cookie, char* buf, int size) {
     return AAsset_read((AAsset*)cookie, buf, size);
 }
@@ -154,7 +171,7 @@ FILE* CFileMgr::OpenFile(const char *path, const char *mode) {
     }
 
     if (!file) {
-        if (!strstr(ms_path, ".idx") && !strstr(ms_path, "gta_sa.set") && !strstr(ms_path, "gtasatelem.set") && !strstr(ms_path, "gta3.ini") && !strstr(ms_path, "CINFO.BIN") && !strstr(ms_path, "MINFO.BIN") && !strstr(ms_path, "GTASAsf") && !strstr(ms_path, "Adjustable.cfg")) {
+        if (!IsOptionalMissingFile(ms_path)) {
             FLog("Fail open file %s", ms_path);
         }
     }

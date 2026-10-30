@@ -34,6 +34,13 @@ static const size_t DL_MAX_HTTP_HEADER     = 8192u; // cap on response header bu
 static const size_t DL_MAX_REDIRECTS       = 3;
 static const uint32_t DL_HTTP_STALL_MS     = 15000; // no bytes for this long => fail
 static const uint32_t DL_CONNECT_TIMEOUT_MS= 8000;
+// After the download settles, wait this long before mutating engine tables and
+// telling the server we are ready. See DLManager::ProcessTick.
+static const uint32_t DL_REGISTER_DELAY_MS = 900;
+// After RegisterCustomModels() finishes, wait this long before sending RPC 184.
+// The server answers with a spawn RPC, which must not land while engine tables
+// are still being touched.
+static const uint32_t DL_READY_DELAY_MS    = 400;
 static const uint32_t DL_URL_WAIT_MS       = 10000; // wait for RPC 183 after request
 static const int      DL_MAX_ATTEMPTS      = 4;
 static const int16_t  DL_VIRT_MIN          = 18631; // safe internal CModelInfo range
@@ -175,6 +182,12 @@ private:
     std::atomic<bool> m_bFinishRequested{false};
     // Set once we have actually transmitted RPC 184; used to re-arm if a late 179 arrives.
     bool m_bFinishSent{false};
+    // Tick at which the download settled. Registration and RPC 184 wait until
+    // DL_REGISTER_DELAY_MS has elapsed so the engine state has stopped moving
+    // before the server is told we are ready (see ProcessTick).
+    uint32_t m_finishQueueTick{0};
+    // Tick at which RegisterCustomModels() last completed; gates RPC 184.
+    uint32_t m_registerDoneTick{0};
     bool m_bSawAnyModel{false};      // any RPC 179 ever received this session
 
     // Worker pool
