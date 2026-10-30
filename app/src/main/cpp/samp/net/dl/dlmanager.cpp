@@ -632,10 +632,24 @@ bool DLManager::ProcessCustomTxdBatch() {
 
         void* rwObject = pInfo->m_pRwObject;
         if (!rwObject) {
-            // Not streamed in yet; leave the entry for the next frame.
-            --cursor;
-            break;
+            // The model is not streamed in yet. A ped skin is streamed when the
+            // player selects it, but an object model may only load when it first
+            // appears in the world - which can be after spawn. Retrying forever
+            // would hold RPC 184 back and leave the player stuck in class
+            // selection, so give each entry a bounded number of retries and then
+            // move on with the texture installed on whatever is available later.
+            auto& tries = m_txdStreamRetries[virtualId];
+            if (++tries <= kMaxStreamRetries) {
+                --cursor;
+                break;
+            }
+            m_txdStreamRetries.erase(virtualId);
+            m_txdFailed.fetch_add(1);
+            m_txdFailNoModel.fetch_add(1);
+            FLog("[TXD] virtual=%d never streamed in, skipping texture", (int)virtualId);
+            continue;
         }
+        m_txdStreamRetries.erase(virtualId);
 
         CustomTxdInstall::Stats st = CustomTxdInstall::ApplyToModel(rwObject, textures);
         if (st.texturesCreated > 0 || st.materialsPatched > 0) {

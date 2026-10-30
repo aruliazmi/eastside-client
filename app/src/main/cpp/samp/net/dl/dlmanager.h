@@ -238,6 +238,11 @@ private:
     std::atomic<int> m_txdFailDict{0};
     std::atomic<int> m_txdFailRead{0};
     std::atomic<bool> m_bTxdActive{false};
+    // Bounded retries per model waiting for its atomic to stream in. An object
+    // model may only load when it first appears in the world, so waiting forever
+    // would hold RPC 184 back and trap the player in class selection.
+    static constexpr int kMaxStreamRetries = 600;   // ~10 s at 60 fps
+    std::unordered_map<int16_t, int> m_txdStreamRetries;
     int m_txdImgIndex{-1};
     std::string m_txdImgPath;
     bool    m_bVirtualIdExhausted{false};
