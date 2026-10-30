@@ -37,9 +37,25 @@ void CTxdStore::Create(int32 index) {
 }
 
 // Returns the RwTexDictionary a slot currently holds, or NULL.
+//
+// The engine keeps the pool in its own global, _ZN9CTxdStore11ms_pTxdPoolE
+// (arm64 0xd28568, armv7 0xa83ecc). Reading the local static in TxdStore.h
+// always gave NULL because nothing in this port ever assigns it - which is
+// exactly why every custom TXD reported "dict" failure and no texture was ever
+// installed. Resolve the engine pointer instead.
+static CTxdPool* EngineTxdPool() {
+    static CTxdPool** pPool = nullptr;
+    if (!pPool) {
+        pPool = reinterpret_cast<CTxdPool**>(
+            g_libGTASA + (VER_x32 ? 0x00A83ECC : 0xD28568));
+    }
+    return *pPool;
+}
+
 void* CTxdStore::GetTxd(int32 index) {
-    if (!ms_pTxdPool) return nullptr;
-    TxdDef* def = ms_pTxdPool->GetAt(index);
+    CTxdPool* pool = EngineTxdPool();
+    if (!pool) return nullptr;
+    TxdDef* def = pool->GetAt(index);
     return def ? reinterpret_cast<void*>(def->m_pRwDictionary) : nullptr;
 }
 
