@@ -9,6 +9,7 @@
 #include "../voice_new/MicroIcon.h"
 #include "../voice_new/SpeakerList.h"
 #include "game/Tasks/TaskTypes/TaskComplexEnterCarAsDriver.h"
+#include "dl/dlmanager.h"
 
 extern UI* pUI;
 extern CGame *pGame;
@@ -658,7 +659,22 @@ void CLocalPlayer::OnSpectatedPedRemoved(CPlayerPed* pPed)
 bool CLocalPlayer::Spawn()
 {
     if (!m_bHasSpawnInfo) {
+        FLog("[SPAWN] refused: no spawn info");
         return false;
+    }
+
+    // Diagnostic: record whether the spawn happens while custom models are
+    // still downloading. This is the correlation that was reported ("always
+    // crashes while the download is not finished") but could never be proven
+    // from a log, because nothing recorded the download state at spawn time.
+    {
+        auto& dl = DLManager::Instance();
+        FLog("[SPAWN] begin skin=%d pos=%.1f,%.1f,%.1f | dl: finished=%d sawModel=%d models=%d tasks=%d registered=%zu total=%d",
+             m_SpawnInfo.iSkin,
+             m_SpawnInfo.vecPos.x, m_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z,
+             (int)dl.IsDownloadFinished(), (int)dl.DebugSawAnyModel(),
+             dl.DebugModelCount(), dl.DebugTaskCount(),
+             dl.DebugRegisteredCount(), dl.DebugTotalModels());
     }
 
     // voice
@@ -692,12 +708,15 @@ bool CLocalPlayer::Spawn()
         // m_pPlayerPed->ToggleCuffed(false);
     }
 
+    FLog("[SPAWN] step1 RestartIfWastedAt pos=%.1f,%.1f,%.1f",
+         m_SpawnInfo.vecPos.x, m_SpawnInfo.vecPos.y, m_SpawnInfo.vecPos.z);
     m_pPlayerPed->RestartIfWastedAt(&m_SpawnInfo.vecPos, m_SpawnInfo.fRotation);
+    FLog("[SPAWN] step2 SetModelIndex skin=%d", m_SpawnInfo.iSkin);
     m_pPlayerPed->SetModelIndex(m_SpawnInfo.iSkin);
-
+    FLog("[SPAWN] step3 ClearAllWeapons");
     m_pPlayerPed->ClearAllWeapons();
     m_pPlayerPed->ResetDamageEntity();
-
+    FLog("[SPAWN] step4 weapons done");
     if (m_SpawnInfo.iSpawnWeapons[2] != -1) {
         m_pPlayerPed->GiveWeapon(m_SpawnInfo.iSpawnWeapons[2], m_SpawnInfo.iSpawnWeaponsAmmo[2]);
     }

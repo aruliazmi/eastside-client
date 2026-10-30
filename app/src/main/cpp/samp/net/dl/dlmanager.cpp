@@ -199,6 +199,8 @@ void DLManager::Initialize(const std::string& serverIp, int serverPort,
     m_bShutdown = false;
     m_bInitialized = true;
 
+    FLog("[DL] initialise server=%s:%d cache=%s", serverIp.c_str(), serverPort, cacheDir);
+
     // Never let a TCP RST kill the process mid-download: without this, a
     // send() on a reset socket raises SIGPIPE and the OS terminates the app.
     // (FetchToFile's send() also uses MSG_NOSIGNAL; this is belt and braces.)
@@ -630,6 +632,11 @@ bool DLManager::RegisterCustomModels() {
 // from the RakNet callback thread (audit B14).
 // ---------------------------------------------------------------------------
 void DLManager::PushChat(const std::string& line) const {
+    // Diagnostic: chat messages previously went ONLY to the in-game chat, so
+    // every "Skipped 0x... (http 401)", "Registered N custom models" and
+    // "Model download finished" was invisible in samp_log.txt. That is why
+    // reported crashes could not be correlated with download state at all.
+    FLog("[DL-CHAT] %s", line.c_str());
     std::lock_guard<std::mutex> lock(m_chatMutex);
     if (m_chatQueue.size() < 256) m_chatQueue.push_back(line);
 }
@@ -686,6 +693,29 @@ void DLManager::FlushQueuedDialog() {
                              const_cast<char*>(message.c_str()),
                              const_cast<char*>(b1.c_str()),
                              const_cast<char*>(b2.c_str()));
+}
+
+// ---------------------------------------------------------------------------
+// Diagnostic accessors (used by SPAWN / crash logging only)
+// ---------------------------------------------------------------------------
+size_t DLManager::DebugRegisteredCount() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_registeredModels.size();
+}
+int DLManager::DebugTaskCount() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return (int)m_tasks.size();
+}
+int DLManager::DebugModelCount() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return (int)m_models.size();
+}
+int DLManager::DebugTotalModels() const {
+    return (int)m_totalModels.load();
+}
+bool DLManager::DebugSawAnyModel() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_bSawAnyModel;
 }
 
 void DLManager::FlushChatQueue() {
@@ -757,6 +787,16 @@ void DLManager::OnModelRequest(RPCParameters* rpcParams) {
     info.virtualModelId = virtualId;
     info.dffCached = IsModelCached(info.dffChecksum, info.dffSize, true);
     info.txdCached = IsModelCached(info.txdChecksum, info.txdSize, false);
+
+    // Diagnostic: one line per manifest entry. This is the record that was
+    // completely missing before - the log had no way to say how many models
+    // the server actually offered, which ones were already on disk, or where
+    // in the sequence a crash happened.
+    FLog("[RPC179] model=%d virtual=%d type=%u count=%d base=%d dff=%08X(%u)%s txd=%08X(%u)%s",
+         (int)info.newId, (int)virtualId, (unsigned)info.type, (int)info.count,
+         (int)info.baseId,
+         info.dffChecksum, (unsigned)info.dffSize, info.dffCached ? " cached" : "",
+         info.txdChecksum, (unsigned)info.txdSize, info.txdCached ? " cached" : "");
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -991,10 +1031,13 @@ void DLManager::WorkerLoop() {
                 if (fetchOk) {
                     t.done = true;
                     t.url.clear();
+                    FLog("[DL] ok %s (%u bytes)", t.hexName.c_str(), (unsigned)t.size);
                 } else if (++t.attempts >= DL_MAX_ATTEMPTS) {
                     t.failed = true;
                     t.lastError = fetchError;
                     m_failedModels++;
+                    FLog("[DL] SKIP %s after %d attempts: %s",
+                         t.hexName.c_str(), t.attempts, fetchError.c_str());
                     char msg[192];
                     snprintf(msg, sizeof(msg), "Skipped %s (%s)",
                              t.hexName.c_str(), fetchError.c_str());
@@ -1496,6 +1539,8 @@ void DLManager::ProcessTick() {
         // package NEVER holds the player on the download screen — it is
         // skipped (the game falls back to base models) and /dlr stays
         // available for a manual retry pass.
+        FLog("[DL] all settled: ok=%zu skipped=%zu total_models=%d tasks=%zu",
+             done, failed, (int)m_totalModels.load(), m_tasks.size());
         m_bFinishRequested = true;
         m_finishQueueTick = now;
         if (failed > 0) {
@@ -1537,8 +1582,15 @@ void DLManager::ProcessTick() {
 
         // 1. Engine tables are rewritten once, after the download has stopped.
         if (!m_bModelsRegistered && settledFor >= DL_REGISTER_DELAY_MS) {
+            FLog("[DL] registering models (settledFor=%u ms)", settledFor);
             RegisterCustomModels();
             m_registerDoneTick = now;
+            FLog("[DL] registration done, registered=%zu pedStore=%zu/%zu atomicStore=%zu/%zu",
+                 m_registeredModels.size(),
+                 CModelInfo::ms_pedModelInfoStore.GetCount(),
+                 CModelInfo::ms_pedModelInfoStore.GetCapacity(),
+                 CModelInfo::ms_atomicModelInfoStore.GetCount(),
+                 CModelInfo::ms_atomicModelInfoStore.GetCapacity());
         }
 
         // 2. Only tell the server we are ready after the registration result has

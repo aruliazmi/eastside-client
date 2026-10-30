@@ -755,7 +755,37 @@ void InitGui();
 // because a stale APK looks identical to a new one up to the crash point.
 #define EASTSIDE_TEXDB_BUILD "texdb-set=7-no-samp + disk probe + txdslot-tex-init + spectate-ped-guard + removeplayer-detach + ik-guard (v1.8.7)"
 
+// Diagnostic build marker. Bump this whenever instrumentation changes so a
+// crash report can be matched to the exact code that produced it. The old
+// marker above was static across every release, which made stale APKs
+// indistinguishable from new ones in a log.
+#define EASTSIDE_DIAG_BUILD "diag-1 (2026-10-30)"
+
 bool CGame::InitialiseRenderWare() {
+    // ---------------------------------------------------------------------
+    // Diagnostic banner. Everything a crash report needs to be interpretable:
+    // which build, which ABI actually got loaded, and which pointer width the
+    // crash handler will be using. Without this a stale 32-bit APK produced
+    // logs indistinguishable from a 64-bit one, and the "(64-Bit)" label in
+    // the crash handler was actively misleading.
+    // ---------------------------------------------------------------------
+    FLog("=== EASTSIDE DIAGNOSTIC BUILD %s ===", EASTSIDE_DIAG_BUILD);
+    FLog("ABI loaded: %s (%d-bit pointers, sizeof(void*)=%d)",
+#if defined(__aarch64__)
+         "arm64-v8a", 64, (int)sizeof(void*)
+#elif defined(__arm__)
+         "armeabi-v7a", 32, (int)sizeof(void*)
+#elif defined(__i386__)
+         "x86", 32, (int)sizeof(void*)
+#elif defined(__x86_64__)
+         "x86_64", 64, (int)sizeof(void*)
+#else
+         "unknown", (int)(sizeof(void*) * 8), (int)sizeof(void*)
+#endif
+    );
+    FLog("libGTASA base=%p  libsamp this=%p  VER_x32=%d",
+         (void*)g_libGTASA, (void*)&CGame::InitialiseRenderWare, (int)VER_x32);
+    FLog("storage=%s", g_pszStorage ? g_pszStorage : "(null)");
     FLog("InitialiseRenderWare .. build=%s", EASTSIDE_TEXDB_BUILD);
 
     CCamera& TheCamera = *reinterpret_cast<CCamera*>(g_libGTASA + (VER_x32 ? 0x00951FA8 : 0xBBA8D0));

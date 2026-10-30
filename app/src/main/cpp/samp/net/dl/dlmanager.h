@@ -132,6 +132,13 @@ public:
     bool IsOverlayForced() const { return m_bForceShowOverlay; }
     void PushChat(const std::string& line) const;  // thread-safe: queues for game thread
 
+    /** Diagnostics: snapshot of download/registration state for crash logs. */
+    size_t DebugRegisteredCount() const;
+    int    DebugTaskCount() const;
+    int    DebugModelCount() const;
+    int    DebugTotalModels() const;
+    bool   DebugSawAnyModel() const;
+
     /**
      * True while dialogs from the server must be held back: custom models are
      * being downloaded, or the registration pass has not finished yet. The
