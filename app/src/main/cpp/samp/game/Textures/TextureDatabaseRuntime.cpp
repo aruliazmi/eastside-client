@@ -5,6 +5,7 @@
 #include "TextureDatabaseRuntime.h"
 #include "../../main.h"
 #include "../vendor/shadowhook/patch.h"
+#include "../../net/dl/custom_txd_install.h"
 
 // The engine loads its own texture-database list inside Initialise3D, without
 // any disk probe. When the requested variant's payload is not on disk (e.g.
@@ -95,7 +96,30 @@ static RwTexture* (*orig_GetTexture)(const char*) = nullptr;
 static RwTexture* GetTexture_hook(const char* name) {
     if (!name || !name[0]) return nullptr;
     TextureDatabaseRuntime::CleanRegisteredDatabases();
+
+    // Check custom 0.3.DL downloaded textures first
+    RwTexture* custom = CustomTxdInstall::FindTexture(name);
+    if (custom) {
+        return custom;
+    }
+
     return orig_GetTexture(name);
+}
+
+static RwTexture* (*orig_TxdStoreFindCB)(const char*) = nullptr;
+
+static RwTexture* TxdStoreFindCB_hook(const char* name) {
+    if (!name || !name[0]) return nullptr;
+
+    RwTexture* custom = CustomTxdInstall::FindTexture(name);
+    if (custom) {
+        return custom;
+    }
+
+    if (orig_TxdStoreFindCB) {
+        return orig_TxdStoreFindCB(name);
+    }
+    return nullptr;
 }
 
 void TextureDatabaseRuntime::InstallLoadGate()
@@ -104,6 +128,8 @@ void TextureDatabaseRuntime::InstallLoadGate()
                       &TdbLoad_hook, &orig_TdbLoad);
     CHook::InlineHook("_ZN22TextureDatabaseRuntime10GetTextureEPKc",
                       &GetTexture_hook, &orig_GetTexture);
+    CHook::InlineHook("_ZN9CTxdStore14TxdStoreFindCBEPKc",
+                      &TxdStoreFindCB_hook, &orig_TxdStoreFindCB);
 }
 
 void TextureDatabaseRuntime::Register(TextureDatabaseRuntime *toRegister) {
@@ -124,6 +150,12 @@ void TextureDatabaseRuntime::Unregister(TextureDatabaseRuntime *toUnregister) {
 RwTexture* TextureDatabaseRuntime::GetTexture(const char *name) {
     if (!name || !name[0]) return nullptr;
     TextureDatabaseRuntime::CleanRegisteredDatabases();
+
+    RwTexture* custom = CustomTxdInstall::FindTexture(name);
+    if (custom) {
+        return custom;
+    }
+
     if (orig_GetTexture) {
         return orig_GetTexture(name);
     }
@@ -136,21 +168,9 @@ void TextureDatabaseRuntime::UpdateStreaming(float deltaTime, bool flush) {
 
 TextureDatabaseRuntime* TextureDatabaseRuntime::GetDatabase(const char *dbName) {
     return CHook::CallFunction<TextureDatabaseRuntime*>(g_libGTASA + (VER_x32 ? 0x1EAC0C + 1 : 0x287AF4), dbName);
-//    for (unsigned int i = 0; i < TextureDatabaseRuntime::loaded.numEntries; ++i) {
-//        TextureDatabaseRuntime *currentDatabase = TextureDatabaseRuntime::loaded.dataPtr[i];
-//        if (strcmp(currentDatabase->name, dbName) == 0) {
-//            return currentDatabase;
-//        }
-//    }
-//
-//    return nullptr;
 }
 
 void TextureDatabaseRuntime::InjectHooks() {
-//    CHook::Write(g_libGTASA + (VER_x32 ? 0x675FCC : 0x84A020), &detailTextures);
-//    CHook::Write(g_libGTASA + (VER_x32 ? 0x676720 : 0x84AEB0), &storedTexels);
-//    CHook::Write(g_libGTASA + (VER_x32 ? 0x679768 : 0x850EE8), &loaded);
-//    CHook::Write(g_libGTASA + (VER_x32 ? 0x679E70 : 0x851CF8), &registered);
 }
 
 RwBool TextureAnnihilate(RwTexture *texture) {

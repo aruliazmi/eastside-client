@@ -8,12 +8,12 @@
 #include <cstring>
 #include <mutex>
 #include <unordered_map>
+#include <string>
+#include <algorithm>
 
-// RpMaterialSetTexture(dst, src, } calls the real C++ function by address, the same
-// way every other RenderWare wrapper in this port does. The mangled symbol is
-// _Z20RpMaterialSetTextureP10RpMaterialP9RwTexture
-// (arm64 0x2BE620, armv7 0x217224). Declaring it extern "C" does not match that
-// symbol, so the link failed.
+// RpMaterialSetTexture(dst, src) calls the real C++ function by address.
+// Mangled symbol: _Z20RpMaterialSetTextureP10RpMaterialP9RwTexture
+// (arm64 0x2BE620, armv7 0x217224).
 static void* RpMaterialSetTexture(void* material, void* texture) {
     return CHook::CallFunction<void*>(
         g_libGTASA + (VER_x32 ? 0x00217224 + 1 : 0x2BE620), material, texture);
@@ -25,10 +25,21 @@ namespace {
 std::mutex g_texMutex;
 std::unordered_map<std::string, RwTexture*> g_textures;
 
-// Material names are not reachable through the public RpMaterial struct in these
-// headers, so textures are bound in the order the DFF declares them. A 0.3.DL skin
-// TXD is normally one texture per model (Workshirt/Sleeves/Pants/... belong to
-// separate DFFs), so the common case is a single texture for every material.
+std::string NormalizeName(const std::string& str) {
+    std::string s = str;
+    for (char& c : s) {
+        if (c >= 'A' && c <= 'Z') c += ('a' - 'A');
+    }
+    size_t dot = s.rfind('.');
+    if (dot != std::string::npos && dot > 0) {
+        std::string ext = s.substr(dot);
+        if (ext == ".png" || ext == ".tga" || ext == ".bmp" || ext == ".dds") {
+            s = s.substr(0, dot);
+        }
+    }
+    return s;
+}
+
 struct PatchCtx {
     RwTexture* texture;
     int patched;
@@ -52,7 +63,6 @@ void PatchAtomic(RpAtomic* atomic, PatchCtx* ctx) {
 void PatchObject(RwObject* object, PatchCtx* ctx, int depth) {
     if (!object || depth > 8) return;
 
-    // RwObject::type: 1 = rpATOMIC, 2 = rpCLUMP. Frames are RwFrame (type 0).
     if (object->type == 1) {
         PatchAtomic(reinterpret_cast<RpAtomic*>(object), ctx);
         return;
@@ -72,8 +82,6 @@ RwTexture* MakeTexture(const CustomTxd::Texture& tex) {
 
     RwUInt8* pixels = RwRasterLock(raster, 0, rwRASTERLOCKWRITE);
     if (!pixels) {
-        // RwRasterDestroy is a function pointer too, but leaving one small
-        // abandoned raster is safer than calling a slot that may be unset.
         return nullptr;
     }
     memcpy(pixels, tex.rgba.data(),
@@ -83,10 +91,59 @@ RwTexture* MakeTexture(const CustomTxd::Texture& tex) {
     RwTexture* texture = RwTextureCreate(raster);
     if (!texture) return nullptr;
     RwTextureSetName(texture, tex.name.c_str());
+    RwTextureSetFilterModeMacro(texture, rwFILTERLINEAR);
+    RwTextureSetAddressingMacro(texture, rwTEXTUREADDRESSWRAP);
     return texture;
 }
 
 } // namespace
+
+int RegisterTextures(const std::vector<CustomTxd::Texture>& textures) {
+    if (textures.empty()) return 0;
+    std::lock_guard<std::mutex> lock(g_texMutex);
+    int created = 0;
+    for (const auto& tex : textures) {
+        if (tex.name.empty() || tex.rgba.empty()) continue;
+        std::string norm = NormalizeName(tex.name);
+        if (g_textures.find(norm) != g_textures.end()) continue;
+
+        RwTexture* createdTex = MakeTexture(tex);
+        if (!createdTex) continue;
+
+        g_textures[norm] = createdTex;
+        std::string rawLower = tex.name;
+        for (char& c : rawLower) {
+            if (c >= 'A' && c <= 'Z') c += ('a' - 'A');
+        }
+        if (rawLower != norm) {
+            g_textures[rawLower] = createdTex;
+        }
+        ++created;
+    }
+    return created;
+}
+
+RwTexture* FindTexture(const char* name) {
+    if (!name || !name[0]) return nullptr;
+    std::string norm = NormalizeName(name);
+
+    std::lock_guard<std::mutex> lock(g_texMutex);
+    auto it = g_textures.find(norm);
+    if (it != g_textures.end()) {
+        return it->second;
+    }
+
+    std::string rawLower = name;
+    for (char& c : rawLower) {
+        if (c >= 'A' && c <= 'Z') c += ('a' - 'A');
+    }
+    it = g_textures.find(rawLower);
+    if (it != g_textures.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
 
 Stats ApplyToModel(void* rootObject, const std::vector<CustomTxd::Texture>& textures) {
     Stats stats;
@@ -97,14 +154,15 @@ Stats ApplyToModel(void* rootObject, const std::vector<CustomTxd::Texture>& text
     RwTexture* primary = nullptr;
     for (const auto& tex : textures) {
         if (tex.name.empty() || tex.rgba.empty()) continue;
-        auto it = g_textures.find(tex.name);
+        std::string norm = NormalizeName(tex.name);
+        auto it = g_textures.find(norm);
         if (it != g_textures.end()) {
             if (!primary) primary = it->second;
             continue;
         }
         RwTexture* created = MakeTexture(tex);
         if (!created) continue;
-        g_textures[tex.name] = created;
+        g_textures[norm] = created;
         ++stats.texturesCreated;
         if (!primary) primary = created;
     }
@@ -118,8 +176,6 @@ Stats ApplyToModel(void* rootObject, const std::vector<CustomTxd::Texture>& text
 }
 
 void Release() {
-    // Textures stay for the session: materials hold raw pointers into them and
-    // destroying an in-use texture was the cause of an earlier crash.
     std::lock_guard<std::mutex> lock(g_texMutex);
     g_textures.clear();
 }

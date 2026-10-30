@@ -238,16 +238,6 @@ private:
     std::atomic<int> m_txdFailDict{0};
     std::atomic<int> m_txdFailRead{0};
     std::atomic<bool> m_bTxdActive{false};
-    // Bounded retries per model waiting for its atomic to stream in. An object
-    // model may only load when it first appears in the world, so waiting forever
-    // would hold RPC 184 back and trap the player in class selection.
-    // Entries whose model was not streamed in yet, retried in a later pass
-    // instead of blocking the queue behind them. Same element type as m_txdWork
-    // so the two can be swapped.
-    std::vector<std::pair<int16_t, uint32_t>> m_txdDeferred;
-    static constexpr int kMaxTxdPasses = 20;   // deferred retries, ~20 frames
-    int m_txdPass{0};
-    std::unordered_map<int16_t, int> m_txdStreamRetries;
     int m_txdImgIndex{-1};
     std::string m_txdImgPath;
     bool    m_bVirtualIdExhausted{false};

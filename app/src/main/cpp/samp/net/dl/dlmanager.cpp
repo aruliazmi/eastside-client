@@ -554,8 +554,6 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
             m_txdWork.push_back({virtualIds[i], txdCrcs[i]});
         }
         m_txdCursor.store(0);
-        m_txdPass = 0;
-        m_txdDeferred.clear();
         m_txdInstalled.store(0);
         m_txdFailed.store(0);
         m_txdFailNoModel.store(0);
@@ -572,10 +570,11 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
 // Parses at most kTxdsPerFrame custom TXDs and returns true when the list is
 // exhausted. Called once per game frame from ProcessTick.
 //
-// One dictionary per frame keeps the pause between frames small, so the render
-// loop keeps running and Android never sees an unresponsive app. The textures
-// land in CTxdStore as they are parsed, so the player can already see the first
-// skins while the rest are still being installed.
+// All textures are registered into CustomTxdInstall, which is hooked by
+// TextureDatabaseRuntime::GetTexture and CTxdStore::TxdStoreFindCB.
+// Models do NOT need to be streamed in beforehand: whenever the engine loads
+// or renders any ped skin, vehicle, or object, it queries those functions and
+// receives the custom textures automatically.
 bool DLManager::ProcessCustomTxdBatch() {
     if (!m_bTxdActive.load()) return true;
 
@@ -593,23 +592,10 @@ bool DLManager::ProcessCustomTxdBatch() {
         return true;
     }
 
-    // One TXD per frame. Each dictionary can be 16-17 MB compressed, and its
-    // decoded textures stay resident, so even two per frame was a visible stall.
-    //
-    // Plain while-loop with one explicit advance per entry. The previous
-    // for(...; ++n, ++cursor) advanced the cursor in the loop header, so the
-    // "skip this entry" branches advance it twice and the "not streamed yet"
-    // branch tried to rewind with --cursor, which underflowed to SIZE_MAX at
-    // cursor 0 and ended the whole batch after one entry.
     size_t processed = 0;
-    while (processed < 1 && cursor < total) {
+    while (processed < 2 && cursor < total) {
         const int16_t virtualId = m_txdWork[cursor].first;
         const uint32_t txdCrc = m_txdWork[cursor].second;
-
-        // Written before the work so a failure names the file instead of leaving
-        // the log silent.
-        FLog("[TXD] %zu/%zu virtual=%d crc=%08X", cursor + 1, total,
-             (int)virtualId, txdCrc);
 
         auto spanIt = m_txdSpans.find(txdCrc);
         if (spanIt == m_txdSpans.end()) {
@@ -627,9 +613,6 @@ bool DLManager::ProcessCustomTxdBatch() {
             ++cursor; ++processed; continue;
         }
 
-        // Decode the TXD ourselves. RenderWare's dictionary reader is a dead end
-        // on this build (CTxdStore::LoadTxd is a bare "ret") and calling it by
-        // hand killed the process on a 374 KB file.
         std::vector<CustomTxd::Texture> textures;
         int skipped = 0;
         if (!CustomTxd::Parse(buf.data(), byteLen, textures, skipped) || textures.empty()) {
@@ -637,35 +620,21 @@ bool DLManager::ProcessCustomTxdBatch() {
             ++cursor; ++processed; continue;
         }
 
+        // Register textures globally into the TextureDatabaseRuntime / TxdStoreFindCB hook registry
+        int registered = CustomTxdInstall::RegisterTextures(textures);
+
+        // Also patch model materials directly if already streamed in
         CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualId);
-        if (!pInfo) {
-            m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1);
-            ++cursor; ++processed; continue;
+        int patched = 0;
+        if (pInfo && pInfo->m_pRwObject) {
+            CustomTxdInstall::Stats st = CustomTxdInstall::ApplyToModel(pInfo->m_pRwObject, textures);
+            patched = st.materialsPatched;
         }
 
-        void* rwObject = pInfo->m_pRwObject;
-        if (!rwObject) {
-            // Model not streamed in yet. A ped skin only streams when the player
-            // selects it, which happens after this batch - so waiting is expected.
-            //
-            // Do NOT hold the queue for it: that made every later model wait
-            // behind the first unstreamed one, and an early attempt to "rewind"
-            // the cursor underflowed to SIZE_MAX and ended the batch after a
-            // single entry. Instead defer this entry to a later pass.
-            m_txdDeferred.push_back({virtualId, txdCrc});
-            ++cursor; ++processed;
-            continue;
-        }
-        m_txdStreamRetries.erase(virtualId);
+        m_txdInstalled.fetch_add(1);
+        FLog("[TXD] %zu/%zu virtual=%d: %zu textures (%d registered, %d patched)",
+             cursor + 1, total, (int)virtualId, textures.size(), registered, patched);
 
-        CustomTxdInstall::Stats st = CustomTxdInstall::ApplyToModel(rwObject, textures);
-        if (st.texturesCreated > 0 || st.materialsPatched > 0) {
-            m_txdInstalled.fetch_add(1);
-            FLog("[TXD] virtual=%d: %zu textures, %d patched, %d materials",
-                 (int)virtualId, textures.size(), st.texturesCreated, st.materialsPatched);
-        } else {
-            m_txdFailed.fetch_add(1); m_txdFailDict.fetch_add(1);
-        }
         ++cursor; ++processed;
     }
 
@@ -673,23 +642,6 @@ bool DLManager::ProcessCustomTxdBatch() {
     m_txdCursor.store(cursor);
 
     if (cursor >= total) {
-        // First pass done. Any entries whose model was not streamed in yet go
-        // through a bounded number of extra passes, so a skin that only streams
-        // once the player picks it still gets its textures.
-        if (!m_txdDeferred.empty() && m_txdPass < kMaxTxdPasses) {
-            ++m_txdPass;
-            m_txdWork.swap(m_txdDeferred);
-            m_txdDeferred.clear();
-            m_txdCursor.store(0);
-            return false;
-        }
-        if (!m_txdDeferred.empty()) {
-            FLog("[TXD] %zu models never streamed in, textures skipped",
-                 m_txdDeferred.size());
-            m_txdFailed.fetch_add(static_cast<int>(m_txdDeferred.size()));
-            m_txdFailNoModel.fetch_add(static_cast<int>(m_txdDeferred.size()));
-            m_txdDeferred.clear();
-        }
         FinishCustomTxds();
         return true;
     }
