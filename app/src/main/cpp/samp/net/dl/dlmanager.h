@@ -199,6 +199,8 @@ private:
     std::unordered_map<int32_t, int16_t> m_networkToVirtual;
     std::unordered_map<int16_t, int32_t> m_virtualToNetwork;
     int16_t m_nextVirtualId{DL_VIRT_MIN};
+    // Diagnostic log throttle: number of files reported ok this session.
+    int m_logOkCount{0};
     bool    m_bVirtualIdExhausted{false};
 
     // Custom models successfully registered with the game engine

@@ -26,6 +26,8 @@
 
 #include "crashlytics.h"
 #include "cef/SAMPMobileCef.h"
+#include <mutex>
+#include <cstdarg>
 /*
 Peerapol Unarak
 */
@@ -541,29 +543,84 @@ uint32_t GetTickCount()
     return CTimer::m_snTimeInMillisecondsNonClipped;
 }
 
+// ---------------------------------------------------------------------------
+// FLog: thread-safe.
+//
+// FLog is called from the game thread AND from all DL_MAX_CONCURRENT (5)
+// download worker threads, plus the RakNet callback thread. The old version had
+// three concrete defects under that load:
+//
+//   1. `flLog` was a plain static read and written without any lock, so several
+//      threads could see null and each call fopen() concurrently. Every extra
+//      fopen() leaked a FILE and its internal heap buffer, never closed.
+//   2. fprintf()/fflush() on the same FILE from 6 threads with no ordering.
+//   3. The 1 KiB stack buffer was formatted and then handed to LOGI() even when
+//      no file was open, so every thread paid the bionic log lock too.
+//
+// A crash reported to the user while download was running showed a corrupted
+// CPhysical linked-list node containing 0xffffffff6d000000 - a 32-bit value
+// sign-extended into a 64-bit pointer - with 143 files downloaded and hundreds
+// of concurrent FLog calls. Leaked FILE buffers are the leading suspect for heap
+// corruption on that path, so the fix is to make logging genuinely safe rather
+// than to remove it (diagnostics are needed).
+//
+// Implementation: one mutex serialises the whole operation, the file is opened
+// exactly once via std::call_once, and LOGI() is emitted inside the same
+// critical section so ordering in logcat matches the file.
+// ---------------------------------------------------------------------------
+static std::mutex& FLogMutex()
+{
+	static std::mutex s_mutex;
+	return s_mutex;
+}
+
+static FILE*& FLogFile()
+{
+	static FILE* s_file = nullptr;
+	return s_file;
+}
+
+static std::once_flag& FLogOnceFlag()
+{
+	static std::once_flag s_flag;
+	return s_flag;
+}
+
 void FLog(const char* fmt, ...)
 {
 	char buffer[1024];
-	static FILE* flLog = nullptr;
-	const char* pszStorage = g_pszStorage;
-
-	if (flLog == nullptr && pszStorage != nullptr)
-	{
-		char path[512];
-		snprintf(path, sizeof(path), "%s/samp_log.txt", pszStorage);
-		flLog = fopen(path, "a");
-	}
 
 	va_list arg;
 	va_start(arg, fmt);
 	vsnprintf(buffer, sizeof(buffer), fmt, arg);
 	va_end(arg);
 
+	// Open the log exactly once, guarded. std::call_once guarantees the fopen
+	// runs a single time even if several worker threads arrive together, so
+	// there is no window where two files are opened and one handle is lost.
+	//
+	// The call_once is NOT entered until g_pszStorage is available: consuming
+	// the once_flag while the storage root is still null would permanently
+	// prevent the log file from ever being opened for the rest of the process.
+	if (FLogFile() == nullptr && g_pszStorage != nullptr) {
+		std::call_once(FLogOnceFlag(), []() {
+			const char* pszStorage = g_pszStorage;
+			if (pszStorage != nullptr) {
+				char path[512];
+				snprintf(path, sizeof(path), "%s/samp_log.txt", pszStorage);
+				FLogFile() = fopen(path, "a");
+			}
+		});
+	}
+
+	std::lock_guard<std::mutex> lock(FLogMutex());
+
 	LOGI("%s", buffer);
 
-	if (flLog != nullptr) {
-		fprintf(flLog, "%s\n", buffer);
-		fflush(flLog);
+	FILE* fp = FLogFile();
+	if (fp != nullptr) {
+		fprintf(fp, "%s\n", buffer);
+		fflush(fp);
 	}
 }
 

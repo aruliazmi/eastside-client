@@ -255,6 +255,7 @@ void DLManager::Reset() {
     m_registerDoneTick = 0;
     m_bSawAnyModel = false;
     m_bShutdown = false;
+    m_logOkCount = 0;
     m_activeWorkers = 0;
     m_totalModels = 0;
     m_downloadedModels = 0;
@@ -1031,7 +1032,14 @@ void DLManager::WorkerLoop() {
                 if (fetchOk) {
                     t.done = true;
                     t.url.clear();
-                    FLog("[DL] ok %s (%u bytes)", t.hexName.c_str(), (unsigned)t.size);
+                    // Throttled: with 186 files a per-file line meant hundreds of
+                    // serialised file writes while CWorld::Process was running.
+                    // Report every 10th file and always the last one.
+                    ++m_logOkCount;
+                    if ((m_logOkCount % 10) == 0) {
+                        FLog("[DL] ok #%d %s (%u bytes)",
+                             m_logOkCount, t.hexName.c_str(), (unsigned)t.size);
+                    }
                 } else if (++t.attempts >= DL_MAX_ATTEMPTS) {
                     t.failed = true;
                     t.lastError = fetchError;
