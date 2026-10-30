@@ -42,4 +42,8 @@ private:
     // click requires push+release on the same box and a camera drag does not
     // fire one.
     uint16_t m_wPressedTextDrawID;
+    float    m_fPressX;
+    float    m_fPressY;
+    bool     m_bPressMoved;
+    static constexpr float kTapSlopPx = 20.0f;
 };

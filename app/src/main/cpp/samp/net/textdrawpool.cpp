@@ -20,6 +20,9 @@ CTextDrawPool::CTextDrawPool()
     m_dwHoverColor = 0;
     m_wClickedTextDrawID = 0xFFFF;
     m_wPressedTextDrawID = 0xFFFF;
+    m_fPressX = 0.0f;
+    m_fPressY = 0.0f;
+    m_bPressMoved = false;
 }
 
 CTextDrawPool::~CTextDrawPool()
@@ -142,6 +145,9 @@ bool CTextDrawPool::onTouchEvent(int type, bool multi, int x, int y)
 
     if (type == 2) { // push: remember what we started on, send nothing yet
         m_wPressedTextDrawID = 0xFFFF;
+        m_fPressX = (float)x;
+        m_fPressY = (float)y;
+        m_bPressMoved = false;
         for (int i = 0; i < MAX_TEXT_DRAWS; i++) {
             if (!m_bSlotState[i] || !m_pTextDraw[i]) continue;
             CTextDraw* pTextDraw = m_pTextDraw[i];
@@ -153,10 +159,23 @@ bool CTextDrawPool::onTouchEvent(int type, bool multi, int x, int y)
         return false;
     }
 
-    if (type == 1) { // release: a click needs push and release on the same box
+    if (type == 3) { // move: a drag over the map is camera work, not a click
+        if (m_wPressedTextDrawID != 0xFFFF) {
+            const float dx = (float)x - m_fPressX;
+            const float dy = (float)y - m_fPressY;
+            if ((dx * dx + dy * dy) > (kTapSlopPx * kTapSlopPx)) {
+                m_bPressMoved = true;
+            }
+        }
+        return false;
+    }
+
+    if (type == 1) { // release: a click needs a tap, not a drag
         const uint16_t pressed = m_wPressedTextDrawID;
+        const bool moved = m_bPressMoved;
         m_wPressedTextDrawID = 0xFFFF;
-        if (pressed == 0xFFFF) return false;
+        m_bPressMoved = false;
+        if (pressed == 0xFFFF || moved) return false;
 
         CTextDraw* pTextDraw = m_pTextDraw[pressed];
         if (!pTextDraw || !m_bSlotState[pressed]) return false;

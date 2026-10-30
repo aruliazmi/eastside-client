@@ -561,13 +561,22 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
         RwStream* stream = RwStreamOpen(rwSTREAMMEMORY, rwSTREAMREAD, &mem);
         if (!stream) { ++failed; ++failStream; continue; }
 
-        // A .txd file is a TexDictionary chunk, so it has to be read with
-        // RwTexDictionaryStreamRead. RwTextureStreamRead expects a single
-        // Texture chunk and rejected every entry ("read=93").
+        // A .txd file is a TexDictionary chunk (type 0x16) that WRAPS a Struct
+        // chunk (type 0x01). RwTexDictionaryStreamRead searches for the STRUCT
+        // chunk from wherever the stream points, so the stream must first be
+        // advanced past the dictionary header. Without this the search never
+        // matched and all 93 files failed (log: "read=93").
         //
-        // The reader returns a NEW dictionary, so the slot must be filled with
-        // that result. Allocating one first with Create() and hoping the parse
-        // writes into it cannot work - the parser always allocates its own.
+        // Verified against a real model TXD:
+        //   @0  : type 0x16, size 16540   <- outer, must be entered
+        //   @12 : type 0x01, size 4       <- parser expects to start here
+        RwUInt32 dictLen = 0, dictVer = 0;
+        if (!RwStreamFindChunk(stream, 0x16, &dictLen, &dictVer) &&
+            !RwStreamFindChunk(stream, 0x06, &dictLen, &dictVer)) {
+            ++failed; ++failRead;
+            RwStreamClose(stream, nullptr);
+            continue;
+        }
         void* dict = RwTexDictionaryStreamRead(stream);
         if (dict && CTxdStore::SetTxd(slot, dict)) {
             ++installed;

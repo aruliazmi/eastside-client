@@ -63,6 +63,12 @@ RwBool RwStreamClose(RwStream* stream, void* data) {
     return CHook::CallFunction<RwBool>(g_libGTASA + (VER_x32 ? 0x001E5958 + 1 : 0x280D24), stream, data);
 }
 
+// _Z17RwStreamFindChunkP8RwStreamjPjS1_ @ 0x27C9F4 (arm64) / 0x1E1FBA+1 (armv7)
+RwBool RwStreamFindChunk(RwStream* stream, RwUInt32 type, RwUInt32* length, RwUInt32* version) {
+    return CHook::CallFunction<RwBool>(g_libGTASA + (VER_x32 ? 0x001E1FBA + 1 : 0x27C9F4),
+                                       stream, type, length, version);
+}
+
 RwMatrix* RwMatrixTransform(RwMatrix* matrix, const RwMatrix* transform, RwOpCombineType combineOp) {
     return CHook::CallFunction<RwMatrix*>(g_libGTASA + (VER_x32 ? 0x001E402C + 1 : 0x27EDE0), matrix, transform, combineOp);
 }
