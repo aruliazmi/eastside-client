@@ -1969,6 +1969,11 @@ bool IsValidPedModel(uint modelID)
     if (modelID >= 18631 && modelID < 20000) {
         return DLManager::Instance().IsModelRegistered((int16_t)modelID);
     }
+    // Also resolve server network ID (e.g. 20000+ or custom) to virtual ID
+    int16_t virtId = DLManager::Instance().GetVirtualModelId((int32_t)modelID);
+    if (virtId != -1 && virtId >= 18631 && virtId < 20000) {
+        return DLManager::Instance().IsModelRegistered(virtId);
+    }
     if (modelID > 20000) return false;
     auto dwModelArray = CModelInfo::ms_modelInfoPtrs;
     if (!dwModelArray) return false;

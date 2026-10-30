@@ -1,6 +1,7 @@
 #include "../main.h"
 #include "game.h"
 #include "../net/netgame.h"
+#include "../net/dl/dlmanager.h"
 #include "../vendor/shadowhook/patch.h"
 #include <cmath>
 
@@ -517,6 +518,12 @@ bool IsPedModel(unsigned int iModelID)
 void CPlayerPed::SetModelIndex(uint uiModel)
 {
     if(!GamePool_Ped_GetAt(m_dwGTAId)) return;
+
+    int16_t virtId = DLManager::Instance().GetVirtualModelId((int32_t)uiModel);
+    if (virtId != -1) {
+        uiModel = (uint)virtId;
+    }
+
     if(!IsPedModel(uiModel))
         uiModel = 0;
 

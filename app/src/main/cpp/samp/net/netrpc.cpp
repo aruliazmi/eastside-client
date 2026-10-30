@@ -394,7 +394,9 @@ void RequestClass(RPCParameters *rpcParams)
 		bsData.Read((char*)iSpawnWeaponsAmmo, sizeof(iSpawnWeaponsAmmo));
 
 		SpawnInfo.byteTeam = byteTeam;
-		int actualSkin = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID) : iSkin;
+		int actualSkin = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID)
+		                                     : DLManager::Instance().GetVirtualModelId(iSkin);
+		if (actualSkin == -1) actualSkin = iSkin;
 		SpawnInfo.iSkin = IsValidPedModel(actualSkin) ? actualSkin : iSkin;
 		SpawnInfo.unk = unk;
 		SpawnInfo.vecPos = vecPos;
@@ -655,15 +657,14 @@ void WorldPlayerAdd(RPCParameters *rpcParams)
 	bsData.Read(playerId);
 	bsData.Read(byteTeam);
 	bsData.Read(iSkin);
+	uint32_t dCustomSkinID = 0;
 	if (bsData.GetNumberOfUnreadBits() >= (47 * 8)) {
-		uint32_t dCustomSkinID = 0;
 		bsData.Read(dCustomSkinID);
-		if (dCustomSkinID > 0) {
-			int16_t virtId = DLManager::Instance().GetVirtualModelId(dCustomSkinID);
-			if (IsValidPedModel(virtId)) {
-				iSkin = virtId;
-			}
-		}
+	}
+	int16_t virtId = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID)
+	                                     : DLManager::Instance().GetVirtualModelId(iSkin);
+	if (virtId != -1 && IsValidPedModel(virtId)) {
+		iSkin = virtId;
 	}
 	bsData.Read(vecPos.x);
 	bsData.Read(vecPos.y);
@@ -1444,11 +1445,10 @@ void ShowActor(RPCParameters* rpcParams)
 		bsData.Read(newActor.iSkin);
 		uint32_t dCustomSkinID = 0;
 		bsData.Read(dCustomSkinID);
-		if (dCustomSkinID > 0) {
-			int16_t virtId = DLManager::Instance().GetVirtualModelId(dCustomSkinID);
-			if (IsValidPedModel(virtId)) {
-				newActor.iSkin = virtId;
-			}
+		int16_t virtId = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID)
+		                                     : DLManager::Instance().GetVirtualModelId(newActor.iSkin);
+		if (virtId != -1 && IsValidPedModel(virtId)) {
+			newActor.iSkin = virtId;
 		}
 		bsData.Read(newActor.vecPos.x);
 		bsData.Read(newActor.vecPos.y);

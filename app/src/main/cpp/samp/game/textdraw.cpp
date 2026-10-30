@@ -3,6 +3,7 @@
 #include "util.h"
 #include "RW/RenderWare.h"
 #include "../gui/gui.h"
+#include "../net/dl/dlmanager.h"
 
 extern UI* pUI;
 extern CSnapShotHelper* pSnapShotHelper;
@@ -315,23 +316,26 @@ void CTextDraw::SnapshotProcess()
 
     uintptr_t snapshot = 0;
 
-    // PED MODEL
-    if (IsValidPedModel(m_TextDrawData.wModelID))
-    {
-        /*if (!IsExistinfoForModel(m_TextDrawData.wModelID))
-            m_TextDrawData.wModelID = 0;*/
+    uint16_t modelId = m_TextDrawData.wModelID;
+    int16_t virtId = DLManager::Instance().GetVirtualModelId((int32_t)modelId);
+    if (virtId != -1) {
+        modelId = (uint16_t)virtId;
+    }
 
+    // PED MODEL
+    if (IsValidPedModel(modelId))
+    {
         snapshot = (uintptr_t)pSnapShotHelper->CreatePedSnapShot(
-                m_TextDrawData.wModelID,
+                modelId,
                 m_TextDrawData.dwBackgroundColor,
                 &m_TextDrawData.vecRot,
                 m_TextDrawData.fZoom);
     }
         // VEHICLE MODEL
-    else if (m_TextDrawData.wModelID >= 400 && m_TextDrawData.wModelID <= 611)
+    else if (modelId >= 400 && modelId <= 611)
     {
         snapshot = (uintptr_t)pSnapShotHelper->CreateVehicleSnapShot(
-                m_TextDrawData.wModelID,
+                modelId,
                 m_TextDrawData.dwBackgroundColor,
                 &m_TextDrawData.vecRot,
                 m_TextDrawData.fZoom,
@@ -342,10 +346,10 @@ void CTextDraw::SnapshotProcess()
         // OBJECT MODEL
     else
     {
-        if (!CModelInfo::GetModelInfo(m_TextDrawData.wModelID))
-            m_TextDrawData.wModelID = 18631;
+        if (!CModelInfo::GetModelInfo(modelId))
+            modelId = 18631;
         snapshot = (uintptr_t)pSnapShotHelper->CreateObjectSnapShot(
-                m_TextDrawData.wModelID,
+                modelId,
                 m_TextDrawData.dwBackgroundColor,
                 &m_TextDrawData.vecRot,
                 m_TextDrawData.fZoom

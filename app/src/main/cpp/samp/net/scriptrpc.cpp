@@ -146,7 +146,9 @@ void ScrSetSpawnInfo(RPCParameters *rpcParams)
 		bsData.Read((char*)iSpawnWeaponsAmmo, sizeof(iSpawnWeaponsAmmo));
 
 		spawnInfo.byteTeam = byteTeam;
-		int actualSkin = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID) : iSkin;
+		int actualSkin = (dCustomSkinID > 0) ? DLManager::Instance().GetVirtualModelId(dCustomSkinID)
+		                                     : DLManager::Instance().GetVirtualModelId(iSkin);
+		if (actualSkin == -1) actualSkin = iSkin;
 		spawnInfo.iSkin = IsValidPedModel(actualSkin) ? actualSkin : iSkin;
 		spawnInfo.unk = unk;
 		spawnInfo.vecPos = vecPos;
@@ -555,6 +557,11 @@ void ScrSetPlayerSkin(RPCParameters* rpcParams)
 	int actualModel = iModel;
 	if (dCustomSkinID > 0) {
 		int16_t virtId = DLManager::Instance().GetVirtualModelId(dCustomSkinID);
+		if (IsValidPedModel(virtId)) {
+			actualModel = virtId;
+		}
+	} else {
+		int16_t virtId = DLManager::Instance().GetVirtualModelId(iModel);
 		if (IsValidPedModel(virtId)) {
 			actualModel = virtId;
 		}
