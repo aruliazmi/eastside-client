@@ -16,7 +16,7 @@ Launcher dan game engine Android buat server Eastside Stories (SA-MP / open.mp 0
 
 ## Cara pasang
 
-1. Pasang APK. Unduh dan install `EastsideStories.apk` (v1.0.1b) di HP Android. Kasih izin
+1. Pasang APK. Unduh dan install `EastsideStories.apk` di HP Android. Kasih izin
    penyimpanan dan notifikasi kalau diminta.
 
 2. Ekstrak data game. Unduh `files.zip` dari rilis
