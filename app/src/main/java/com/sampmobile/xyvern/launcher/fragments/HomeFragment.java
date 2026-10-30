@@ -38,20 +38,12 @@ import java.util.concurrent.Executors;
 @Obfuscate
 public class HomeFragment extends Fragment {
 
-    // Direct download URL untuk data pack resmi GTA SA / SAMP
-    // Di-host di repo sendiri, bukan release repo pihak ketiga.
-    // Server tujuan TIDAK lagi hard-coded di sini: lihat ServerStore.
-    private static final String DATA_ZIP_URL =
-            "https://github.com/aruliazmi/eastside-client/releases/download/data-v3/files.zip";
-
-    private View dotStatus;
-    private TextView tvDataTitle;
-    private TextView tvDataDesc;
-    private TextView tvManualPath;
-    private ProgressBar pbDownload;
-    private TextView tvDownloadProgress;
-    private Button btnVerifyData;
-    private Button btnDownloadData;
+    // NOTE: the ASET GAME block (verification status, VERIFIKASI/UNDUH buttons,
+    // download progress and the manual path footer) was removed from the home
+    // layout. SettingsFragment already performs the same verification through
+    // GameDataVerifier and the same repair through GameDataRepair, so the home
+    // copy was a duplicate control surface. The fields and the download helper
+    // methods that only fed it were deleted with it.
 
     private TextView tvServerPlayers;
     private TextView tvServerPing;
@@ -71,7 +63,6 @@ public class HomeFragment extends Fragment {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler queryHandler;
     private Runnable queryRunnable;
-    private boolean isDownloading = false;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -87,15 +78,6 @@ public class HomeFragment extends Fragment {
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).hideKeyboard(getActivity());
         }
-
-        dotStatus = view.findViewById(R.id.dot_status);
-        tvDataTitle = view.findViewById(R.id.tv_data_title);
-        tvDataDesc = view.findViewById(R.id.tv_data_desc);
-        tvManualPath = view.findViewById(R.id.tv_manual_path);
-        pbDownload = view.findViewById(R.id.pb_download);
-        tvDownloadProgress = view.findViewById(R.id.tv_download_progress);
-        btnVerifyData = view.findViewById(R.id.btn_verify_data);
-        btnDownloadData = view.findViewById(R.id.btn_download_data);
 
         tvServerPlayers = view.findViewById(R.id.tv_server_players);
         tvServerPing = view.findViewById(R.id.tv_server_ping);
@@ -134,10 +116,6 @@ public class HomeFragment extends Fragment {
         }
 
         Context ctx = requireContext();
-        File extDir = ctx.getExternalFilesDir(null);
-        if (extDir != null && tvManualPath != null) {
-            tvManualPath.setText(extDir.getAbsolutePath());
-        }
 
         // Fresh install: no stored nickname yet -> leave the field empty.
         SharedPreferences prefs = ctx.getSharedPreferences("com.sampmobile.xyvern", Context.MODE_PRIVATE);
@@ -155,8 +133,6 @@ public class HomeFragment extends Fragment {
                             .build());
         } catch (Exception ignored) {
         }
-
-        btnVerifyData.setOnClickListener(v -> runVerification());
 
         if (btnQuickPlay != null) {
             btnQuickPlay.setOnClickListener(v -> {
@@ -200,7 +176,6 @@ public class HomeFragment extends Fragment {
             });
         }
 
-        runVerification();
         startServerQueryLoop();
 
         return view;
@@ -307,9 +282,6 @@ public class HomeFragment extends Fragment {
                             requireContext(), servers));
             bindServerCard();
         }
-        if (!isDownloading) {
-            runVerification();
-        }
     }
 
     @Override
@@ -320,318 +292,6 @@ public class HomeFragment extends Fragment {
             queryRunnable = null;
         }
         executor.shutdownNow();
-    }
-
-    private void runVerification() {
-        if (getContext() == null) return;
-        tvDataDesc.setText("Memverifikasi kelengkapan aset...");
-        btnVerifyData.setEnabled(false);
-
-        executor.execute(() -> {
-            GameDataVerifier.VerificationResult result = GameDataVerifier.verifyGameData(requireContext());
-            mainHandler.post(() -> {
-                btnVerifyData.setEnabled(true);
-                if (result.isValid) {
-                    dotStatus.setBackgroundResource(R.drawable.bg_dot_green);
-                    tvDataTitle.setText("Data Game Siap Dimainkan");
-                    tvDataDesc.setText("Seluruh aset GTA SA & SAMP terverifikasi (" + (result.totalSizeBytes / 1048576) + " MB). Siap bermain!");
-                    btnVerifyData.setVisibility(View.GONE);
-                    btnDownloadData.setVisibility(View.GONE);
-                } else {
-                    dotStatus.setBackgroundResource(R.drawable.bg_dot_red);
-                    if (!result.problems.isEmpty()) {
-                        // Structural fault (e.g. .toc present, .dat missing): this is
-                        // the shape that crashed the engine, so name it plainly.
-                        tvDataTitle.setText("Data Tekstur Tidak Cocok");
-                        tvDataDesc.setText(result.problems.get(0)
-                                + "\n\nUnduh ulang aset; varian tekstur harus sesuai GPU perangkat ini.");
-                    } else {
-                        tvDataTitle.setText("Data Game Belum Lengkap");
-                        tvDataDesc.setText("Verifikasi menemukan " + result.missingFiles.size()
-                                + " file belum ada.\nUnduh paket aset resmi untuk mulai bermain.");
-                    }
-                    btnVerifyData.setVisibility(View.VISIBLE);
-                    btnVerifyData.setText("Cek Ulang");
-
-                    // Repair, not re-download. The package is a ZIP with a central
-                    // directory, so the missing entries can be fetched with HTTP
-                    // Range for a few KB instead of moving ~634 MB again. Only
-                    // fall back to the full download when the repair cannot
-                    // resolve the files (e.g. the remote package no longer has
-                    // them).
-                    btnDownloadData.setVisibility(View.VISIBLE);
-                    btnDownloadData.setEnabled(true);
-                    if (result.missingFiles.size() > 30 || result.missingFiles.isEmpty()) {
-                        btnDownloadData.setText("Unduh Data Game");
-                        btnDownloadData.setOnClickListener(v -> {
-                            if (isDownloading) {
-                                showToast("Unduhan sedang berlangsung...", Toast.LENGTH_SHORT);
-                                return;
-                            }
-                            confirmFullDownload();
-                        });
-                    } else {
-                        btnDownloadData.setText("Perbaiki Data (" + result.missingFiles.size() + " file)");
-                        btnDownloadData.setOnClickListener(v -> {
-                            if (isDownloading) {
-                                showToast("Unduhan sedang berlangsung...", Toast.LENGTH_SHORT);
-                                return;
-                            }
-                            startIncrementalRepair(result.missingFiles);
-                        });
-                    }
-                }
-            });
-        });
-    }
-
-    /** Fetches only the missing entries out of the remote ZIP. */
-    private void startIncrementalRepair(java.util.List<String> missing) {
-        if (getContext() == null) return;
-        isDownloading = true;
-        btnDownloadData.setEnabled(false);
-        tvDataTitle.setText("Memperbaiki data...");
-        tvDataDesc.setText("Mengunduh " + missing.size() + " file yang hilang");
-
-        String url = GameDataManager.packageUrl(requireContext().getApplicationContext());
-        GameDataRepair.repair(requireActivity(), url, missing, new GameDataRepair.Progress() {
-            @Override
-            public void onPhase(String phase, String detail) {
-                mainHandler.post(() -> tvDataDesc.setText(phase + " · " + detail));
-            }
-
-            @Override
-            public void onProgress(int permille, long done, long total) {
-                mainHandler.post(() -> tvDataDesc.setText(
-                        "Memperbaiki " + (permille / 10) + "% · " + done + " / " + total + " file"));
-            }
-
-            @Override
-            public void onDone(int repaired, int failed) {
-                isDownloading = false;
-                mainHandler.post(() -> {
-                    btnDownloadData.setEnabled(true);
-                    String msg = repaired + " file diperbaiki" + (failed > 0 ? ", " + failed + " gagal" : "");
-                    showToast(msg, Toast.LENGTH_LONG);
-                    runVerification();
-                });
-            }
-
-            @Override
-            public void onError(String message) {
-                isDownloading = false;
-                mainHandler.post(() -> {
-                    btnDownloadData.setEnabled(true);
-                    tvDataTitle.setText("Perbaikan gagal");
-                    tvDataDesc.setText(message);
-                    showToast(message, Toast.LENGTH_LONG);
-                });
-            }
-        });
-    }
-
-    /** Last resort: a full package re-download. */
-    private void confirmFullDownload() {
-        if (getContext() == null) return;
-        new android.app.AlertDialog.Builder(requireContext())
-                .setTitle("Unduh ulang penuh?")
-                .setMessage("Tidak ada file yang bisa diambil sebagian. Paket aset ~634 MB "
-                        + "akan diunduh ulang dari awal.")
-                .setPositiveButton("Unduh", (d, w) -> {
-                    if (isDownloading) {
-                        showToast("Unduhan sedang berlangsung...", Toast.LENGTH_SHORT);
-                    } else {
-                        startOnlineDataDownload();
-                    }
-                })
-                .setNegativeButton("Batal", null)
-                .show();
-    }
-
-    private void startOnlineDataDownload() {
-        if (getContext() == null) return;
-        isDownloading = true;
-        pbDownload.setVisibility(View.VISIBLE);
-        tvDownloadProgress.setVisibility(View.VISIBLE);
-        pbDownload.setIndeterminate(false);
-        pbDownload.setMax(100);
-        pbDownload.setProgress(0);
-        tvDownloadProgress.setText("0%");
-        tvDataDesc.setText("Menghubungkan ke server aset...");
-        btnDownloadData.setEnabled(false);
-
-        File baseDir = requireContext().getExternalFilesDir(null);
-        if (baseDir == null) return;
-        File zipFile = new File(baseDir, "files.zip");
-        File partFile = new File(baseDir, "files.zip.part");
-
-        executor.execute(() -> {
-            try {
-                long expectedTotal = 1957396608L;
-                if (!zipFile.exists() || zipFile.length() != expectedTotal) {
-                    mainHandler.post(() -> tvDataDesc.setText("Mengunduh paket aset (~1.8 GB)..."));
-
-                    long existingBytes = partFile.exists() ? partFile.length() : 0;
-                    URL url = new URL(DATA_ZIP_URL);
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setInstanceFollowRedirects(true);
-                    conn.setConnectTimeout(15000);
-                    conn.setReadTimeout(30000);
-
-                    if (existingBytes > 0) {
-                        conn.setRequestProperty("Range", "bytes=" + existingBytes + "-");
-                    }
-
-                    int responseCode = conn.getResponseCode();
-                    if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP || responseCode == HttpURLConnection.HTTP_MOVED_PERM || responseCode == 307 || responseCode == 308) {
-                        String redirectUrl = conn.getHeaderField("Location");
-                        if (redirectUrl != null) {
-                            conn.disconnect();
-                            conn = (HttpURLConnection) new URL(redirectUrl).openConnection();
-                            conn.setConnectTimeout(15000);
-                            conn.setReadTimeout(30000);
-                            if (existingBytes > 0) {
-                                conn.setRequestProperty("Range", "bytes=" + existingBytes + "-");
-                            }
-                            responseCode = conn.getResponseCode();
-                        }
-                    }
-
-                    boolean isAppend = (responseCode == HttpURLConnection.HTTP_PARTIAL);
-                    if (!isAppend && existingBytes > 0) {
-                        existingBytes = 0;
-                    }
-
-                    long totalBytes = conn.getContentLengthLong();
-                    if (isAppend) {
-                        totalBytes += existingBytes;
-                    } else if (totalBytes <= 0) {
-                        totalBytes = expectedTotal;
-                    }
-
-                    java.io.InputStream in = new java.io.BufferedInputStream(conn.getInputStream(), 65536);
-                    java.io.FileOutputStream out = new java.io.FileOutputStream(partFile, isAppend);
-                    byte[] buffer = new byte[65536];
-                    long downloadedBytes = existingBytes;
-                    long lastUpdate = System.currentTimeMillis();
-                    int read;
-
-                    while ((read = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, read);
-                        downloadedBytes += read;
-
-                        long now = System.currentTimeMillis();
-                        if (now - lastUpdate > 150) {
-                            lastUpdate = now;
-                            final long cur = downloadedBytes;
-                            final long tot = totalBytes;
-                            final int percent = (int) ((cur * 100) / tot);
-                            mainHandler.post(() -> {
-                                pbDownload.setProgress(percent);
-                                tvDownloadProgress.setText(percent + "% (" + (cur / 1048576) + "/" + (tot / 1048576) + " MB)");
-                            });
-                        }
-                    }
-                    out.flush();
-                    out.close();
-                    in.close();
-                    conn.disconnect();
-
-                    if (!partFile.renameTo(zipFile)) {
-                        throw new Exception("Gagal menyelesaikan unduhan paket aset.");
-                    }
-                }
-
-                mainHandler.post(() -> {
-                    pbDownload.setIndeterminate(false);
-                    pbDownload.setMax(100);
-                    pbDownload.setProgress(0);
-                    tvDataDesc.setText("Mengekstrak aset game...");
-                    tvDownloadProgress.setText("Mengekstrak...");
-                });
-
-                unzipFile(zipFile, baseDir);
-
-                if (zipFile.exists()) {
-                    zipFile.delete();
-                }
-
-                mainHandler.post(() -> {
-                    isDownloading = false;
-                    pbDownload.setVisibility(View.GONE);
-                    tvDownloadProgress.setVisibility(View.GONE);
-                    btnDownloadData.setEnabled(true);
-                    showToast("Aset game berhasil dipasang!", Toast.LENGTH_LONG);
-                    runVerification();
-                });
-
-            } catch (Exception e) {
-                mainHandler.post(() -> {
-                    isDownloading = false;
-                    pbDownload.setVisibility(View.GONE);
-                    tvDownloadProgress.setVisibility(View.GONE);
-                    btnDownloadData.setEnabled(true);
-                    tvDataDesc.setText("Gagal mengunduh: " + e.getMessage() + "\nTekan Unduh Aset untuk melanjutkan.");
-                    showToast("Error: " + e.getMessage(), Toast.LENGTH_LONG);
-                    runVerification();
-                });
-            }
-        });
-    }
-
-    private void unzipFile(File zipFile, File targetDir) throws Exception {
-        java.util.zip.ZipFile zf = new java.util.zip.ZipFile(zipFile);
-        int totalEntries = zf.size();
-        int processed = 0;
-        byte[] buffer = new byte[65536];
-
-        java.util.Enumeration<? extends java.util.zip.ZipEntry> entries = zf.entries();
-        while (entries.hasMoreElements()) {
-            java.util.zip.ZipEntry ze = entries.nextElement();
-            processed++;
-
-            String entryName = ze.getName();
-            if (entryName.startsWith("files/") || entryName.startsWith("files\\")) {
-                entryName = entryName.substring(6);
-            }
-            if (entryName.isEmpty()) continue;
-
-            File file = new File(targetDir, entryName);
-            String canonicalDestPath = file.getCanonicalPath();
-            if (!canonicalDestPath.startsWith(targetDir.getCanonicalPath())) {
-                continue;
-            }
-
-            if (ze.isDirectory()) {
-                file.mkdirs();
-            } else {
-                File parent = file.getParentFile();
-                if (parent != null && !parent.exists()) {
-                    parent.mkdirs();
-                }
-                java.io.InputStream is = zf.getInputStream(ze);
-                java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
-                int count;
-                while ((count = is.read(buffer)) != -1) {
-                    fos.write(buffer, 0, count);
-                }
-                fos.flush();
-                fos.close();
-                is.close();
-            }
-
-            final int curProcessed = processed;
-            final int tot = totalEntries;
-            if (tot > 0 && curProcessed % 25 == 0) {
-                final int percent = (curProcessed * 100) / tot;
-                mainHandler.post(() -> {
-                    pbDownload.setIndeterminate(false);
-                    pbDownload.setProgress(percent);
-                    tvDownloadProgress.setText("Mengekstrak " + percent + "% (" + curProcessed + "/" + tot + ")");
-                });
-            }
-        }
-        zf.close();
     }
 
     /** getContext() returns null after detach (user leaves the tab mid-download);

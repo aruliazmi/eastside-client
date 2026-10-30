@@ -26,7 +26,7 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="vertical"
             android:paddingHorizontal="@dimen/es_gutter"
             android:paddingTop="26dp"
@@ -88,6 +88,18 @@
             <View
                 style="@style/EsRule"
                 android:layout_marginTop="20dp" />
+
+            <!--
+              Isi utama diberi weight=1 plus gravity center_vertical supaya kartu
+              pemain, kartu server dan tombol LOGIN duduk di tengah layar, bukan
+              menempel di bawah masthead ketika tidak ada blok status aset.
+            -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="vertical">
 
             <!-- ===================== KARTU PEMAIN ===================== -->
             <LinearLayout
@@ -276,161 +288,21 @@
                 android:background="@drawable/es_btn_primary"
                 android:fontFamily="@font/montserrat_bold"
                 android:letterSpacing="0.14"
-                android:text="MAIN ONLINE"
+                android:text="LOGIN"
                 android:textAllCaps="true"
                 android:textColor="@color/es_asphalt"
                 android:textSize="14sp"
                 app:backgroundTint="@null" />
 
-            <!-- ===================== STATUS ASET ===================== -->
-            <LinearLayout
-                android:id="@+id/card_data_status"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <View
-                        android:id="@+id/dot_status"
-                        android:layout_width="6dp"
-                        android:layout_height="6dp"
-                        android:layout_marginEnd="8dp"
-                        android:background="@drawable/bg_dot_green" />
-
-                    <TextView
-                        style="@style/EsLabel"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Aset game" />
-
-                    <TextView
-                        android:id="@+id/tv_data_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/plex_mono_medium"
-                        android:includeFontPadding="false"
-                        android:letterSpacing="0.1"
-                        android:text="MEMERIKSA"
-                        android:textColor="@color/es_ink_dim"
-                        android:textSize="9.5sp" />
-                </LinearLayout>
-
-                <View
-                    style="@style/EsRule"
-                    android:layout_marginTop="11dp" />
-
-                <TextView
-                    android:id="@+id/tv_data_desc"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="11dp"
-                    android:fontFamily="@font/montserrat_regular"
-                    android:lineSpacingMultiplier="1.45"
-                    android:text="Memeriksa kelengkapan aset game."
-                    android:textColor="@color/es_ink_faint"
-                    android:textSize="11.5sp" />
-
-                <ProgressBar
-                    android:id="@+id/pb_download"
-                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="3dp"
-                    android:layout_marginTop="13dp"
-                    android:progressDrawable="@drawable/download_progress"
-                    android:progressTint="@color/es_brass"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/tv_download_progress"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:text="0%"
-                    android:textColor="@color/es_brass"
-                    android:textSize="10.5sp"
-                    android:visibility="gone" />
-
-                <LinearLayout
-                    android:id="@+id/layout_actions"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="13dp"
-                    android:orientation="horizontal">
-
-                    <Button
-                        android:id="@+id/btn_verify_data"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginEnd="5dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/es_btn_ghost"
-                        android:fontFamily="@font/plex_mono_semibold"
-                        android:letterSpacing="0.08"
-                        android:text="VERIFIKASI"
-                        android:textAllCaps="true"
-                        android:textColor="@color/es_ink_dim"
-                        android:textSize="9.5sp"
-                        app:backgroundTint="@null" />
-
-                    <Button
-                        android:id="@+id/btn_download_data"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="5dp"
-                        android:layout_weight="1"
-                        android:background="@drawable/es_btn_ghost"
-                        android:fontFamily="@font/plex_mono_semibold"
-                        android:letterSpacing="0.08"
-                        android:text="UNDUH"
-                        android:textAllCaps="true"
-                        android:textColor="@color/es_brass"
-                        android:textSize="9.5sp"
-                        app:backgroundTint="@null" />
-                </LinearLayout>
             </LinearLayout>
 
-            <!-- ===================== KAKI ===================== -->
-            <View
-                style="@style/EsRule"
-                android:layout_marginTop="22dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tv_manual_path"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:ellipsize="middle"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:maxLines="1"
-                    android:text="/Android/data/com.eastside.samp/files"
-                    android:textColor="@color/es_ink_ghost"
-                    android:textSize="9sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="@font/plex_mono_medium"
-                    android:includeFontPadding="false"
-                    android:letterSpacing="0.1"
-                    android:text="V2"
-                    android:textColor="@color/es_ink_ghost"
-                    android:textSize="9sp" />
-            </LinearLayout>
+            <!--
+              Blok "ASET GAME" (status verifikasi + tombol VERIFIKASI/UNDUH +
+              path file) dihapus dari layar ini. Semua fungsinya sudah ada di
+              tab ATUR: SettingsFragment memverifikasi lewat GameDataVerifier
+              dan memperbaiki lewat GameDataRepair, jadi menampilkannya lagi di
+              beranda hanya menduplikasi kontrol yang sama.
+            -->
 
         </LinearLayout>
     </ScrollView>
