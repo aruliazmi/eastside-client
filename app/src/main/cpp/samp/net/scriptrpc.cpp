@@ -544,15 +544,40 @@ void ScrSetPlayerSkin(RPCParameters* rpcParams)
 	CPlayerPool* pPlayerPool = pNetGame->GetPlayerPool();
 	if (!pPlayerPool) return;
 
-	int iPlayerID;
-	int iModel;
-	uint32_t dCustomSkinID = 0;
 	RakNet::BitStream bsData(Data, (iBitLength / 8) + 1, false);
-	bsData.Read(iPlayerID);
-	bsData.Read(iModel);
-	if (bsData.GetNumberOfUnreadBits() >= 32) {
+
+	int iPlayerID = -1;
+	int iModel = 0;
+	uint32_t dCustomSkinID = 0;
+
+	// In 0.3.DL / open.mp with custom models:
+	//   80 bits (10 bytes): uint16 PlayerID + uint32 Skin + uint32 CustomSkin
+	//   48 bits (6 bytes):  uint16 PlayerID + uint32 Skin
+	// Standard 0.3.7:
+	//   64 bits (8 bytes):  uint32 PlayerID + uint32 Skin
+	//   96 bits (12 bytes): uint32 PlayerID + uint32 Skin + uint32 CustomSkin
+	if (iBitLength == 80) {
+		uint16_t wPlayerID = 0;
+		bsData.Read(wPlayerID);
+		iPlayerID = wPlayerID;
+		bsData.Read(iModel);
 		bsData.Read(dCustomSkinID);
+	} else if (iBitLength == 48) {
+		uint16_t wPlayerID = 0;
+		bsData.Read(wPlayerID);
+		iPlayerID = wPlayerID;
+		bsData.Read(iModel);
+	} else if (iBitLength >= 96) {
+		bsData.Read(iPlayerID);
+		bsData.Read(iModel);
+		bsData.Read(dCustomSkinID);
+	} else {
+		bsData.Read(iPlayerID);
+		bsData.Read(iModel);
 	}
+
+	FLog("[RPC] ScrSetPlayerSkin: player=%d model=%d customSkin=%u (bitlen=%d)",
+	     iPlayerID, iModel, dCustomSkinID, iBitLength);
 
 	int actualModel = iModel;
 	if (dCustomSkinID > 0) {
@@ -567,40 +592,20 @@ void ScrSetPlayerSkin(RPCParameters* rpcParams)
 		}
 	}
 
-	if (IsValidPedModel(actualModel))
+	if (pPlayerPool->GetLocalPlayerID() == iPlayerID)
 	{
-		if (pPlayerPool->GetLocalPlayerID() == iPlayerID)
-		{
-			pPlayerPool->GetLocalPlayer()->GetPlayerPed()->SetModelIndex(actualModel);
-		}
-		else
-		{
-			if (pPlayerPool->GetSlotState(iPlayerID) == true)
-			{
-				CRemotePlayer* pPlayer = pPlayerPool->GetAt(iPlayerID);
-				if (!pPlayer || pPlayer->GetState() == PLAYER_STATE_NONE) return;
-				CPlayerPed* pPlayerPed = pPlayer->GetPlayerPed();
-				if (!pPlayerPed) return;
-				pPlayerPed->SetModelIndex(actualModel);
-			}
-		}
+		FLog("[RPC] ScrSetPlayerSkin applying to local player: actualModel=%d", actualModel);
+		pPlayerPool->GetLocalPlayer()->GetPlayerPed()->SetModelIndex(actualModel);
 	}
-	else if (IsValidPedModel(iModel))
+	else
 	{
-		if (pPlayerPool->GetLocalPlayerID() == iPlayerID)
+		if (pPlayerPool->GetSlotState(iPlayerID) == true)
 		{
-			pPlayerPool->GetLocalPlayer()->GetPlayerPed()->SetModelIndex(iModel);
-		}
-		else
-		{
-			if (pPlayerPool->GetSlotState(iPlayerID) == true)
-			{
-				CRemotePlayer* pPlayer = pPlayerPool->GetAt(iPlayerID);
-				if (!pPlayer || pPlayer->GetState() == PLAYER_STATE_NONE) return;
-				CPlayerPed* pPlayerPed = pPlayer->GetPlayerPed();
-				if (!pPlayerPed) return;
-				pPlayerPed->SetModelIndex(iModel);
-			}
+			CRemotePlayer* pPlayer = pPlayerPool->GetAt(iPlayerID);
+			if (!pPlayer || pPlayer->GetState() == PLAYER_STATE_NONE) return;
+			CPlayerPed* pPlayerPed = pPlayer->GetPlayerPed();
+			if (!pPlayerPed) return;
+			pPlayerPed->SetModelIndex(actualModel);
 		}
 	}
 }

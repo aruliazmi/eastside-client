@@ -286,8 +286,11 @@ bool Parse(const uint8_t* data, size_t size,
             // hint and the FOURCC at +76 confirms the compression.
             const uint32_t rasterFormat = r.U32(nbody + 4);
             const uint32_t fmt = rasterFormat & RASTER_MASK;
+            const uint32_t d3dFormat = r.U32(nbody + 72);
+            const uint32_t fourcc = r.U32(nbody + 76);
             const int width  = r.U16(nbody + 80);
             const int height = r.U16(nbody + 82);
+            const uint8_t depth = r.p[nbody + 84];
             const uint32_t dataSize = r.U32(nbody + 88);
             const size_t dataOff = nbody + 92;
 
@@ -301,13 +304,44 @@ bool Parse(const uint8_t* data, size_t size,
             tex.rgba.assign(static_cast<size_t>(width) * height * 4, 0);
 
             const uint8_t* src = r.p + dataOff;
-            switch (fmt) {
-                case RASTER_DXT1: DecodeDXT1(src, dataSize, width, height, tex.rgba.data()); break;
-                case RASTER_DXT3: DecodeDXT3(src, dataSize, width, height, tex.rgba.data()); break;
-                case RASTER_DXT5: DecodeDXT5(src, dataSize, width, height, tex.rgba.data()); break;
-                default:
-                    DecodeUncompressed(src, dataSize, width, height, fmt, tex.rgba.data());
-                    break;
+
+            static constexpr uint32_t FOURCC_DXT1 = 0x31545844; // 'DXT1'
+            static constexpr uint32_t FOURCC_DXT3 = 0x33545844; // 'DXT3'
+            static constexpr uint32_t FOURCC_DXT5 = 0x35545844; // 'DXT5'
+
+            if (fourcc == FOURCC_DXT1) {
+                DecodeDXT1(src, dataSize, width, height, tex.rgba.data());
+            } else if (fourcc == FOURCC_DXT3) {
+                DecodeDXT3(src, dataSize, width, height, tex.rgba.data());
+            } else if (fourcc == FOURCC_DXT5) {
+                DecodeDXT5(src, dataSize, width, height, tex.rgba.data());
+            } else if (depth == 32) {
+                // Direct3D 9 uncompressed 32-bit BGRA/BGRX (D3DFMT_A8R8G8B8 or D3DFMT_X8R8G8B8)
+                const size_t pixels = static_cast<size_t>(width) * height;
+                const bool isOpaque = (fourcc == 22 || d3dFormat == 22 || (rasterFormat & 0xF) == 2);
+                for (size_t i = 0; i < pixels; ++i) {
+                    if ((i + 1) * 4 > dataSize) break;
+                    uint8_t* o = tex.rgba.data() + i * 4;
+                    const uint8_t* p = src + i * 4;
+                    o[0] = p[2]; // Red (swap from BGRA)
+                    o[1] = p[1]; // Green
+                    o[2] = p[0]; // Blue
+                    o[3] = isOpaque ? 255 : p[3]; // Alpha
+                }
+            } else if (depth == 24) {
+                // 24-bit BGR
+                const size_t pixels = static_cast<size_t>(width) * height;
+                for (size_t i = 0; i < pixels; ++i) {
+                    if ((i + 1) * 3 > dataSize) break;
+                    uint8_t* o = tex.rgba.data() + i * 4;
+                    const uint8_t* p = src + i * 3;
+                    o[0] = p[2]; // Red
+                    o[1] = p[1]; // Green
+                    o[2] = p[0]; // Blue
+                    o[3] = 255;  // Alpha
+                }
+            } else {
+                DecodeUncompressed(src, dataSize, width, height, fmt, tex.rgba.data());
             }
 
             if (!tex.name.empty()) out.push_back(std::move(tex));
