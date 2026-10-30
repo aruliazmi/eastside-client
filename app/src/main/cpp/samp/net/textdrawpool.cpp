@@ -19,6 +19,7 @@ CTextDrawPool::CTextDrawPool()
     m_bSelectState = false;
     m_dwHoverColor = 0;
     m_wClickedTextDrawID = 0xFFFF;
+    m_wPressedTextDrawID = 0xFFFF;
 }
 
 CTextDrawPool::~CTextDrawPool()
@@ -118,54 +119,54 @@ void CTextDrawPool::SendClick()
 
 bool CTextDrawPool::onTouchEvent(int type, bool multi, int x, int y)
 {
-    // A server that enabled SELECT_TEXT_DRAWS makes these textdraws
-    // clickable. The old implementation captured EVERY touch in that mode:
-    //   - returns false for any hit   -> caller sees "handled" and calls
-    //                                    AND_TouchEvent(1,0,0,0), i.e. a fake
-    //                                    release at (0,0)
-    //   - falls through to `return true` for every miss
-    // Either way AND_TouchEvent() never received the real finger position, so
-    // the camera and the touch controls were both dead: the player could not
-    // look around and could not even jump to reach the checkpoint.
+    // A server that enabled SELECT_TEXT_DRAWS makes these textdraws clickable.
     //
-    // It also sent RPC_ClickTextDraw with wClickedTextDrawID = 0xFFFF, which is
-    // not a valid textdraw id.
+    // The implementation must NOT consume the touch. A /gps map is drawn as a
+    // full-screen selectable textdraw, so "swallow touches that hit a textdraw"
+    // means swallowing every touch on the screen - including the movement stick
+    // and the action buttons. The player then cannot move or look at all, which
+    // is exactly the reported symptom, and pressing TAB+"close" only helped
+    // because that path calls SetSelectState(false) and clears the flag.
     //
-    // The contract must be: report "handled" ONLY when a selectable textdraw was
-    // actually hit. Anything else lets the event continue to the game.
-    if (m_bSelectState == false) return false;
-
-    for (int i = 0; i < MAX_TEXT_DRAWS; i++)
-    {
-        if (!m_bSlotState[i] || !m_pTextDraw[i]) continue;
-
-        CTextDraw* pTextDraw = m_pTextDraw[i];
-        pTextDraw->m_bHovered = false;
-        pTextDraw->m_dwHoverColor = 0;
-
-        if (!pTextDraw->m_TextDrawData.byteSelectable) continue;
-
-        // Only react when the point really is inside this textdraw's box.
-        if (!IsPointInRect((float)x, (float)y, &(pTextDraw->m_rectArea))) continue;
-
-        switch (type)
-        {
-            case 2: // push: swallow so the camera does not start rotating
-                m_wClickedTextDrawID = (uint16_t)i;
-                return true;
-
-            case 1: // release: this is the actual click
-                m_wClickedTextDrawID = (uint16_t)i;
-                SendClick();
-                return true;
-
-            default:
-                break;
-        }
-        return true;
+    // So: detect the click, send RPC_ClickTextDraw, and let the event continue
+    // to AND_TouchEvent() untouched. A tap on the map costs a tap; it must not
+    // cost the whole control scheme.
+    //
+    // A click is only reported when the finger went down AND up on the same
+    // selectable textdraw, so dragging the camera across the map does not fire
+    // a click.
+    if (m_bSelectState == false) {
+        m_wPressedTextDrawID = 0xFFFF;
+        return false;
     }
 
-    // Nothing hit: never consume the event.
+    if (type == 2) { // push: remember what we started on, send nothing yet
+        m_wPressedTextDrawID = 0xFFFF;
+        for (int i = 0; i < MAX_TEXT_DRAWS; i++) {
+            if (!m_bSlotState[i] || !m_pTextDraw[i]) continue;
+            CTextDraw* pTextDraw = m_pTextDraw[i];
+            if (!pTextDraw->m_TextDrawData.byteSelectable) continue;
+            if (!IsPointInRect((float)x, (float)y, &(pTextDraw->m_rectArea))) continue;
+            m_wPressedTextDrawID = (uint16_t)i;
+            break;
+        }
+        return false;
+    }
+
+    if (type == 1) { // release: a click needs push and release on the same box
+        const uint16_t pressed = m_wPressedTextDrawID;
+        m_wPressedTextDrawID = 0xFFFF;
+        if (pressed == 0xFFFF) return false;
+
+        CTextDraw* pTextDraw = m_pTextDraw[pressed];
+        if (!pTextDraw || !m_bSlotState[pressed]) return false;
+        if (!IsPointInRect((float)x, (float)y, &(pTextDraw->m_rectArea))) return false;
+
+        m_wClickedTextDrawID = pressed;
+        SendClick();
+        return false;
+    }
+
     return false;
 }
 

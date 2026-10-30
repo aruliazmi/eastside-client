@@ -59,6 +59,22 @@ void* CTxdStore::GetTxd(int32 index) {
     return def ? reinterpret_cast<void*>(def->m_pRwDictionary) : nullptr;
 }
 
+// Stores a dictionary into a slot and marks it in use.
+//
+// RwTexDictionaryStreamRead parses the whole .txd and hands back a NEW
+// dictionary, so it cannot be "read into" a slot that was allocated first.
+// The caller installs the result here. Reference count is raised so the engine
+// keeps the textures resident instead of unloading them as unreferenced.
+bool CTxdStore::SetTxd(int32 index, void* dict) {
+    CTxdPool* pool = EngineTxdPool();
+    if (!pool || !dict) return false;
+    TxdDef* def = pool->GetAt(index);
+    if (!def) return false;
+    def->m_pRwDictionary = reinterpret_cast<uintptr*>(dict);
+    if (def->m_wRefsCount < 1) def->m_wRefsCount = 1;
+    return true;
+}
+
 void CTxdStore::Initialise() {
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D3A90 + 1 : 0x6F8928));
 }

@@ -38,4 +38,8 @@ private:
     bool m_bSelectState;
     uint32_t m_dwHoverColor;
     uint16_t m_wClickedTextDrawID;
+    // Textdraw the current finger went down on; 0xFFFF when none. Used so a
+    // click requires push+release on the same box and a camera drag does not
+    // fire one.
+    uint16_t m_wPressedTextDrawID;
 };

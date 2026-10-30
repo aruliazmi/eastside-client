@@ -35,8 +35,19 @@ RwStream* RwStreamOpen(RwStreamType type, RwStreamAccessType accessType, const v
 }
 
 // Reads one texture-dictionary chunk from a RenderWare stream.
+// Reads ONE texture chunk from the stream.
 RwTexture* RwTextureStreamRead(RwStream* stream) {
     return CHook::CallFunction<RwTexture*>(g_libGTASA + (VER_x32 ? 0x001DBA64 + 1 : 0x26C670), stream);
+}
+
+// Reads a whole TXD dictionary chunk - this is what a .txd file contains.
+//
+// RwTextureStreamRead was the wrong call: a .txd starts with a TexDictionary
+// chunk, so the texture parser rejects it and returns NULL for every entry.
+// That is exactly the "read=93" line in the v2.8.2 log.
+//   _Z25RwTexDictionaryStreamReadP8RwStream @ 0x26CB98 (arm64) / 0x1D5730+1 (armv7)
+void* RwTexDictionaryStreamRead(RwStream* stream) {
+    return CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x001D5730 + 1 : 0x26CB98), stream);
 }
 
 // Sets the dictionary RenderWare writes new textures into.

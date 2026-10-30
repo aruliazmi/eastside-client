@@ -564,6 +564,7 @@ RwBool RwStreamClose(RwStream* stream, void* data);
 // RwTexDictionary is opaque here (renderware.h never declares it), so the
 // dictionary handle travels as void*.
 RwTexture* RwTextureStreamRead(RwStream* stream);
+void* RwTexDictionaryStreamRead(RwStream* stream);
 void* RwTexDictionarySetCurrent(void* dict);
 RwMatrix* RwMatrixTransform(RwMatrix* matrix, const RwMatrix* transform, RwOpCombineType combineOp);
 RwMatrix* RwMatrixOrthoNormalize(RwMatrix* matrixOut, const RwMatrix* matrixIn);

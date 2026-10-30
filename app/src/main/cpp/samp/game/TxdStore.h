@@ -61,6 +61,7 @@ public:
     // the RenderWare stream API and installed into the slot here.
     static void Create(int32 index);
     static void* GetTxd(int32 index);
+    static bool  SetTxd(int32 index, void* dict);
 
     static int32 GetNumRefs(int32 index);
 
