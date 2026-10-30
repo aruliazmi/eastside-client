@@ -554,6 +554,8 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
             m_txdWork.push_back({virtualIds[i], txdCrcs[i]});
         }
         m_txdCursor.store(0);
+        m_txdPass = 0;
+        m_txdDeferred.clear();
         m_txdInstalled.store(0);
         m_txdFailed.store(0);
         m_txdFailNoModel.store(0);
@@ -593,8 +595,14 @@ bool DLManager::ProcessCustomTxdBatch() {
 
     // One TXD per frame. Each dictionary can be 16-17 MB compressed, and its
     // decoded textures stay resident, so even two per frame was a visible stall.
-    const size_t kTxdsPerFrame = 1;
-    for (size_t n = 0; n < kTxdsPerFrame && cursor < total; ++n, ++cursor) {
+    //
+    // Plain while-loop with one explicit advance per entry. The previous
+    // for(...; ++n, ++cursor) advanced the cursor in the loop header, so the
+    // "skip this entry" branches advance it twice and the "not streamed yet"
+    // branch tried to rewind with --cursor, which underflowed to SIZE_MAX at
+    // cursor 0 and ended the whole batch after one entry.
+    size_t processed = 0;
+    while (processed < 1 && cursor < total) {
         const int16_t virtualId = m_txdWork[cursor].first;
         const uint32_t txdCrc = m_txdWork[cursor].second;
 
@@ -604,15 +612,19 @@ bool DLManager::ProcessCustomTxdBatch() {
              (int)virtualId, txdCrc);
 
         auto spanIt = m_txdSpans.find(txdCrc);
-        if (spanIt == m_txdSpans.end()) { ++cursor; continue; }
+        if (spanIt == m_txdSpans.end()) {
+            ++cursor; ++processed; continue;
+        }
 
         if (fseek(fp, (long)((uint64_t)spanIt->second.offset * 2048ull), SEEK_SET) != 0) {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
+            ++cursor; ++processed; continue;
         }
         const size_t byteLen = (size_t)spanIt->second.count * 2048u;
         std::vector<uint8_t> buf(byteLen);
         if (fread(buf.data(), 1, byteLen, fp) != byteLen) {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
+            ++cursor; ++processed; continue;
         }
 
         // Decode the TXD ourselves. RenderWare's dictionary reader is a dead end
@@ -621,32 +633,27 @@ bool DLManager::ProcessCustomTxdBatch() {
         std::vector<CustomTxd::Texture> textures;
         int skipped = 0;
         if (!CustomTxd::Parse(buf.data(), byteLen, textures, skipped) || textures.empty()) {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
+            ++cursor; ++processed; continue;
         }
 
-        // Pin the decoded textures onto the model's materials. This is what makes
-        // the skin draw with colour: the renderer honours material textures even
-        // though the name-based lookup cannot see a downloaded TXD.
         CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualId);
-        if (!pInfo) { m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1); continue; }
+        if (!pInfo) {
+            m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1);
+            ++cursor; ++processed; continue;
+        }
 
         void* rwObject = pInfo->m_pRwObject;
         if (!rwObject) {
-            // The model is not streamed in yet. A ped skin is streamed when the
-            // player selects it, but an object model may only load when it first
-            // appears in the world - which can be after spawn. Retrying forever
-            // would hold RPC 184 back and leave the player stuck in class
-            // selection, so give each entry a bounded number of retries and then
-            // move on with the texture installed on whatever is available later.
-            auto& tries = m_txdStreamRetries[virtualId];
-            if (++tries <= kMaxStreamRetries) {
-                --cursor;
-                break;
-            }
-            m_txdStreamRetries.erase(virtualId);
-            m_txdFailed.fetch_add(1);
-            m_txdFailNoModel.fetch_add(1);
-            FLog("[TXD] virtual=%d never streamed in, skipping texture", (int)virtualId);
+            // Model not streamed in yet. A ped skin only streams when the player
+            // selects it, which happens after this batch - so waiting is expected.
+            //
+            // Do NOT hold the queue for it: that made every later model wait
+            // behind the first unstreamed one, and an early attempt to "rewind"
+            // the cursor underflowed to SIZE_MAX and ended the batch after a
+            // single entry. Instead defer this entry to a later pass.
+            m_txdDeferred.push_back({virtualId, txdCrc});
+            ++cursor; ++processed;
             continue;
         }
         m_txdStreamRetries.erase(virtualId);
@@ -659,12 +666,30 @@ bool DLManager::ProcessCustomTxdBatch() {
         } else {
             m_txdFailed.fetch_add(1); m_txdFailDict.fetch_add(1);
         }
+        ++cursor; ++processed;
     }
 
     fclose(fp);
     m_txdCursor.store(cursor);
 
     if (cursor >= total) {
+        // First pass done. Any entries whose model was not streamed in yet go
+        // through a bounded number of extra passes, so a skin that only streams
+        // once the player picks it still gets its textures.
+        if (!m_txdDeferred.empty() && m_txdPass < kMaxTxdPasses) {
+            ++m_txdPass;
+            m_txdWork.swap(m_txdDeferred);
+            m_txdDeferred.clear();
+            m_txdCursor.store(0);
+            return false;
+        }
+        if (!m_txdDeferred.empty()) {
+            FLog("[TXD] %zu models never streamed in, textures skipped",
+                 m_txdDeferred.size());
+            m_txdFailed.fetch_add(static_cast<int>(m_txdDeferred.size()));
+            m_txdFailNoModel.fetch_add(static_cast<int>(m_txdDeferred.size()));
+            m_txdDeferred.clear();
+        }
         FinishCustomTxds();
         return true;
     }
