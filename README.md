@@ -51,13 +51,3 @@ mengetik.
 
 UI-nya HTML/CSS/JS lewat Chromium Embedded Framework transparan, dan voice chat-nya spatial 3D
 pakai BASS.
-
-## Informasi server
-
-- Nama server: Eastside Stories Roleplay
-- Alamat: `play.stateside.id:7777`
-- Port: `7777` (UDP)
-- Website dan komunitas: hubungi pengelola Eastside Stories buat pendaftaran whitelist dan
-  Discord role
-
-Repo ini cuma buat publikasi rilis biner, pembaruan data, dan dokumentasi client.
