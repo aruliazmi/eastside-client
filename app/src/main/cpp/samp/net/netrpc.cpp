@@ -264,7 +264,32 @@ void DialogBox(RPCParameters *rpcParams)
 		}
 		//pUI->dialog()->show(wDialogID, style, Encoding::cp2utf(szTitle), Encoding::cp2utf(szMessage), Encoding::cp2utf(szButton1), Encoding::cp2utf(szButton2));
 		if (pJavaWrapper)
-		    pJavaWrapper->ShowDialog(byteDialogStyle, wDialogID, (char*)Encoding::cp2utf(szTitle).c_str(), (char*) Encoding::cp2utf(szMessage).c_str(), (char*) Encoding::cp2utf(szButton1).c_str(), (char*) Encoding::cp2utf(szButton2).c_str());
+		{
+			// Hold back dialogs while custom models are still downloading.
+			//
+			// The server shows its login dialog as soon as the player connects,
+			// because it never waits for OnPlayerFinishedDownloading. The client
+			// used to paint that dialog straight over the download overlay, so
+			// the player saw "Login To State Side" with "Downloading models
+			// 70/170" still running underneath. Answering the dialog then
+			// raced the registration pass.
+			//
+			// Dialogs are queued, never dropped: the last one wins, because the
+			// login flow re-sends with the same ID and only the newest state is
+			// meaningful. Nothing is lost if download finishes mid-flow.
+			auto& dl = DLManager::Instance();
+			if (dl.IsBlockingDialogs())
+			{
+				dl.QueueDialog(byteDialogStyle, wDialogID,
+				               Encoding::cp2utf(szTitle),
+				               Encoding::cp2utf(szMessage),
+				               Encoding::cp2utf(szButton1),
+				               Encoding::cp2utf(szButton2));
+				return;
+			}
+
+			pJavaWrapper->ShowDialog(byteDialogStyle, wDialogID, (char*)Encoding::cp2utf(szTitle).c_str(), (char*) Encoding::cp2utf(szMessage).c_str(), (char*) Encoding::cp2utf(szButton1).c_str(), (char*) Encoding::cp2utf(szButton2).c_str());
+		}
 	}
 
 	return;

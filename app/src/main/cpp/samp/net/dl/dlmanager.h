@@ -131,9 +131,37 @@ public:
     void RequestRetryFailed();  // user action: re-arm all failed tasks for one more pass
     bool IsOverlayForced() const { return m_bForceShowOverlay; }
     void PushChat(const std::string& line) const;  // thread-safe: queues for game thread
+
+    /**
+     * True while dialogs from the server must be held back: custom models are
+     * being downloaded, or the registration pass has not finished yet. The
+     * server never waits for OnPlayerFinishedDownloading, so its login dialog
+     * would otherwise appear on top of the download overlay and racing the
+     * CTxdStore/CModelInfo rewrite.
+     */
+    bool IsBlockingDialogs() const;
+
+    /** Queue a dialog that arrived during the download; only the newest is kept. */
+    void QueueDialog(uint8_t style, uint16_t id,
+                     const std::string& title, const std::string& message,
+                     const std::string& button1, const std::string& button2);
+
+    /** Flush the queued dialog, if any, to the Java dialog surface. */
+    void FlushQueuedDialog();
     int Next183DumpIndex();
 
 private:
+    // ---- Dialog hold-back (see IsBlockingDialogs) ------------------------
+    // Only the newest dialog is kept: the login flow re-sends the same dialog ID
+    // as the player's state changes, and replaying stale ones would confuse it.
+    mutable std::mutex m_dialogMutex;
+    bool        m_hasQueuedDialog{false};
+    uint8_t     m_qDialogStyle{0};
+    uint16_t    m_qDialogId{0};
+    std::string m_qDialogTitle;
+    std::string m_qDialogMessage;
+    std::string m_qDialogButton1;
+    std::string m_qDialogButton2;
     DLManager();
     ~DLManager();
 

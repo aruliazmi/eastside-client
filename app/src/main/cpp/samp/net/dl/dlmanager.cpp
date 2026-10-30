@@ -6,6 +6,9 @@
 #include "../../game/Models/ModelInfo.h"
 #include "../../vendor/imgui/imgui.h"
 #include "../../vendor/raknet/SAMP/SAMPRPC.h"
+#include "../../java/jniutil.h"
+
+extern CJavaWrapper *pJavaWrapper;
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -631,6 +634,60 @@ void DLManager::PushChat(const std::string& line) const {
     if (m_chatQueue.size() < 256) m_chatQueue.push_back(line);
 }
 
+// ---------------------------------------------------------------------------
+// Dialog hold-back
+// ---------------------------------------------------------------------------
+
+bool DLManager::IsBlockingDialogs() const {
+    // Block until the download finished AND the registration pass is done. The
+    // second half matters: RPC 184 is sent from the deferred finalisation, so
+    // m_bDownloadFinished turning true is the last thing that happens.
+    if (m_bDownloadFinished.load()) return false;
+    if (m_bForceShowOverlay) return false;  // /dl: player asked to see it
+    // Any RPC 179 seen means this server has custom models; from that moment the
+    // download overlay is the truth and server dialogs wait for it.
+    return m_bSawAnyModel || m_bFinishRequested.load() || !m_tasks.empty();
+}
+
+void DLManager::QueueDialog(uint8_t style, uint16_t id,
+                            const std::string& title, const std::string& message,
+                            const std::string& button1, const std::string& button2) {
+    std::lock_guard<std::mutex> lock(m_dialogMutex);
+    m_qDialogStyle   = style;
+    m_qDialogId      = id;
+    m_qDialogTitle   = title;
+    m_qDialogMessage = message;
+    m_qDialogButton1 = button1;
+    m_qDialogButton2 = button2;
+    m_hasQueuedDialog = true;
+}
+
+void DLManager::FlushQueuedDialog() {
+    uint8_t     style;
+    uint16_t    id;
+    std::string title, message, b1, b2;
+    {
+        std::lock_guard<std::mutex> lock(m_dialogMutex);
+        if (!m_hasQueuedDialog) return;
+        // Only flush once the hold is over, otherwise the dialog would appear
+        // in the same frame the download overlay is still up.
+        if (IsBlockingDialogs()) return;
+        style   = m_qDialogStyle;
+        id      = m_qDialogId;
+        title   = m_qDialogTitle;
+        message = m_qDialogMessage;
+        b1      = m_qDialogButton1;
+        b2      = m_qDialogButton2;
+        m_hasQueuedDialog = false;
+    }
+    if (!pJavaWrapper) return;
+    pJavaWrapper->ShowDialog(style, id,
+                             const_cast<char*>(title.c_str()),
+                             const_cast<char*>(message.c_str()),
+                             const_cast<char*>(b1.c_str()),
+                             const_cast<char*>(b2.c_str()));
+}
+
 void DLManager::FlushChatQueue() {
     std::deque<std::string> local;
     {
@@ -944,8 +1001,13 @@ void DLManager::WorkerLoop() {
                     skipLog = msg;
                 } else {
                     t.started = false;
-                    // t.url is never cleared on failure, so a retry keeps it
-                    // and skips the RPC round-trip.
+                    // Keep the URL only for transient transport failures. An
+                    // HTTP 4xx means the URL itself was rejected — typically an
+                    // expired signed link or a token that must be minted per
+                    // request. Re-using it would burn every remaining attempt on
+                    // a URL that can never succeed, so drop it and let the retry
+                    // ask the server for a fresh one via RPC 181/182.
+                    if (fetchError.rfind("http 4", 0) == 0) t.url.clear();
                     t.lastError = fetchError;
                 }
                 break;
@@ -1393,6 +1455,7 @@ void DLManager::ProcessTick() {
     if (!m_bInitialized.load()) return;
 
     FlushChatQueue();
+    FlushQueuedDialog();
     ProcessRpcOutbox();
 
     const uint32_t now = GetCurrentTick();
