@@ -419,7 +419,10 @@ void AND_TouchEvent_hook(int type, int num, int posX, int posY)
         {
             if (pNetGame && pNetGame->GetTextDrawPool())
             {
-                if (!pNetGame->GetTextDrawPool()->onTouchEvent(type, num, posX, posY)) {
+                // onTouchEvent returns true only when a SELECTABLE textdraw was
+                // actually hit. Swallow the event in that case; otherwise fall
+                // through so the camera and the touch controls keep working.
+                if (pNetGame->GetTextDrawPool()->onTouchEvent(type, num, posX, posY)) {
                     return AND_TouchEvent(1, 0, 0, 0);
                 }
             }

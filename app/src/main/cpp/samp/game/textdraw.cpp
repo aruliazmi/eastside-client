@@ -209,24 +209,33 @@ void CTextDraw::DrawDefault()
 
     if (m_TextDrawData.byteAlignRight)
     {
-        m_rectArea.left = fUseX - (fLineWidth - fUseX);
-        m_rectArea.right = fUseX;
+        // Text ends at fUseX and runs leftwards for fLineWidth.
+        m_rectArea.left   = fUseX - fLineWidth;
+        m_rectArea.right  = fUseX;
         m_rectArea.bottom = fUseY;
-        m_rectArea.top = fUseY + fLineHeight;
+        m_rectArea.top    = fUseY + fLineHeight;
     }
     else if (m_TextDrawData.byteCentered)
     {
-        m_rectArea.left = fUseX - (fLineHeight * 0.5f);
-        m_rectArea.right = m_rectArea.left + fLineHeight;
+        // Text is centred on fUseX; the box is fLineWidth wide, not fLineHeight.
+        // (The old code used fLineHeight as the width, so the clickable box was
+        // a thin sliver a few pixels wide.)
+        m_rectArea.left   = fUseX - (fLineWidth * 0.5f);
+        m_rectArea.right  = m_rectArea.left + fLineWidth;
         m_rectArea.bottom = fUseY;
-        m_rectArea.top = fUseY + fLineWidth;
+        m_rectArea.top    = fUseY + fLineHeight;
     }
     else
     {
-        m_rectArea.left = fUseX;
-        m_rectArea.right = fLineWidth - fUseX + fUseX;
+        // Left-aligned: box starts at the text origin and runs fLineWidth to the
+        // right. The old code computed `right = fLineWidth - fUseX + fUseX`,
+        // i.e. right = fLineWidth — the wrap width, which for most textdraws is
+        // the whole screen. Any tap anywhere to the right of the text counted as
+        // a hit, so the whole screen became one giant clickable textdraw.
+        m_rectArea.left   = fUseX;
+        m_rectArea.right  = fUseX + fLineWidth;
         m_rectArea.bottom = fUseY;
-        m_rectArea.top = fUseY + fLineHeight;
+        m_rectArea.top    = fUseY + fLineHeight;
     }
     m_TextDrawData.bHasRectArea = true;
 }

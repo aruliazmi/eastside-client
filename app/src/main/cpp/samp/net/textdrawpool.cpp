@@ -110,58 +110,55 @@ void CTextDrawPool::SendClick()
 
 bool CTextDrawPool::onTouchEvent(int type, bool multi, int x, int y)
 {
-    if (m_bSelectState == false) return true;
-    static bool bWannaClick = false;
-
-    m_wClickedTextDrawID = 0xFFFF;
-
+    // A server that enabled SELECT_TEXT_DRAWS makes these textdraws
+    // clickable. The old implementation captured EVERY touch in that mode:
+    //   - returns false for any hit   -> caller sees "handled" and calls
+    //                                    AND_TouchEvent(1,0,0,0), i.e. a fake
+    //                                    release at (0,0)
+    //   - falls through to `return true` for every miss
+    // Either way AND_TouchEvent() never received the real finger position, so
+    // the camera and the touch controls were both dead: the player could not
+    // look around and could not even jump to reach the checkpoint.
+    //
+    // It also sent RPC_ClickTextDraw with wClickedTextDrawID = 0xFFFF, which is
+    // not a valid textdraw id.
+    //
+    // The contract must be: report "handled" ONLY when a selectable textdraw was
+    // actually hit. Anything else lets the event continue to the game.
+    if (m_bSelectState == false) return false;
 
     for (int i = 0; i < MAX_TEXT_DRAWS; i++)
     {
-        if (m_bSlotState[i] && m_pTextDraw[i])
+        if (!m_bSlotState[i] || !m_pTextDraw[i]) continue;
+
+        CTextDraw* pTextDraw = m_pTextDraw[i];
+        pTextDraw->m_bHovered = false;
+        pTextDraw->m_dwHoverColor = 0;
+
+        if (!pTextDraw->m_TextDrawData.byteSelectable) continue;
+
+        // Only react when the point really is inside this textdraw's box.
+        if (!IsPointInRect((float)x, (float)y, &(pTextDraw->m_rectArea))) continue;
+
+        switch (type)
         {
-            CTextDraw* pTextDraw = m_pTextDraw[i];
-            pTextDraw->m_bHovered = false;
-            pTextDraw->m_dwHoverColor = 0;
+            case 2: // push: swallow so the camera does not start rotating
+                m_wClickedTextDrawID = (uint16_t)i;
+                return true;
 
-            if (pTextDraw->m_TextDrawData.byteSelectable)
-            {
-                FLog("onTouchEvent textdraw 2");
-                switch (type)
-                {
-                    case 2:
-                        if (IsPointInRect(x, y, &(pTextDraw->m_rectArea)))
-                        {
-                            bWannaClick = true;
-                            return false;
-                        }
-                        break;
-                    case 3:
-                        /*m_wClickedTextDrawID = 0xFFFF;
-                        pTextDraw->m_bHovered = true;
-                        pTextDraw->m_dwHoverColor = m_dwHoverColor;
-                        FLog("x: %f, y:%f, %d",IsPointInRect(x, y, &pTextDraw->m_rectArea));*/
-                        break;
+            case 1: // release: this is the actual click
+                m_wClickedTextDrawID = (uint16_t)i;
+                SendClick();
+                return true;
 
-                    case 1:
-                        FLog("m_rectArea %f %f %f %f, clicked: %f %f", pTextDraw->m_rectArea.bottom, pTextDraw->m_rectArea.top,pTextDraw->m_rectArea.left,pTextDraw->m_rectArea.right,
-                             x,y);
-                        if (IsPointInRect(x, y, &pTextDraw->m_rectArea)) {
-                            FLog("Point is in rect");
-                            m_wClickedTextDrawID = i;
-                            SendClick();
-                            pTextDraw->m_bHovered = false;
-                            pTextDraw->m_dwHoverColor = 0;
-                            return false;
-                        }
-                        bWannaClick = false;
-                        break;
-                }
-            }
+            default:
+                break;
         }
+        return true;
     }
 
-    return true;
+    // Nothing hit: never consume the event.
+    return false;
 }
 
 void CTextDrawPool::SnapshotProcess()
