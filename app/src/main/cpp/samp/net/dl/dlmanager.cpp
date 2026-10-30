@@ -533,65 +533,154 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
         }
     }
 
-    for (size_t i = 0; i < virtualIds.size(); ++i) {
-        char arcName[32];
-        snprintf(arcName, sizeof(arcName), "0x%08X.txd", txdCrcs[i]);
-        auto it = layout.find(arcName);
-        if (it == layout.end()) continue;
+    // Build the work list once and keep it in the manager so the work can be
+    // spread over frames.
+    //
+    // Parsing every custom TXD in one call is not survivable here: a reported
+    // server ships 91 distinct TXDs totalling 497.7 MB, and a parsed dictionary
+    // holds the decompressed textures. Doing it inline froze the game and
+    // Android killed the process before the first login dialog appeared - the
+    // log stopped at "registering models" with no tombstone, which is an OOM
+    // kill, not a crash.
+    {
+        std::lock_guard<std::mutex> lock(m_txdMutex);
+        m_txdWork.clear();
+        for (size_t i = 0; i < virtualIds.size(); ++i) {
+            char arcName[32];
+            snprintf(arcName, sizeof(arcName), "0x%08X.txd", txdCrcs[i]);
+            if (layout.find(arcName) == layout.end()) continue;
+            m_txdWork.push_back({virtualIds[i], txdCrcs[i]});
+        }
+        m_txdCursor.store(0);
+        m_txdInstalled.store(0);
+        m_txdFailed.store(0);
+        m_txdFailNoModel.store(0);
+        m_txdFailSlot.store(0);
+        m_txdFailStream.store(0);
+        m_txdFailDict.store(0);
+        m_txdFailRead.store(0);
+        m_txdImgIndex = imgIndex;
+        m_txdImgPath = imgFullPath;
+        m_bTxdActive.store(true);
+    }
+}
 
-        CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualIds[i]);
-        if (!pInfo) { ++failed; ++failNoModel; continue; }
+// Parses at most kTxdsPerFrame custom TXDs and returns true when the list is
+// exhausted. Called once per game frame from ProcessTick.
+//
+// One dictionary per frame keeps the pause between frames small, so the render
+// loop keeps running and Android never sees an unresponsive app. The textures
+// land in CTxdStore as they are parsed, so the player can already see the first
+// skins while the rest are still being installed.
+bool DLManager::ProcessCustomTxdBatch() {
+    if (!m_bTxdActive.load()) return true;
+
+    const size_t total = m_txdWork.size();
+    size_t cursor = m_txdCursor.load();
+    if (cursor >= total) {
+        FinishCustomTxds();
+        return true;
+    }
+
+    FILE* fp = fopen(m_txdImgPath.c_str(), "rb");
+    if (!fp) {
+        FLog("[TXD] cannot open %s", m_txdImgPath.c_str());
+        FinishCustomTxds();
+        return true;
+    }
+
+    // The pack wrote these sectors, so the offsets are valid for this file.
+    DLImgPack::LayoutMap layout;
+    {
+        std::lock_guard<std::mutex> lock(m_txdMutex);
+        for (const auto& w : m_txdWork) {
+            char arcName[32];
+            snprintf(arcName, sizeof(arcName), "0x%08X.txd", w.second);
+            DLImgPack::SectorSpan span = m_txdSpans.count(w.second) ? m_txdSpans[w.second]
+                                                                   : DLImgPack::SectorSpan{0, 0};
+            if (span.count) layout[arcName] = span;
+        }
+    }
+
+    const size_t kTxdsPerFrame = 2;
+    for (size_t n = 0; n < kTxdsPerFrame && cursor < total; ++n, ++cursor) {
+        const int16_t virtualId = m_txdWork[cursor].first;
+        const uint32_t txdCrc = m_txdWork[cursor].second;
+
+        CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualId);
+        if (!pInfo) { m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1); continue; }
 
         const int32 slot = pInfo->m_nTxdIndex;
-        if (slot < 0 || slot >= (int32)TOTAL_TXD_MODEL_IDS) { ++failed; ++failSlot; continue; }
-
-        if (fseek(fp, (long)((uint64_t)it->second.offset * 2048ull), SEEK_SET) != 0) {
-            ++failed; ++failRead; continue;
+        if (slot < 0 || slot >= (int32)TOTAL_TXD_MODEL_IDS) {
+            m_txdFailed.fetch_add(1); m_txdFailSlot.fetch_add(1); continue;
         }
-        const size_t byteLen = (size_t)it->second.count * 2048u;
-        std::vector<uint8_t> buf(byteLen);
-        if (fread(buf.data(), 1, byteLen, fp) != byteLen) { ++failed; ++failRead; continue; }
+        // Already filled by an earlier model that shares this TXD.
+        if (CTxdStore::GetTxd(slot)) continue;
 
-        // rwSTREAMMEMORY takes a RwMemory descriptor ({start,length}), NOT a raw
-        // pointer. Handing it the bare buffer pointer made RwStreamOpen build a
-        // stream over garbage, so every textdraw dictionary failed to parse.
+        char arcName[32];
+        snprintf(arcName, sizeof(arcName), "0x%08X.txd", txdCrc);
+        auto spanIt = m_txdSpans.find(txdCrc);
+        if (spanIt == m_txdSpans.end()) continue;
+
+        if (fseek(fp, (long)((uint64_t)spanIt->second.offset * 2048ull), SEEK_SET) != 0) {
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+        }
+        const size_t byteLen = (size_t)spanIt->second.count * 2048u;
+        std::vector<uint8_t> buf(byteLen);
+        if (fread(buf.data(), 1, byteLen, fp) != byteLen) {
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
+        }
+
         RwMemory mem{};
         mem.start  = buf.data();
         mem.length = (RwUInt32)byteLen;
         RwStream* stream = RwStreamOpen(rwSTREAMMEMORY, rwSTREAMREAD, &mem);
-        if (!stream) { ++failed; ++failStream; continue; }
+        if (!stream) { m_txdFailed.fetch_add(1); m_txdFailStream.fetch_add(1); continue; }
 
-        // A .txd file is a TexDictionary chunk (type 0x16) that WRAPS a Struct
-        // chunk (type 0x01). RwTexDictionaryStreamRead searches for the STRUCT
-        // chunk from wherever the stream points, so the stream must first be
-        // advanced past the dictionary header. Without this the search never
-        // matched and all 93 files failed (log: "read=93").
-        //
-        // Verified against a real model TXD:
-        //   @0  : type 0x16, size 16540   <- outer, must be entered
-        //   @12 : type 0x01, size 4       <- parser expects to start here
+        // A .txd is a TexDictionary chunk (0x16) wrapping a Struct chunk (0x01);
+        // the parser searches for the Struct, so enter the wrapper first.
         RwUInt32 dictLen = 0, dictVer = 0;
         if (!RwStreamFindChunk(stream, 0x16, &dictLen, &dictVer) &&
             !RwStreamFindChunk(stream, 0x06, &dictLen, &dictVer)) {
-            ++failed; ++failRead;
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
             RwStreamClose(stream, nullptr);
             continue;
         }
         void* dict = RwTexDictionaryStreamRead(stream);
         if (dict && CTxdStore::SetTxd(slot, dict)) {
-            ++installed;
+            m_txdInstalled.fetch_add(1);
         } else {
-            ++failed; ++failRead;
+            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
         }
         RwStreamClose(stream, nullptr);
     }
 
     fclose(fp);
+    m_txdCursor.store(cursor);
+
+    if (cursor >= total) {
+        FinishCustomTxds();
+        return true;
+    }
+    return false;
+}
+
+// Logs the totals once and releases the work list.
+void DLManager::FinishCustomTxds() {
+    if (!m_bTxdActive.exchange(false)) return;
+
     FLog("[TXD] installed %d custom TXDs from IMG slot %d (failed=%d: noModel=%d "
          "slot=%d stream=%d dict=%d read=%d)",
-         installed, imgIndex, failed, failNoModel, failSlot, failStream,
-         failDict, failRead);
+         m_txdInstalled.load(), m_txdImgIndex, m_txdFailed.load(),
+         m_txdFailNoModel.load(), m_txdFailSlot.load(), m_txdFailStream.load(),
+         m_txdFailDict.load(), m_txdFailRead.load());
+
+    std::lock_guard<std::mutex> lock(m_txdMutex);
+    m_txdWork.clear();
+    m_txdSpans.clear();
+    m_txdImgPath.clear();
 }
+
 
 bool DLManager::RegisterCustomModels() {
     {
@@ -848,6 +937,24 @@ bool DLManager::RegisterCustomModels() {
     // Custom TXDs must be installed explicitly: this build has no IMG->CTxdStore
     // path, so CStreaming filling the slot's CStreamingInfo is not enough for
     // the model to receive its texture.
+    //
+    // The sector spans are captured here and the parsing is spread over the
+    // following frames by ProcessCustomTxdBatch(), called from ProcessTick.
+    {
+        std::lock_guard<std::mutex> lock(m_txdMutex);
+        m_txdSpans.clear();
+        for (const auto& kv : layoutMap) {
+            // keys look like "0x<CRC>.txd" - record by numeric CRC
+            const std::string& name = kv.first;
+            if (name.size() < 12) continue;
+            if (name.rfind("0x", 0) != 0) continue;
+            char* endp = nullptr;
+            unsigned long crc = strtoul(name.c_str() + 2, &endp, 16);
+            if (endp && (*endp == '.')) {
+                m_txdSpans[(uint32_t)crc] = kv.second;
+            }
+        }
+    }
     InstallCustomTxds(layoutMap, imgIndex, imgFullPath);
 
     char msg[128];
@@ -1853,15 +1960,21 @@ void DLManager::ProcessTick() {
         //    been through at least one more frame. The server answers 184 with
         //    TogglePlayerSpectating(false) -> CLocalPlayer::Spawn(), and spawn
         //    must not overlap the streaming/TXD mutations above.
-        if (m_bModelsRegistered &&
-            (now - m_registerDoneTick) >= DL_READY_DELAY_MS) {
-            SendFinishDownload();
-            // Only now is the download officially over: marks the state that
-            // makes ProcessTick return early and drives the "Models ready"
-            // overlay. Previously only set by RPC 185, which this path never
-            // receives.
-            m_bDownloadFinished = true;
-            if (m_finishTime == 0) m_finishTime = now;
+        //
+        //    The TXD installs are spread over frames (2 per frame) because
+        //    parsing all 91 dictionaries at once held ~500 MB and Android
+        //    OOM-killed the process. RPC 184 is held until the batch reports
+        //    done, so spawn can never race a half-installed texture set.
+        if (m_bModelsRegistered && (now - m_registerDoneTick) >= DL_READY_DELAY_MS) {
+            if (ProcessCustomTxdBatch()) {
+                SendFinishDownload();
+                // Only now is the download officially over: marks the state that
+                // makes ProcessTick return early and drives the "Models ready"
+                // overlay. Previously only set by RPC 185, which this path never
+                // receives.
+                m_bDownloadFinished = true;
+                if (m_finishTime == 0) m_finishTime = now;
+            }
         }
     }
 }
@@ -1996,6 +2109,20 @@ void DLManager::RenderImGui() {
 
     if (failed > 0 && !busy && !finished) {
         snprintf(label, sizeof(label), "Model download: %zu failed (/dlr to retry)", failed);
+    } else if (m_bTxdActive.load()) {
+        // Custom textures are still being installed, one or two per frame. Show
+        // it, because this stage is what used to freeze the game: the player
+        // needs to see that work is progressing rather than a dead screen.
+        const size_t txdTotal = m_txdWork.size();
+        const size_t txdDone  = std::min<size_t>(m_txdCursor.load(), txdTotal);
+        if (txdTotal > 0) {
+            fraction = std::clamp(static_cast<float>(txdDone) / static_cast<float>(txdTotal),
+                                  0.0f, 1.0f);
+            snprintf(label, sizeof(label), "Installing textures %zu/%zu", txdDone, txdTotal);
+            showBar = true;
+        } else {
+            snprintf(label, sizeof(label), "Installing textures");
+        }
     } else if (finished) {
         if (failed > 0) {
             snprintf(label, sizeof(label), "Models ready (%zu skipped)", failed);

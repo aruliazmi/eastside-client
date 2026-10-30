@@ -219,6 +219,27 @@ private:
     /** Read custom TXDs out of the packed IMG into their CTxdStore slots. */
     void InstallCustomTxds(const DLImgPack::LayoutMap& layout, int imgIndex,
                            const std::string& imgFullPath);
+    // Installs custom TXDs a couple at a time instead of all at once. Parsing
+    // 91 dictionaries holding 497.7 MB of textures in a single frame froze the
+    // game and Android OOM-killed the process before the login dialog could
+    // appear. Returns true when the list is exhausted.
+    bool ProcessCustomTxdBatch();
+    void FinishCustomTxds();
+    // Sector spans of every TXD in the packed IMG, kept for ProcessCustomTxdBatch.
+    std::unordered_map<uint32_t, DLImgPack::SectorSpan> m_txdSpans;
+    std::mutex m_txdMutex;
+    std::vector<std::pair<int16_t, uint32_t>> m_txdWork;
+    std::atomic<size_t> m_txdCursor{0};
+    std::atomic<int> m_txdInstalled{0};
+    std::atomic<int> m_txdFailed{0};
+    std::atomic<int> m_txdFailNoModel{0};
+    std::atomic<int> m_txdFailSlot{0};
+    std::atomic<int> m_txdFailStream{0};
+    std::atomic<int> m_txdFailDict{0};
+    std::atomic<int> m_txdFailRead{0};
+    std::atomic<bool> m_bTxdActive{false};
+    int m_txdImgIndex{-1};
+    std::string m_txdImgPath;
     bool    m_bVirtualIdExhausted{false};
 
     // Custom models successfully registered with the game engine
