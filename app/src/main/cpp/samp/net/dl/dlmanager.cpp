@@ -602,10 +602,20 @@ bool DLManager::ProcessCustomTxdBatch() {
         }
     }
 
-    const size_t kTxdsPerFrame = 2;
+    // One TXD per frame. Two was still too much: the largest dictionaries are
+    // 16-17 MB compressed, and a parsed dictionary keeps its textures resident,
+    // so a single iteration can allocate tens of MB. Pairing two of them made
+    // the app disappear without a tombstone (an OOM kill, not a crash).
+    const size_t kTxdsPerFrame = 1;
     for (size_t n = 0; n < kTxdsPerFrame && cursor < total; ++n, ++cursor) {
         const int16_t virtualId = m_txdWork[cursor].first;
         const uint32_t txdCrc = m_txdWork[cursor].second;
+
+        // Progress BEFORE the risky call, so the log shows which file killed the
+        // process if it dies inside RenderWare. Without this the log simply
+        // stopped at "registration done" and told us nothing about the cause.
+        FLog("[TXD] %zu/%zu virtual=%d crc=%08X", cursor + 1, total,
+             (int)virtualId, txdCrc);
 
         CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualId);
         if (!pInfo) { m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1); continue; }
@@ -1849,8 +1859,19 @@ void DLManager::ProcessTick() {
     if (!m_bInitialized.load()) return;
 
     FlushChatQueue();
-    FlushQueuedDialog();
-    ProcessRpcOutbox();
+
+    // NOT FlushQueuedDialog() and NOT ProcessRpcOutbox() here.
+    //
+    // Both of those hand control back to the server: the dialog asks the player
+    // for a password, and the outbox can carry RPC 184. The server answers 184
+    // with TogglePlayerSpectating(false) -> CLocalPlayer::Spawn(), which starts
+    // streaming and building the ped while the TXD batch is still installing
+    // dictionaries. That is the freeze-then-vanish the player reported right
+    // after the login dialog was due: the log stopped between
+    // "registration done" and the first "[TXD]" line, i.e. the frame in which
+    // the server was told it could spawn.
+    //
+    // Both are deferred to the end of this function, behind the TXD batch gate.
 
     const uint32_t now = GetCurrentTick();
 
@@ -1974,8 +1995,17 @@ void DLManager::ProcessTick() {
                 // receives.
                 m_bDownloadFinished = true;
                 if (m_finishTime == 0) m_finishTime = now;
+                // Release the server-side gate only now. Doing it earlier let the
+                // server ask for a password (or spawn) while dictionaries were
+                // still being installed.
+                FlushQueuedDialog();
+                ProcessRpcOutbox();
             }
         }
+    } else {
+        // Not in the finalisation path: keep the model-request outbox moving so
+        // a download that is still running can ask for its next file.
+        ProcessRpcOutbox();
     }
 }
 
