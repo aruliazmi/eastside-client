@@ -27,13 +27,11 @@ void Button::performLayout()
 
 void Button::draw(ImGuiRenderer* renderer)
 {
-	renderer->drawRect(absolutePosition(), absolutePosition() + size(),
-		focused() ? m_colorFocused : m_color, true);
-
-	//Outline
-	renderer->drawRect(absolutePosition() + ImVec2(UISettings::outlineSize(), UISettings::outlineSize()),
-		(absolutePosition() + size()) - ImVec2(UISettings::outlineSize(), UISettings::outlineSize()),
-		ImColor(0.287f, 0.287f, 0.287f, 0.890f)/*ImColor(0xF5, 0x91, 0x32)*/, false, UISettings::outlineSize());
+	/* Sama seperti CButton: kotak gelap semi-transparan bersudut membulat.
+	   Button sengaja TIDAK memeriksa OpenButton — dipakai sebagai toggle bar
+	   yang harus selalu terlihat dan selalu bisa ditekan. */
+	renderer->drawRoundRect(absolutePosition(), absolutePosition() + size(),
+		focused() ? m_colorFocused : m_color, 3.0f, true);
 
 	Widget::draw(renderer);
 }
