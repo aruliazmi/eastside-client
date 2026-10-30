@@ -573,106 +573,44 @@ void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
 // land in CTxdStore as they are parsed, so the player can already see the first
 // skins while the rest are still being installed.
 bool DLManager::ProcessCustomTxdBatch() {
-    if (!m_bTxdActive.load()) return true;
+    // DISABLED while the TXD path is reworked.
+    //
+    // Two things came out of the v2.8.6 run:
+    //
+    //  1. The engine never reads a CTxdStore dictionary when it looks up a
+    //     texture. CTxdStore::TxdStoreFindCB is hooked to
+    //     TextureDatabaseRuntime::CleanRegisteredDatabases() + GetTexture(name),
+    //     and this build's databases come from .dat/.tmb/.toc - never from an
+    //     IMG. So parking an RwTexDictionary in a slot could not have made a
+    //     skin draw textured, even if the parse had succeeded. The v2.8.0-v2.8.6
+    //     work all fed that unused path.
+    //
+    //  2. Driving RwTexDictionaryStreamRead by hand crashes the process inside
+    //     the parser: the log stops at "[TXD] 5/93 ... A6AE02FE", a 374 KB file,
+    //     so it is not memory pressure. This server's TXDs are a mobile variant
+    //     whose native-texture header does not match the desktop layout the
+    //     reader expects, and my own decoder is not correct for it either.
+    //
+    // Installing a dictionary therefore buys nothing and costs a crash. Custom
+    // models keep their base-model fallback, which is the documented behaviour
+    // for models that cannot be streamed - the game stays playable.
+    //
+    // Re-enabling this requires building a real TextureDatabaseRuntime from the
+    // downloaded TXDs and registering it, not writing into CTxdStore.
+    if (!m_bTxdActive.exchange(false)) return true;
 
-    const size_t total = m_txdWork.size();
-    size_t cursor = m_txdCursor.load();
-    if (cursor >= total) {
-        FinishCustomTxds();
-        return true;
+    if (!m_txdWork.empty()) {
+        FLog("[TXD] install disabled: engine looks textures up in "
+             "TextureDatabaseRuntime, not CTxdStore (%zu entries skipped)",
+             m_txdWork.size());
     }
-
-    FILE* fp = fopen(m_txdImgPath.c_str(), "rb");
-    if (!fp) {
-        FLog("[TXD] cannot open %s", m_txdImgPath.c_str());
-        FinishCustomTxds();
-        return true;
-    }
-
-    // The pack wrote these sectors, so the offsets are valid for this file.
-    DLImgPack::LayoutMap layout;
     {
         std::lock_guard<std::mutex> lock(m_txdMutex);
-        for (const auto& w : m_txdWork) {
-            char arcName[32];
-            snprintf(arcName, sizeof(arcName), "0x%08X.txd", w.second);
-            DLImgPack::SectorSpan span = m_txdSpans.count(w.second) ? m_txdSpans[w.second]
-                                                                   : DLImgPack::SectorSpan{0, 0};
-            if (span.count) layout[arcName] = span;
-        }
+        m_txdWork.clear();
+        m_txdSpans.clear();
+        m_txdImgPath.clear();
     }
-
-    // One TXD per frame. Two was still too much: the largest dictionaries are
-    // 16-17 MB compressed, and a parsed dictionary keeps its textures resident,
-    // so a single iteration can allocate tens of MB. Pairing two of them made
-    // the app disappear without a tombstone (an OOM kill, not a crash).
-    const size_t kTxdsPerFrame = 1;
-    for (size_t n = 0; n < kTxdsPerFrame && cursor < total; ++n, ++cursor) {
-        const int16_t virtualId = m_txdWork[cursor].first;
-        const uint32_t txdCrc = m_txdWork[cursor].second;
-
-        // Progress BEFORE the risky call, so the log shows which file killed the
-        // process if it dies inside RenderWare. Without this the log simply
-        // stopped at "registration done" and told us nothing about the cause.
-        FLog("[TXD] %zu/%zu virtual=%d crc=%08X", cursor + 1, total,
-             (int)virtualId, txdCrc);
-
-        CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualId);
-        if (!pInfo) { m_txdFailed.fetch_add(1); m_txdFailNoModel.fetch_add(1); continue; }
-
-        const int32 slot = pInfo->m_nTxdIndex;
-        if (slot < 0 || slot >= (int32)TOTAL_TXD_MODEL_IDS) {
-            m_txdFailed.fetch_add(1); m_txdFailSlot.fetch_add(1); continue;
-        }
-        // Already filled by an earlier model that shares this TXD.
-        if (CTxdStore::GetTxd(slot)) continue;
-
-        char arcName[32];
-        snprintf(arcName, sizeof(arcName), "0x%08X.txd", txdCrc);
-        auto spanIt = m_txdSpans.find(txdCrc);
-        if (spanIt == m_txdSpans.end()) continue;
-
-        if (fseek(fp, (long)((uint64_t)spanIt->second.offset * 2048ull), SEEK_SET) != 0) {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
-        }
-        const size_t byteLen = (size_t)spanIt->second.count * 2048u;
-        std::vector<uint8_t> buf(byteLen);
-        if (fread(buf.data(), 1, byteLen, fp) != byteLen) {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1); continue;
-        }
-
-        RwMemory mem{};
-        mem.start  = buf.data();
-        mem.length = (RwUInt32)byteLen;
-        RwStream* stream = RwStreamOpen(rwSTREAMMEMORY, rwSTREAMREAD, &mem);
-        if (!stream) { m_txdFailed.fetch_add(1); m_txdFailStream.fetch_add(1); continue; }
-
-        // A .txd is a TexDictionary chunk (0x16) wrapping a Struct chunk (0x01);
-        // the parser searches for the Struct, so enter the wrapper first.
-        RwUInt32 dictLen = 0, dictVer = 0;
-        if (!RwStreamFindChunk(stream, 0x16, &dictLen, &dictVer) &&
-            !RwStreamFindChunk(stream, 0x06, &dictLen, &dictVer)) {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
-            RwStreamClose(stream, nullptr);
-            continue;
-        }
-        void* dict = RwTexDictionaryStreamRead(stream);
-        if (dict && CTxdStore::SetTxd(slot, dict)) {
-            m_txdInstalled.fetch_add(1);
-        } else {
-            m_txdFailed.fetch_add(1); m_txdFailRead.fetch_add(1);
-        }
-        RwStreamClose(stream, nullptr);
-    }
-
-    fclose(fp);
-    m_txdCursor.store(cursor);
-
-    if (cursor >= total) {
-        FinishCustomTxds();
-        return true;
-    }
-    return false;
+    return true;
 }
 
 // Logs the totals once and releases the work list.
