@@ -78,20 +78,28 @@ void CTextDrawPool::SetSelectState(bool bState, uint32_t dwColor)
         m_bSelectState = true;
         m_dwHoverColor = (((dwColor << 16) | dwColor & 0xFF00) << 8) | (((dwColor >> 16) | dwColor & 0xFF0000) >> 8);
         m_wClickedTextDrawID = 0xFFFF;
-        pGame->DisplayHUD(false);
-        pGame->FindPlayerPed()->TogglePlayerControllable(false);
+        // Do NOT disable the HUD or the player controls here.
+        //
+        // Vanilla SA-MP does this because on PC the mouse is needed to point at
+        // the textdraw. On a phone it disables the on-screen sticks and buttons,
+        // so the player cannot move or look at all while the selection is
+        // active - which /gps triggers. The player then reports "the screen
+        // stopped responding". Selecting a textdraw must cost a tap, not the
+        // whole control scheme.
     }
     else {
         m_bSelectState = false;
         m_dwHoverColor = 0;
         m_wClickedTextDrawID = 0xFFFF;
-        pGame->DisplayHUD(true);
-        pGame->FindPlayerPed()->TogglePlayerControllable(true);
 
-        SendClick();
+        // SendClick() used to be called here with 0xFFFF as the id (no textdraw
+        // was actually clicked), which the server saw as a click on a
+        // non-existent textdraw. Only send when a real id is pending.
+        if (m_wClickedTextDrawID != 0xFFFF) {
+            SendClick();
+        }
 
-        for (int i = 0; i < MAX_TEXT_DRAWS; i++)
-        {
+        for (int i = 0; i < MAX_TEXT_DRAWS; i++) {
             if (m_bSlotState[i] && m_pTextDraw[i]) {
                 CTextDraw* pTextDraw = m_pTextDraw[i];
                 pTextDraw->m_bHovered = false;

@@ -557,6 +557,14 @@ RwBool RwMatrixDestroy(RwMatrix* mpMat);
 RwUInt32 RwStreamRead(RwStream* stream, void* buffer, RwUInt32 length);
 RwStream* RwStreamOpen(RwStreamType type, RwStreamAccessType accessType, const void* data);
 RwBool RwStreamClose(RwStream* stream, void* data);
+
+// TXD loading straight from a memory stream. The mobile build ships no working
+// IMG->CTxdStore path (LoadTxd/TxdStoreLoadCB are stubs), so custom models must
+// read their texture dictionary themselves.
+// RwTexDictionary is opaque here (renderware.h never declares it), so the
+// dictionary handle travels as void*.
+RwTexture* RwTextureStreamRead(RwStream* stream);
+void* RwTexDictionarySetCurrent(void* dict);
 RwMatrix* RwMatrixTransform(RwMatrix* matrix, const RwMatrix* transform, RwOpCombineType combineOp);
 RwMatrix* RwMatrixOrthoNormalize(RwMatrix* matrixOut, const RwMatrix* matrixIn);
 RwMatrix* RwMatrixCreate();

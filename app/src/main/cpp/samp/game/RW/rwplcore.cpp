@@ -34,6 +34,16 @@ RwStream* RwStreamOpen(RwStreamType type, RwStreamAccessType accessType, const v
     return CHook::CallFunction<RwStream*>(g_libGTASA + (VER_x32 ? 0x001E59F0 + 1 : 0x280E44), type, accessType, data);
 }
 
+// Reads one texture-dictionary chunk from a RenderWare stream.
+RwTexture* RwTextureStreamRead(RwStream* stream) {
+    return CHook::CallFunction<RwTexture*>(g_libGTASA + (VER_x32 ? 0x001DBA64 + 1 : 0x26C670), stream);
+}
+
+// Sets the dictionary RenderWare writes new textures into.
+void* RwTexDictionarySetCurrent(void* dict) {
+    return CHook::CallFunction<void*>(g_libGTASA + (VER_x32 ? 0x001DBB50 + 1 : 0x2742B8), dict);
+}
+
 RwBool RwStreamClose(RwStream* stream, void* data) {
     return CHook::CallFunction<RwBool>(g_libGTASA + (VER_x32 ? 0x001E5958 + 1 : 0x280D24), stream, data);
 }

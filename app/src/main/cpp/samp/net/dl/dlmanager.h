@@ -12,6 +12,7 @@
 #include <thread>
 #include <atomic>
 #include <chrono>
+#include "dl_imgpack.h"
 #include "../../vendor/raknet/PacketPriority.h"
 #include "../../vendor/raknet/BitStream.h"
 #include "../../vendor/raknet/RakClientInterface.h"
@@ -201,6 +202,23 @@ private:
     int16_t m_nextVirtualId{DL_VIRT_MIN};
     // Diagnostic log throttle: number of files reported ok this session.
     int m_logOkCount{0};
+
+    // CRCs whose file has already been CRC-checked and structurally validated
+    // this session. Without this, IsModelCached re-read every file (543 MB on a
+    // reported server) on the game thread for every manifest packet.
+    mutable std::mutex        m_verifyMutex;
+    mutable std::unordered_set<uint32_t> m_verified;
+
+    // Background IMG pack state. The pack writes 500+ MB and must not run on the
+    // game thread; RegisterCustomModels() starts it and polls until Done.
+    enum class ImgPackState { None, Running, Done, Failed };
+    ImgPackState             m_imgPackState{ImgPackState::None};
+    std::string              m_imgPackError;
+    DLImgPack::LayoutMap     m_packedLayout;
+    void StartImgPackAsync();          // called with m_verifyMutex held
+    /** Read custom TXDs out of the packed IMG into their CTxdStore slots. */
+    void InstallCustomTxds(const DLImgPack::LayoutMap& layout, int imgIndex,
+                           const std::string& imgFullPath);
     bool    m_bVirtualIdExhausted{false};
 
     // Custom models successfully registered with the game engine

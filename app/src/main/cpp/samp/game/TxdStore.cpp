@@ -29,6 +29,20 @@ int32 CTxdStore::AddTxdSlot(const char *name, const char *dbName, bool keepCPU) 
     return CHook::CallFunction<int32>(g_libGTASA + (VER_x32 ? 0x005D3B84 + 1 : 0x6F8A68), name, dbName, keepCPU);
 }
 
+// Allocates the RwTexDictionary for a slot (engine @0x6F90A8) and stores it in
+// the pool entry. Needed because the mobile build never populates a slot's
+// dictionary from an IMG on its own.
+void CTxdStore::Create(int32 index) {
+    CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D41B4 + 1 : 0x6F90A8), index);
+}
+
+// Returns the RwTexDictionary a slot currently holds, or NULL.
+void* CTxdStore::GetTxd(int32 index) {
+    if (!ms_pTxdPool) return nullptr;
+    TxdDef* def = ms_pTxdPool->GetAt(index);
+    return def ? reinterpret_cast<void*>(def->m_pRwDictionary) : nullptr;
+}
+
 void CTxdStore::Initialise() {
     CHook::CallFunction<void>(g_libGTASA + (VER_x32 ? 0x005D3A90 + 1 : 0x6F8928));
 }

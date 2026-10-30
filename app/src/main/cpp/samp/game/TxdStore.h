@@ -53,6 +53,15 @@ public:
     static void RemoveTxdSlot(int32 index);
     static void RemoveTxd(int32 index);
 
+    // CTxdStore::Create(slot) allocates the RwTexDictionary for a slot and
+    // stores it in the pool. The mobile build has no working LoadTxd-from-IMG
+    // path (CTxdStore::LoadTxd, StartLoadTxd, FinishLoadTxd and
+    // TxdStoreLoadCB are all stubs that return NULL/true without reading
+    // anything), so custom-model TXDs are read straight out of our own IMG with
+    // the RenderWare stream API and installed into the slot here.
+    static void Create(int32 index);
+    static void* GetTxd(int32 index);
+
     static int32 GetNumRefs(int32 index);
 
     static auto FindOrAddTxdSlot(const char* name, const char* dbName) {

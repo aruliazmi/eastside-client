@@ -3,6 +3,7 @@
 #include "../../main.h"
 #include "../../gui/gui.h"
 #include "../../game/Streaming.h"
+#include "../../game/TxdStore.h"
 #include "../../game/Models/ModelInfo.h"
 #include "../../vendor/imgui/imgui.h"
 #include "../../vendor/raknet/SAMP/SAMPRPC.h"
@@ -256,6 +257,10 @@ void DLManager::Reset() {
     m_bSawAnyModel = false;
     m_bShutdown = false;
     m_logOkCount = 0;
+    m_imgPackState = ImgPackState::None;
+    m_imgPackError.clear();
+    m_packedLayout.clear();
+    m_verified.clear();
     m_activeWorkers = 0;
     m_totalModels = 0;
     m_downloadedModels = 0;
@@ -296,6 +301,28 @@ std::string DLManager::GetModelPath(uint32_t crc, bool isDff) const {
 }
 
 bool DLManager::IsModelCached(uint32_t crc, uint32_t expectedSize, bool isDff) const {
+    // A file that has already been verified in this session is not re-read.
+    //
+    // IsModelCached runs on the game thread (called from OnModelRequest, once
+    // per manifest entry) and used to CRC the ENTIRE file, byte by byte. A
+    // reported server ships 170 files totalling 543 MB, so every connection -
+    // including reconnects where nothing changed - meant re-reading all of it
+    // while no frame was drawn. That is the freeze-then-force-close (ANR).
+    //
+    // Nothing can invalidate a cache entry mid-session: the worker writes to a
+    // .temp file and renames it, and a rename of the same crc-named file only
+    // happens after a failed verification, which clears the entry itself.
+    {
+        std::lock_guard<std::mutex> lock(m_verifyMutex);
+        if (m_verified.count(crc) != 0) {
+            // Already known good in this session. Make sure the file still
+            // exists (cheap stat, no read).
+            struct stat st;
+            if (stat(GetModelPath(crc, isDff).c_str(), &st) == 0) return true;
+            m_verified.erase(crc);
+        }
+    }
+
     std::string path = GetModelPath(crc, isDff);
     struct stat st;
     if (stat(path.c_str(), &st) != 0) return false;
@@ -313,6 +340,11 @@ bool DLManager::IsModelCached(uint32_t crc, uint32_t expectedSize, bool isDff) c
     if (!IsRenderWareModelValid(path, isDff)) {
         unlink(path.c_str());
         return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(m_verifyMutex);
+        m_verified.insert(crc);
     }
     return true;
 }
@@ -391,10 +423,186 @@ bool DLManager::IsModelRegistered(int16_t virtualId) const {
 // and allocates CModelInfo slots so the game can actually load the models.
 // MUST run on the game thread (called from ProcessTick).
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Background IMG pack.
+//
+// Runs on its own thread: it only reads cache files and writes one file, so it
+// must not hold the game thread (573 MB = ~18k fread/fwrite round-trips, which
+// was the freeze-then-ANR). The engine mutations that follow stay on the game
+// thread in RegisterCustomModels().
+// ---------------------------------------------------------------------------
+void DLManager::StartImgPackAsync() {
+    // Called with m_verifyMutex held.
+    m_imgPackState = ImgPackState::Running;
+    m_imgPackError.clear();
+    m_packedLayout.clear();
+
+    std::thread([this]() {
+        std::string cacheBase;
+        {
+            std::lock_guard<std::mutex> cl(m_cachePathMutex);
+            cacheBase = m_cachePath;
+        }
+
+        std::string imgFullPath = (g_pszStorage ? std::string(g_pszStorage) : cacheBase);
+        if (!imgFullPath.empty() && imgFullPath.back() != '/') imgFullPath += "/";
+        imgFullPath += "SAMP/custom_dl.img";
+
+        // Snapshot the models that have both files on disk.
+        std::vector<DLImgPack::ImgEntry> entries;
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            entries.reserve(m_models.size() * 2);
+            for (const auto& m : m_models) {
+                if (m.virtualModelId < DL_VIRT_MIN || m.virtualModelId > DL_VIRT_MAX) continue;
+                std::string dffPath = GetModelPath(m.dffChecksum, true);
+                std::string txdPath = GetModelPath(m.txdChecksum, false);
+                struct stat st;
+                if (stat(dffPath.c_str(), &st) != 0) continue;
+                if (stat(txdPath.c_str(), &st) != 0) continue;
+                char dffName[32], txdName[32];
+                snprintf(dffName, sizeof(dffName), "0x%08X.dff", m.dffChecksum);
+                snprintf(txdName, sizeof(txdName), "0x%08X.txd", m.txdChecksum);
+                entries.push_back({dffPath, dffName});
+                entries.push_back({txdPath, txdName});
+            }
+        }
+
+        DLImgPack::LayoutMap layout;
+        std::string err;
+        const uint32_t t0 = GetCurrentTick();
+        bool ok = !entries.empty() &&
+                  DLImgPack::PackImgV2(entries, imgFullPath, err, &layout);
+        const uint32_t ms = GetCurrentTick() - t0;
+
+        {
+            std::lock_guard<std::mutex> lock(m_verifyMutex);
+            if (ok) {
+                m_packedLayout = std::move(layout);
+                m_imgPackState = ImgPackState::Done;
+                struct stat st;
+                unsigned long long sz = (stat(imgFullPath.c_str(), &st) == 0)
+                                        ? (unsigned long long)st.st_size : 0ull;
+                FLog("[DL] packed %zu files into IMG: %llu bytes (%.1f MB) in %u ms "
+                     "(background)", entries.size(), sz,
+                     (double)sz / (1024.0 * 1024.0), ms);
+            } else {
+                m_imgPackError = entries.empty() ? "no model files on disk" : err;
+                m_imgPackState = ImgPackState::Failed;
+                FLog("[DL] pack FAILED (%s) after %u ms", m_imgPackError.c_str(), ms);
+            }
+        }
+    }).detach();
+}
+
+// ---------------------------------------------------------------------------
+// Install custom TXDs straight into CTxdStore slots.
+//
+// This client's libGTASA never loads a TXD from an IMG: TxdStoreLoadCB returns
+// NULL, CTxdStore::LoadTxd(int,char*) is a bare `ret`, and StartLoadTxd /
+// FinishLoadTxd just `return true`. Everything the game renders must come from
+// a TextureDatabaseRuntime (.dat/.tmb/.toc). A 0.3.DL model ships its TXD as an
+// IMG entry, so it had no way in: the DFF streamed in and the model rendered
+// with no texture at all - a plain white skin, no crash.
+//
+// So read the TXD bytes out of our own custom_dl.img with the RenderWare stream
+// API and install the resulting RwTexDictionary into the model's TXD slot.
+// ---------------------------------------------------------------------------
+void DLManager::InstallCustomTxds(const DLImgPack::LayoutMap& layout,
+                                  int imgIndex,
+                                  const std::string& imgFullPath) {
+    if (imgIndex < 0) return;
+
+    FILE* fp = fopen(imgFullPath.c_str(), "rb");
+    if (!fp) {
+        FLog("[TXD] cannot open %s", imgFullPath.c_str());
+        return;
+    }
+
+    int installed = 0, failed = 0;
+    std::vector<int16_t> virtualIds;
+    std::vector<uint32_t> txdCrcs;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (const auto& m : m_models) {
+            if (m.virtualModelId < DL_VIRT_MIN || m.virtualModelId > DL_VIRT_MAX) continue;
+            virtualIds.push_back(m.virtualModelId);
+            txdCrcs.push_back(m.txdChecksum);
+        }
+    }
+
+    for (size_t i = 0; i < virtualIds.size(); ++i) {
+        char arcName[32];
+        snprintf(arcName, sizeof(arcName), "0x%08X.txd", txdCrcs[i]);
+        auto it = layout.find(arcName);
+        if (it == layout.end()) continue;
+
+        CBaseModelInfo* pInfo = CModelInfo::GetModelInfo(virtualIds[i]);
+        if (!pInfo) { ++failed; continue; }
+
+        const int32 slot = pInfo->m_nTxdIndex;
+        if (slot < 0 || slot >= (int32)TOTAL_TXD_MODEL_IDS) { ++failed; continue; }
+
+        if (fseek(fp, (long)((uint64_t)it->second.offset * 2048ull), SEEK_SET) != 0) {
+            ++failed; continue;
+        }
+        const size_t byteLen = (size_t)it->second.count * 2048u;
+        std::vector<uint8_t> buf(byteLen);
+        if (fread(buf.data(), 1, byteLen, fp) != byteLen) { ++failed; continue; }
+
+        // RenderWare reads from memory: open a memory stream over the entry.
+        RwStream* stream = RwStreamOpen(rwSTREAMMEMORY, rwSTREAMREAD, buf.data());
+        if (!stream) { ++failed; continue; }
+
+        // Ensure the slot owns a dictionary, then read the TXD into it.
+        if (!CTxdStore::GetTxd(slot)) {
+            CTxdStore::Create(slot);
+        }
+        void* dict = CTxdStore::GetTxd(slot);
+        if (dict) {
+            RwTexDictionarySetCurrent(dict);
+            if (RwTextureStreamRead(stream)) ++installed;
+            else ++failed;
+        } else {
+            ++failed;
+        }
+        RwStreamClose(stream, nullptr);
+    }
+
+    fclose(fp);
+    FLog("[TXD] installed %d custom TXDs from IMG slot %d (%d failed)",
+         installed, imgIndex, failed);
+}
+
 bool DLManager::RegisterCustomModels() {
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         if (m_bModelsRegistered) return !m_registeredModels.empty();
+    }
+
+    // ----- Phase 1: make sure the IMG exists, packing it on a worker thread. --
+    //
+    // PackImgV2 only reads the cache files and writes one output file; it never
+    // touches engine memory, so it does not have to hold the game thread. It
+    // used to run inline here, which meant writing the whole archive (573 MB on
+    // a reported server, ~18k fread/fwrite round-trips) with zero frames drawn.
+    // Android saw an unresponsive app and killed it: the freeze-then-crash the
+    // user reported.
+    //
+    // So: first call kicks the pack off in the background and returns "not
+    // registered yet"; ProcessTick keeps calling until the background job
+    // reports done, and only then do the engine mutations below run - still on
+    // the game thread, which is required because they write CModelInfo /
+    // CTxdStore / CStreamingInfo.
+    {
+        std::lock_guard<std::mutex> lock(m_verifyMutex);
+        if (m_imgPackState == ImgPackState::None) {
+            StartImgPackAsync();
+            return false;
+        }
+        if (m_imgPackState == ImgPackState::Running) return false;
+        // Idle, Failed or Done: fall through. Done/Idle means the archive is on
+        // disk and m_packedLayout is populated.
     }
 
     // Collect models that have both DFF and TXD files on disk.
@@ -465,30 +673,20 @@ bool DLManager::RegisterCustomModels() {
         entries.push_back({mf.txdPath, mf.txdArcName});
     }
 
+    // The archive was packed by the background job; use its layout instead of
+    // packing inline. A failed pack is reported once and the models fall back to
+    // their base models.
     DLImgPack::LayoutMap layoutMap;
-    std::string packError;
-    if (!DLImgPack::PackImgV2(entries, imgFullPath, packError, &layoutMap)) {
-        char msg[256];
-        snprintf(msg, sizeof(msg), "Failed to pack custom IMG: %s",
-                 packError.c_str());
-        PushChat(msg);
-        FLog("[DL] pack FAILED entries=%zu error=%s (cap=%llu MB) - all models "
-             "will fall back to base; /dlr re-arms after a fix",
-             entries.size(), packError.c_str(),
-             (unsigned long long)(DLImgPack::IMG_MAX_TOTAL / (1024ull * 1024ull)));
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_bModelsRegistered = true;
-        return false;
-    }
     {
-        struct stat imgStat;
-        unsigned long long imgSize = 0;
-        if (stat(imgFullPath.c_str(), &imgStat) == 0) {
-            imgSize = (unsigned long long)imgStat.st_size;
+        std::lock_guard<std::mutex> lock(m_verifyMutex);
+        if (m_imgPackState == ImgPackState::Failed) {
+            PushChat("Failed to pack custom IMG: " + m_imgPackError);
+            FLog("[DL] pack FAILED (%s) - all models fall back to base; "
+                 "/dlr re-arms after a fix", m_imgPackError.c_str());
+            m_bModelsRegistered = true;
+            return false;
         }
-        FLog("[DL] packed %zu files into IMG: %llu bytes (%.1f MB), cap %llu MB",
-             entries.size(), imgSize, (double)imgSize / (1024.0 * 1024.0),
-             (unsigned long long)(DLImgPack::IMG_MAX_TOTAL / (1024ull * 1024ull)));
+        layoutMap = m_packedLayout;
     }
 
     // Register IMG with the streaming system using relative path.
@@ -627,6 +825,11 @@ bool DLManager::RegisterCustomModels() {
         }
         m_bModelsRegistered = true;
     }
+
+    // Custom TXDs must be installed explicitly: this build has no IMG->CTxdStore
+    // path, so CStreaming filling the slot's CStreamingInfo is not enough for
+    // the model to receive its texture.
+    InstallCustomTxds(layoutMap, imgIndex, imgFullPath);
 
     char msg[128];
     snprintf(msg, sizeof(msg), "Registered %d custom models.", registered);
@@ -1603,7 +1806,19 @@ void DLManager::ProcessTick() {
         const uint32_t settledFor = now - m_finishQueueTick;
 
         // 1. Engine tables are rewritten once, after the download has stopped.
+        //    RegisterCustomModels() returns false while the background IMG pack
+        //    is still running, so this simply retries next frame - the game
+        //    thread keeps drawing instead of blocking on a 500 MB write.
         if (!m_bModelsRegistered && settledFor >= DL_REGISTER_DELAY_MS) {
+            bool packed;
+            {
+                std::lock_guard<std::mutex> lock(m_verifyMutex);
+                packed = (m_imgPackState != ImgPackState::Running);
+            }
+            if (!packed) {
+                // Pack still in progress; nothing to do this frame.
+                return;
+            }
             FLog("[DL] registering models (settledFor=%u ms)", settledFor);
             RegisterCustomModels();
             m_registerDoneTick = now;
@@ -1675,6 +1890,16 @@ void DLManager::RequestRetryFailed() {
             // recover and every custom model would stay on its base fallback.
             m_bModelsRegistered = false;
             m_registerDoneTick = 0;
+            // Force a fresh pack: the previous archive may have failed (size cap)
+            // or been built from a partial cache, and registration must not be
+            // skipped because of that.
+            m_imgPackState = ImgPackState::None;
+            m_imgPackError.clear();
+            m_packedLayout.clear();
+            {
+                std::lock_guard<std::mutex> vl(m_verifyMutex);
+                m_verified.clear();
+            }
         }
     }
     if (rearmed > 0) {
