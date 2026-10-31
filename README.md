@@ -10,7 +10,7 @@ Launcher dan game engine Android buat server Eastside Stories (SA-MP / open.mp 0
 
 | Berkas | Deskripsi | Link |
 |---|---|:---:|
-| APK client terbaru | Installer Android, sudah ditandatangani dan siap dipasang di Android 15/16 | [Unduh APK](https://github.com/aruliazmi/eastside-client/releases/download/latest/Eastside.apk) |
+| APK client terbaru | Installer Android, sudah ditandatangani dan siap dipasang di Android 15/16 | [Unduh APK](https://github.com/aruliazmi/eastside-client/releases) |
 | Paket data game (v3) | Aset GTA SA lengkap, audio, tekstur multi-GPU (±1.2 GB) | [Unduh data pack](https://github.com/aruliazmi/eastside-client/releases/download/data-v4/files.zip) |
 | Daftar semua rilis | Riwayat versi, changelog, arsip build | [Lihat rilis](https://github.com/aruliazmi/eastside-client/releases) |
 
