@@ -10,17 +10,17 @@ Launcher dan game engine Android buat server Eastside Stories (SA-MP / open.mp 0
 
 | Berkas | Deskripsi | Link |
 |---|---|:---:|
-| APK client terbaru | Installer Android, sudah ditandatangani dan siap dipasang di Android 15/16 | [Unduh APK](https://github.com/aruliazmi/eastside-client/releases/download/v1.0.1b/EastsideStories.apk) |
+| APK client terbaru | Installer Android, sudah ditandatangani dan siap dipasang di Android 15/16 | [Unduh APK](https://github.com/aruliazmi/eastside-client/releases/download/latest/Eastside.apk) |
 | Paket data game (v3) | Aset GTA SA lengkap, audio, tekstur multi-GPU (±1.2 GB) | [Unduh data pack](https://github.com/aruliazmi/eastside-client/releases/download/data-v4/files.zip) |
 | Daftar semua rilis | Riwayat versi, changelog, arsip build | [Lihat rilis](https://github.com/aruliazmi/eastside-client/releases) |
 
 ## Cara pasang
 
-1. Pasang APK. Unduh dan install `EastsideStories.apk` di HP Android. Kasih izin
+1. Pasang APK. Unduh dan install `Eastside.apk` di HP Android. Kasih izin
    penyimpanan dan notifikasi kalau diminta.
 
 2. Ekstrak data game. Unduh `files.zip` dari rilis
-   [data-v3](https://github.com/aruliazmi/eastside-client/releases/tag/data-v3), lalu ekstrak
+   [data-v4](https://github.com/aruliazmi/eastside-client/releases/tag/data-v4), lalu ekstrak
    pakai aplikasi pengelola berkas (ZArchiver, misalnya) ke:
 
    ```
